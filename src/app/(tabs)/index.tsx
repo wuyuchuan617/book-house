@@ -21,7 +21,7 @@ export default function ExploreScreen() {
   const [input, setInput] = useState('');
   const [query, setQuery] = useState('');
   const { data: tags } = useSystemTags();
-  const { data, isLoading, error, refetch, isRefetching } = useExploreFeed({ tag, query });
+  const { data, isPending, fetchStatus, error, refetch, isRefetching } = useExploreFeed({ tag, query });
   const { data: mine } = useMyStore();
 
   useEffect(() => {
@@ -79,7 +79,9 @@ export default function ExploreScreen() {
           </ScrollView>
         </View>
 
-        {isLoading ? (
+        {isPending && fetchStatus === 'paused' ? (
+          <EmptyState title="目前沒有網路連線" body="連上網路後會自動重新載入。" actionLabel="重試" onAction={() => refetch()} />
+        ) : isPending ? (
           <ActivityIndicator style={{ marginTop: 48 }} />
         ) : error ? (
           <EmptyState title="目前沒有網路連線" body="連上網路後再試一次。" actionLabel="重試" onAction={() => refetch()} />
@@ -132,7 +134,7 @@ function FeaturedCard({ item, ownStoreId }: { item: ExploreItem; ownStoreId?: st
       </Pressable>
       <View style={styles.storeRow}>
         <Pressable accessibilityRole="link" onPress={() => openStore(item.slug)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, minHeight: MinTouch }}>
-          <StoreAvatar name={item.store_name} color={item.color} size={32} />
+          <StoreAvatar name={item.store_name} color={item.color} size={32} path={item.avatar_path} />
           <View style={{ flex: 1 }}>
             <AppText variant="label">{item.store_name}</AppText>
             <AppText variant="caption" muted>{`${item.owner_name} · ${item.follower_count} 人追蹤`}</AppText>

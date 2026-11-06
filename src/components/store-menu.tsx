@@ -7,6 +7,7 @@ import { ActionSheet, Dialog } from '@/components/sheet';
 import { AppText, Button } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
+import { track } from '@/lib/analytics';
 import { shareStoreMessage, storeUrl } from '@/lib/links';
 import { safetyError, useBlockStore } from '@/lib/safety';
 
@@ -43,11 +44,12 @@ export function StoreMenu({ store, visible, onClose, isMine }: { store: Store; v
         subtitle={`店主 ${store.owner_name}`}
         onClose={onClose}
         actions={[
-          { label: '分享書店', onPress: () => void Share.share({ message: shareStoreMessage(store.name, store.slug) }) },
+          { label: '分享書店', onPress: () => { track('share_link_copied', { channel: 'system' }); void Share.share({ message: shareStoreMessage(store.name, store.slug) }); } },
           {
             label: '複製連結',
             onPress: async () => {
               await Clipboard.setStringAsync(storeUrl(store.slug));
+              track('share_link_copied', { channel: 'copy' });
               Alert.alert('已複製連結', storeUrl(store.slug));
             },
           },

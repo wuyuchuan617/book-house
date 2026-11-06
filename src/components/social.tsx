@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { Alert, Animated, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,9 +9,14 @@ import { MinTouch, Radius, Spacing, StoreColors, type StoreColor } from '@/const
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { useFollowIds, useSaveIds, useToggleFollow, useToggleSave } from '@/lib/browse';
+import { storageUrl } from '@/lib/uploads';
 
 /** 書店頭像：沒有上傳圖片時用店面顏色＋店名第一個字 */
-export function StoreAvatar({ name, color, size = 40 }: { name: string; color: StoreColor; size?: number }) {
+export function StoreAvatar({ name, color, size = 40, path }: { name: string; color: StoreColor; size?: number; path?: string | null }) {
+  const uri = storageUrl('avatar', path);
+  if (uri) {
+    return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size * 0.28 }} accessibilityIgnoresInvertColors contentFit="cover" />;
+  }
   return (
     <View style={[styles.avatar, { width: size, height: size, borderRadius: size * 0.28, backgroundColor: StoreColors[color].hex }]}>
       <AppText style={{ color: '#FFFFFF', fontWeight: '700', fontSize: size * 0.42 }}>{[...name][0] ?? '書'}</AppText>

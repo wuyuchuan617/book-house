@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { StoreColor } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import type { Book } from '@/lib/curations';
+import { track } from '@/lib/analytics';
 import { unwrap, type ExploreItem, type PublicStore } from '@/lib/queries';
 import { supabase } from '@/lib/supabase';
 
@@ -63,6 +64,7 @@ export function useToggleFollow() {
         ? await supabase.from('follows').upsert({ follower_id: uid, bookstore_id: bookstoreId }, { ignoreDuplicates: true })
         : await supabase.from('follows').delete().eq('follower_id', uid).eq('bookstore_id', bookstoreId);
       if (res.error) throw new Error(res.error.message);
+      if (follow) track('store_followed', { store_id: bookstoreId });
     },
     // 按下就先變成「追蹤中」，失敗再還原
     onMutate: async ({ bookstoreId, follow }) => {
@@ -185,6 +187,7 @@ export function useToggleSave() {
           )
         : await supabase.from('book_saves').delete().eq('user_id', uid).eq('book_id', bookId);
       if (res.error) throw new Error(res.error.message);
+      if (save) track('book_saved', { store_id: bookstoreId ?? null, curation_id: curationId ?? null });
     },
     onMutate: async ({ bookId, save }) => {
       const key = ['save-ids', session?.user.id];

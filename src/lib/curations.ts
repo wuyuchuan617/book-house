@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
+import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
 import { unwrap } from '@/lib/queries';
 import { supabase } from '@/lib/supabase';
@@ -148,6 +149,7 @@ export function useCreateManualBook() {
           .select(BOOK_COLS)
           .single(),
       ),
+    onSuccess: () => track('book_manual_created', { has_author: true }),
   });
 }
 
@@ -211,7 +213,10 @@ export function useAddItem() {
       unwrap<{ id: string }>(
         await supabase.rpc('add_curation_item', { p_curation_id: curationId, p_book_id: bookId, p_note: note ?? null }),
       ),
-    onSuccess: (_d, v) => invalidateCuration(qc, v.curationId),
+    onSuccess: (_d, v) => {
+      track('book_added', { has_reason: !!v.note?.trim() });
+      invalidateCuration(qc, v.curationId);
+    },
   });
 }
 
@@ -267,8 +272,11 @@ export function usePublishCuration() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) =>
-      unwrap<{ id: string; status: CurationStatus }>(await supabase.rpc('publish_curation', { p_curation_id: id })),
-    onSuccess: (c) => invalidateCuration(qc, c.id),
+      unwrap<{ id: string; status: CurationStatus; period: string }>(await supabase.rpc('publish_curation', { p_curation_id: id })),
+    onSuccess: (c) => {
+      track('curation_published', { month: c.period?.slice(0, 7), scheduled: c.status === 'scheduled' });
+      invalidateCuration(qc, c.id);
+    },
   });
 }
 

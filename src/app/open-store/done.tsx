@@ -8,6 +8,7 @@ import { MinTouch, Radius, Spacing, StoreColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { friendlyError, sortedItems, useCreateCuration, useCuration } from '@/lib/curations';
 import { currentPeriod, monthOf } from '@/lib/period';
+import { track } from '@/lib/analytics';
 import { useMyStore } from '@/lib/queries';
 import { useMyReadings } from '@/lib/readings';
 import { shareStoreMessage, storeLinkLabel } from '@/lib/links';
@@ -102,7 +103,7 @@ export default function OpenStoreDoneScreen() {
                   kind="secondary"
                   label="分享"
                   style={{ minHeight: MinTouch }}
-                  onPress={() => Share.share({ message: shareStoreMessage(store.store.name, store.store.slug) })}
+                  onPress={() => { track('share_link_copied', { channel: 'system' }); void Share.share({ message: shareStoreMessage(store.store.name, store.store.slug) }); }}
                 />
               </View>
             ) : null}

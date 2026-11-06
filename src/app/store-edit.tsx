@@ -1,3 +1,5 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
@@ -9,9 +11,10 @@ import { MinTouch, Radius, Spacing, StoreColors, type StoreColor } from '@/const
 import { useTheme } from '@/hooks/use-theme';
 import { useMyStore, type MyStore } from '@/lib/queries';
 import { readingError, SLUG_PATTERN, useSlugAvailability, useUpdateStore } from '@/lib/readings';
+import { pickAndUpload, storageUrl, UploadError, type ImageKind } from '@/lib/uploads';
 import { WEB_URL } from '@/lib/links';
 
-/** M2 編輯書店資料。TODO(M6)：背景圖、頭貼上傳（Storage bucket 已建好） */
+/** M2 編輯書店資料：頭貼、背景圖、店名、介紹、網址、顏色 */
 export default function StoreEditScreen() {
   const { data } = useMyStore();
   if (!data) return <ActivityIndicator style={{ marginTop: 48 }} />;
@@ -27,6 +30,25 @@ function StoreEditForm({ store }: { store: MyStore }) {
   const [slugInput, setSlugInput] = useState(store.slug);
   const [slug, setSlug] = useState(store.slug);
   const [color, setColor] = useState<StoreColor>(store.color);
+  const [uploading, setUploading] = useState<ImageKind | null>(null);
+  const qc = useQueryClient();
+  const bannerUri = storageUrl('banner', store.banner_path);
+
+  const upload = async (kind: ImageKind) => {
+    setUploading(kind);
+    try {
+      const path = await pickAndUpload(kind, store.id);
+      if (path) {
+        qc.invalidateQueries({ queryKey: ['my-store'] });
+        qc.invalidateQueries({ queryKey: ['store'] });
+        qc.invalidateQueries({ queryKey: ['explore'] });
+      }
+    } catch (e) {
+      Alert.alert(kind === 'avatar' ? '頭貼沒有更新' : '背景圖沒有更新', e instanceof UploadError ? e.message : '請檢查網路後再試一次。');
+    } finally {
+      setUploading(null);
+    }
+  };
 
   useEffect(() => {
     const t = setTimeout(() => setSlug(slugInput.trim().toLowerCase()), 400);
@@ -63,13 +85,19 @@ function StoreEditForm({ store }: { store: MyStore }) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={90}>
         <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.xl }} keyboardShouldPersistTaps="handled">
           <View style={[styles.banner, { backgroundColor: StoreColors[color].hex }]}>
-            <StoreAvatar name={name || store.name} color={color} size={56} />
+            {bannerUri ? <Image source={{ uri: bannerUri }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityIgnoresInvertColors /> : null}
+            {bannerUri ? <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(31,27,22,0.45)' }]} /> : null}
+            <StoreAvatar name={name || store.name} color={color} size={56} path={store.avatar_path} />
             <View style={{ flex: 1 }}>
               <AppText variant="heading" style={{ color: '#FFFFFF' }}>{name || '書店名稱'}</AppText>
               {tagline ? <AppText variant="caption" style={{ color: '#FFFFFF' }} numberOfLines={2}>{tagline}</AppText> : null}
             </View>
           </View>
-          <AppText variant="caption" muted>背景圖與頭貼上傳即將推出；目前使用店面顏色。</AppText>
+          <View style={{ flexDirection: 'row', gap: Spacing.md }}>
+            <Button kind="secondary" label="更換頭貼" style={{ flex: 1 }} loading={uploading === 'avatar'} disabled={!!uploading} onPress={() => upload('avatar')} />
+            <Button kind="secondary" label="更換背景圖" style={{ flex: 1 }} loading={uploading === 'banner'} disabled={!!uploading} onPress={() => upload('banner')} />
+          </View>
+          <AppText variant="caption" muted>頭貼 400×400、背景圖 1500×500，5MB 以內。沒有上傳時使用店面顏色。</AppText>
 
           <TextField label="書店名稱" max={20} value={name} onChangeText={setName} />
           <TextField label="店主名稱" max={20} value={ownerName} onChangeText={setOwnerName} />
@@ -121,7 +149,7 @@ function StoreEditForm({ store }: { store: MyStore }) {
 }
 
 const styles = StyleSheet.create({
-  banner: { borderRadius: Radius.xl, padding: Spacing.lg, flexDirection: 'row', alignItems: 'center', gap: Spacing.md, minHeight: 110 },
+  banner: { borderRadius: Radius.xl, padding: Spacing.lg, flexDirection: 'row', alignItems: 'center', gap: Spacing.md, minHeight: 110, overflow: 'hidden' },
   slugBox: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: Radius.md, paddingLeft: 14, minHeight: 48 },
   slugInput: { flex: 1, fontSize: 16, minHeight: 48, outlineWidth: 0 },
   swatches: { flexDirection: 'row', justifyContent: 'space-between' },

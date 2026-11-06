@@ -2,6 +2,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
 import type { StoreColor } from '@/constants/theme';
+import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
 import type { PublicReading } from '@/lib/browse';
 import type { Book } from '@/lib/curations';
@@ -94,7 +95,10 @@ export function useAddReading() {
           p_note: input.note?.trim() || null,
         }),
       ),
-    onSuccess: () => invalidateReadings(qc),
+    onSuccess: (_d, v) => {
+      track('reading_logged', { status: v.status, has_note: !!v.note?.trim(), public: v.isPublic });
+      invalidateReadings(qc);
+    },
   });
 }
 
@@ -129,7 +133,10 @@ export function useAddNote() {
       const res = await supabase.from('reading_notes').insert({ reading_id: readingId, body: body.trim() });
       if (res.error) throw new Error(res.error.message);
     },
-    onSuccess: () => invalidateReadings(qc),
+    onSuccess: (_d, v) => {
+      track('reading_note_added', { length: v.body.trim().length });
+      invalidateReadings(qc);
+    },
   });
 }
 

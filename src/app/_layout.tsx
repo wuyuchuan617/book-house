@@ -5,9 +5,11 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 
 import { LoginGate } from '@/components/login-gate';
+import { OfflineBanner } from '@/components/offline-banner';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { usePushNotifications } from '@/lib/push';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -17,6 +19,7 @@ function RootStack() {
   const { isLoading, session } = useAuth();
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const c = Colors[scheme];
+  usePushNotifications(session?.user.id);
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
 
   useEffect(() => {
@@ -60,9 +63,11 @@ function RootStack() {
         <Stack.Screen name="store-delete" options={{ title: '刪除書店' }} />
         <Stack.Screen name="report/[id]" options={{ title: '檢舉書店', presentation: 'modal' }} />
         <Stack.Screen name="blocked" options={{ title: '已封鎖的帳號' }} />
+        <Stack.Screen name="help" options={{ title: '說明與意見回饋' }} />
         <Stack.Screen name="settings" options={{ title: '設定' }} />
       </Stack>
       <LoginGate />
+      <OfflineBanner />
     </ThemeProvider>
   );
 }

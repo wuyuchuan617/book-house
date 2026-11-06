@@ -1,4 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
+import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -13,6 +14,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useStoreReadings, type PublicReading } from '@/lib/browse';
 import { currentPeriod, monthOf, timeAgo } from '@/lib/period';
 import { recordVisit, useMyStore, usePublicStore } from '@/lib/queries';
+import { storageUrl } from '@/lib/uploads';
 
 type Tab = 'curation' | 'reading';
 
@@ -39,6 +41,7 @@ export default function StoreScreen() {
 
   const { store, curations } = data;
   const isMine = mine?.store.id === store.id;
+  const banner = storageUrl('banner', store.banner_path);
 
   return (
     <Screen>
@@ -54,9 +57,11 @@ export default function StoreScreen() {
       />
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={[styles.hero, { backgroundColor: StoreColors[store.color].hex }]}>
+          {banner ? <Image source={{ uri: banner }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityIgnoresInvertColors /> : null}
+          {banner ? <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(31,27,22,0.45)' }]} /> : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
             <View style={styles.avatarRing}>
-              <StoreAvatar name={store.name} color={store.color} size={52} />
+              <StoreAvatar name={store.name} color={store.color} size={52} path={store.avatar_path} />
             </View>
             <View style={{ flex: 1 }}>
               <AppText variant="heading" style={{ color: '#FFFFFF' }}>{store.name}</AppText>
@@ -191,7 +196,7 @@ function ReadingTab({ readings, color }: { readings: PublicReading[] | undefined
 
 const styles = StyleSheet.create({
   headerBtn: { width: MinTouch, height: MinTouch, alignItems: 'center', justifyContent: 'center' },
-  hero: { padding: Spacing.xl },
+  hero: { padding: Spacing.xl, overflow: 'hidden' },
   avatarRing: { borderRadius: 18, borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)', padding: 2 },
   tabs: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: Spacing.xl },
   tab: { minHeight: MinTouch + 4, paddingHorizontal: Spacing.md, justifyContent: 'center', borderBottomWidth: 2.5, marginRight: Spacing.md },

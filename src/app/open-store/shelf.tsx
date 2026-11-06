@@ -8,6 +8,7 @@ import { AppText, Button, Screen } from '@/components/ui';
 import { MinTouch, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { friendlyError, sortedItems, useAddItem, useCuration, usePublishCuration, type Book } from '@/lib/curations';
+import { track } from '@/lib/analytics';
 import { useMyStore } from '@/lib/queries';
 
 /** O4 開店步驟 3：放上書架。1 本就能發布，推薦理由之後再補（O7） */
@@ -52,7 +53,7 @@ export default function OpenStoreShelfScreen() {
           title: '開店',
           headerBackTitle: '上一步',
           headerRight: () => (
-            <Pressable accessibilityRole="button" onPress={() => router.replace({ pathname: '/open-store/done', params: { id: cur.id, skipped: '1' } })} style={styles.skip}>
+            <Pressable accessibilityRole="button" onPress={() => { track('onboarding_step_skipped', { step: 3 }); router.replace({ pathname: '/open-store/done', params: { id: cur.id, skipped: '1' } }); }} style={styles.skip}>
               <AppText style={{ color: c.primary, fontWeight: '700' }}>略過</AppText>
             </Pressable>
           ),

@@ -6,11 +6,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SignInButtons } from '@/components/sign-in-buttons';
 import { AppText, Button, Screen } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
+import { WEB_URL } from '@/lib/links';
+import * as WebBrowser from 'expo-web-browser';
 
 /** A1 歡迎／登入：可以先逛逛，不強迫登入 */
 export default function SignInScreen() {
   const { session } = useAuth();
+  const c = useTheme();
 
   useEffect(() => {
     if (session) router.back();
@@ -41,7 +45,12 @@ export default function SignInScreen() {
         </View>
         <SignInButtons />
         <Button kind="link" label="先逛逛，稍後再登入" onPress={() => router.back()} style={styles.later} />
-        <AppText variant="caption" muted style={{ textAlign: 'center' }}>繼續即表示同意服務條款與隱私權政策</AppText>
+        <AppText variant="caption" muted style={{ textAlign: 'center' }}>
+          {'繼續即表示同意'}
+          <AppText variant="caption" style={{ color: c.primary, textDecorationLine: 'underline' }} accessibilityRole="link" onPress={() => void WebBrowser.openBrowserAsync(`${WEB_URL}/terms`)}>服務條款</AppText>
+          {'與'}
+          <AppText variant="caption" style={{ color: c.primary, textDecorationLine: 'underline' }} accessibilityRole="link" onPress={() => void WebBrowser.openBrowserAsync(`${WEB_URL}/privacy`)}>隱私權政策</AppText>
+        </AppText>
       </SafeAreaView>
     </Screen>
   );

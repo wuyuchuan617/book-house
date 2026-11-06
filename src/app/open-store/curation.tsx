@@ -8,6 +8,7 @@ import { MinTouch, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { DESCRIPTION_MAX, friendlyError, TITLE_MAX, useCreateCuration, useUpdateCuration } from '@/lib/curations';
 import { currentPeriod, periodLabel } from '@/lib/period';
+import { track } from '@/lib/analytics';
 import { useMyStore } from '@/lib/queries';
 
 const TEMPLATES = ['適合冬天讀的書', '今年最喜歡的 3 本', '改變我想法的書', '送給新手的入門書'];
@@ -41,7 +42,7 @@ export default function OpenStoreCurationScreen() {
           headerBackVisible: false,
           gestureEnabled: false,
           headerRight: () => (
-            <Pressable accessibilityRole="button" onPress={() => router.replace({ pathname: '/open-store/done', params: { skipped: '1' } })} style={styles.skip}>
+            <Pressable accessibilityRole="button" onPress={() => { track('onboarding_step_skipped', { step: 2 }); router.replace({ pathname: '/open-store/done', params: { skipped: '1' } }); }} style={styles.skip}>
               <AppText style={{ color: c.primary, fontWeight: '700' }}>略過</AppText>
             </Pressable>
           ),

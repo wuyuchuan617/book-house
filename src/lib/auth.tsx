@@ -4,6 +4,8 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
+import { track } from '@/lib/analytics';
+import { unregisterPush } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -71,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       pendingRef.current = action;
       setPendingAction(() => action);
+      track('login_gate_shown');
       return false;
     },
     [session],
@@ -107,6 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (__DEV__) console.log('[auth] result =', result.type, url ?? '');
       if (!url) return; // 使用者取消
       await completeOAuth(url);
+      track('login_success', { method: 'google' });
     } finally {
       sub.remove();
     }
@@ -125,6 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       token: credential.identityToken,
     });
     if (error) throw error;
+    track('login_success', { method: 'apple' });
     // Apple 只在第一次登入時給名字
     const fullName = [credential.fullName?.familyName, credential.fullName?.givenName]
       .filter(Boolean)
@@ -135,6 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    await unregisterPush();
     await supabase.auth.signOut();
   }, []);
 

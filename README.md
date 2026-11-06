@@ -34,6 +34,9 @@ src/app/            畫面（Expo Router，每個檔案一個畫面）
   blocked.tsx       設定 › 已封鎖的帳號
   s/[slug]+api.ts   P4 網頁版唯讀書店頁（伺服器端產生 HTML＋連結預覽）
   +native-intent.tsx P5 分享連結 /s/<slug> → App 內書店頁
+  help.tsx          M7 說明與意見回饋
+  privacy+api.ts    隱私權政策（網頁）
+  terms+api.ts      服務條款（網頁）
   settings.tsx      M3 設定
 src/components/     共用 UI：book-picker（S1 選書＋C4 手動新增＋C5 推薦理由）、
                     curation-actions（C7 更多操作＋C8 刪除確認）、tag-picker、login-gate（A9）
@@ -93,7 +96,7 @@ Bundle ID／package 目前暫定 `com.bookhaus.app`，送審前確認。
 - [x] M3 逛店與互動：A2 搜尋與主題篩選、A3／A4 書店頁（策展＋店主閱讀）、A5 心得時間軸、書籍視角、B1／B2 收藏
 - [x] M4 店主閱讀與設定：R1–R7、O8、M2 編輯書店、M9 刪除書店、設定頁書店區（通知 push 延到 M5，頭貼／背景圖上傳延到 M6）
 - [x] M5 安全與分享：A6–A8 檢舉／封鎖、已封鎖的帳號、審核佇列、P4 網頁版書店頁、P5 分享連結與深層連結（推播通知移到 M6：需要 development build）
-- [ ] M6 打磨與上架：空／錯誤狀態、無障礙、埋點、送審
+- [x] M6 打磨與上架：熊貓 App icon（方案 A）、推播通知與每月提醒、頭貼／背景圖上傳、離線提示、埋點、說明與意見回饋、服務條款／隱私權政策、EAS build 設定、上架介紹圖（V3）
 
 ### M2 的產品規則（已寫進資料庫）
 
@@ -132,11 +135,59 @@ select moderate_bookstore('<bookstore_id>', 'restore');           -- 恢復營�
 select moderate_bookstore('<bookstore_id>', 'dismiss');           -- 檢舉不成立
 ```
 
+## 推播通知（需要 development build）
+
+通知會先排進 `notification_outbox`（新策展上架→追蹤者、有人追蹤→店主、每月策展提醒），再由 `push-dispatch` 每分鐘送到 Expo Push。
+
+```bash
+supabase functions deploy push-dispatch --no-verify-jwt
+supabase secrets set CRON_SECRET=<一串隨機字>
+```
+
+在 Supabase › Database › Extensions 開啟 `pg_cron` 與 `pg_net`，然後在 SQL Editor 執行一次（把 `<一串隨機字>` 換成上面那串）：
+
+```sql
+select cron.schedule('push-dispatch', '* * * * *', $$
+  select net.http_post(
+    url := 'https://weadwadmdgddoiscpyyd.supabase.co/functions/v1/push-dispatch',
+    headers := jsonb_build_object('x-cron-secret', '<一串隨機字>')
+  )
+$$);
+select cron.schedule('monthly-curation-reminders', '0 1 * * *', 'select public.enqueue_monthly_reminders()');
+select cron.schedule('promote-scheduled-curations', '5 * * * *', 'select public.promote_scheduled_curations()');
+select cron.schedule('purge-deleted-accounts', '0 19 * * *', 'select public.purge_deleted_accounts()');
+```
+
+（後三個排程在 migration 裡也有寫，但只有在 pg_cron 已開啟時才會建立；先開 pg_cron 再執行這段最保險。）
+
+## Development build 與送審
+
+```bash
+eas build --profile development --platform ios      # 第一次會引導建立 Apple 憑證；裝到手機後用 npx expo start 開發
+eas build --profile production --platform all
+eas submit --platform ios
+```
+
+送審清單：
+- App Store Connect 建立 App（Bundle ID `com.bookhaus.app`），填隱私權政策網址 `<網站>/privacy`、支援網址 `<網站>/terms`
+- 上架介紹圖：`store-assets/ios/ios-6.9-1.png`～`5.png`（1290×2796，V3「熊貓一家」）
+- App 隱私（營養標籤）：聯絡資訊（名稱、電子郵件）、使用者內容、識別碼（使用者 ID）、使用資料（產品互動）；都「連結到使用者」、「不用於追蹤」
+- 審核備註：提供一組可登入的測試帳號（Google），說明檢舉／封鎖在書店頁 ⋯、刪除帳號在設定
+- 內容分級：使用者產生內容 → 需有檢舉、封鎖、條款（都已完成）
+
 ## 上架前檢查
 
 - Supabase › Authentication › URL Configuration：開發期間 Site URL 暫設為 Expo Go 的 `exp://<電腦IP>:8081/--/auth/callback`（換 Wi-Fi 要跟著改）。打包 development build／送審前改回 `bookhaus://auth/callback`。
 - Supabase › Database › Extensions 開啟 `pg_cron`，再重跑 `supabase/migrations/20261106000004_storage_and_cron.sql` 與 `20261107000001_curation_flow.sql` 最後的排程段落（刪除帳號、預約策展上架）。
+- 設定 `.env` 的 `EXPO_PUBLIC_CONTACT_EMAIL`（條款與隱私權政策上的聯絡信箱），並請法律專業人士看過 `src/lib/legal.ts`。
 - Google Books 金鑰：`supabase secrets set GOOGLE_BOOKS_API_KEY=…`（沒有金鑰時 Supabase 共用 IP 很快遇到 429，會改查 Open Library）。
+
+## 之後再做（V2）
+
+- 拖曳排序書架、滑動刪除店主閱讀（目前用「往前移／往後移」與 ⋯ 選單）
+- 連結預覽圖（店面顏色＋書封自動產生）、QR Code、分享圖
+- 暫停營業、外觀設定（深色模式已跟隨系統）
+- Email 通知、延遲深層連結（下載後自動打開那間書店）
 
 ## 待決定（PRD 第 11 節）
 

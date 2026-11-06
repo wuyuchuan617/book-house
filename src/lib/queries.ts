@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { StoreColor } from '@/constants/theme';
 import type { Book } from '@/lib/curations';
+import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
@@ -100,14 +101,17 @@ export function useCreateBookstore() {
       unwrap(
         await supabase.rpc('create_bookstore', { p_name: input.name, p_owner_name: input.ownerName, p_color: input.color }),
       ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['my-store'] }),
+    onSuccess: (_d, v) => {
+      track('store_created', { color: v.color });
+      qc.invalidateQueries({ queryKey: ['my-store'] });
+    },
   });
 }
 
 const VISITOR_KEY = 'bookhaus.visitor-key';
 
 /** 訪客的匿名裝置代號（隨機產生、只存在本機；需寫進隱私權政策） */
-async function getVisitorKey() {
+export async function getVisitorKey() {
   try {
     const existing = await AsyncStorage.getItem(VISITOR_KEY);
     if (existing) return existing;

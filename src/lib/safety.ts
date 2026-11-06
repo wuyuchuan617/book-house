@@ -1,6 +1,7 @@
 /** M5 安全：A6–A8 檢舉／封鎖、設定 › 已封鎖的帳號 */
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
+import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
 import { unwrap } from '@/lib/queries';
 import { supabase } from '@/lib/supabase';
@@ -46,6 +47,7 @@ export function useReportStore() {
       if (res.error) throw new Error(res.error.message);
     },
     onSuccess: (_d, v) => {
+      track('report_submitted', { reason: v.reason, also_blocked: v.alsoBlock });
       if (v.alsoBlock) refreshVisibility(qc);
     },
   });
