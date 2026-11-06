@@ -23,7 +23,7 @@
       "package": "com.bookhaus.app"
     },
     "web": {
-      "output": "single",
+      "output": "server",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [

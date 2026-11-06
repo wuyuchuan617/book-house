@@ -8,6 +8,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useMyStore } from '@/lib/queries';
 import { useDeleteStore, useStoreDeleteImpact } from '@/lib/readings';
+import { storeLinkLabel } from '@/lib/links';
 
 /** M9 刪除書店：輸入店名確認。帳號還在，之後可以重新開店 */
 export default function StoreDeleteScreen() {
@@ -30,7 +31,7 @@ export default function StoreDeleteScreen() {
           <AppText>{`• ${impact?.curation_count ?? 0} 檔策展與書架上的書`}</AppText>
           <AppText>{`• ${impact?.reading_count ?? 0} 筆店主閱讀與心得`}</AppText>
           <AppText>{`• ${impact?.follower_count ?? 0} 位追蹤者會收不到你的更新`}</AppText>
-          <AppText>{`• 網址 bookhaus.app/${impact?.slug ?? data.store.slug} 會被釋出`}</AppText>
+          <AppText>{`• 網址 ${storeLinkLabel(impact?.slug ?? data.store.slug)} 會被釋出`}</AppText>
         </View>
         <Card style={{ gap: 4, backgroundColor: c.surfaceMuted }}>
           <AppText variant="label">只是想休息？</AppText>

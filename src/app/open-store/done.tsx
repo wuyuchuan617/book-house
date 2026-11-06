@@ -10,6 +10,7 @@ import { friendlyError, sortedItems, useCreateCuration, useCuration } from '@/li
 import { currentPeriod, monthOf } from '@/lib/period';
 import { useMyStore } from '@/lib/queries';
 import { useMyReadings } from '@/lib/readings';
+import { shareStoreMessage, storeLinkLabel } from '@/lib/links';
 
 type Task = { label: string; done: boolean; onPress?: () => void; soon?: boolean };
 
@@ -27,7 +28,7 @@ export default function OpenStoreDoneScreen() {
   const color = StoreColors[store.store.color].hex;
   const items = cur ? sortedItems(cur) : [];
   const published = cur?.status === 'published';
-  const link = `bookhaus.app/${store.store.slug}`;
+  const link = storeLinkLabel(store.store.slug);
   const month = monthOf(cur?.period ?? currentPeriod());
 
   const tasks: Task[] = published
@@ -101,7 +102,7 @@ export default function OpenStoreDoneScreen() {
                   kind="secondary"
                   label="分享"
                   style={{ minHeight: MinTouch }}
-                  onPress={() => Share.share({ message: `來逛逛我的書店「${store.store.name}」：https://${link}` })}
+                  onPress={() => Share.share({ message: shareStoreMessage(store.store.name, store.store.slug) })}
                 />
               </View>
             ) : null}

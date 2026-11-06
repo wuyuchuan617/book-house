@@ -7,8 +7,10 @@ import { MinTouch, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useMyStore } from '@/lib/queries';
 import { useUpdateStore } from '@/lib/readings';
+import { useBlockedAccounts } from '@/lib/safety';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { shareStoreMessage, storeLinkLabel } from '@/lib/links';
 
 /** M3 設定。TODO(M5／M6)：通知、外觀、說明與意見回饋、已封鎖帳號、暫停營業 */
 export default function SettingsScreen() {
@@ -17,6 +19,7 @@ export default function SettingsScreen() {
   const { data: mine } = useMyStore();
   const updateStore = useUpdateStore();
   const store = mine?.store;
+  const { data: blocked } = useBlockedAccounts();
 
   const requestDeletion = () =>
     Alert.alert('刪除你的書棲帳號？', '送出後 30 天內重新登入可以取消；30 天後永久刪除書店與所有內容。', [
@@ -57,14 +60,21 @@ export default function SettingsScreen() {
               </View>
               <Pressable
                 accessibilityRole="button"
-                onPress={() => Share.share({ message: `來逛逛「${store.name}」：https://bookhaus.app/${store.slug}` })}
+                onPress={() => Share.share({ message: shareStoreMessage(store.name, store.slug) })}
                 style={[styles.row, { borderBottomWidth: 0 }]}>
                 <AppText style={{ flex: 1 }}>分享書店連結</AppText>
-                <AppText muted>{`bookhaus.app/${store.slug}`}</AppText>
+                <AppText muted>{storeLinkLabel(store.slug)}</AppText>
               </Pressable>
             </Card>
           </>
         ) : null}
+        <AppText variant="label">帳號與其他</AppText>
+        <Card style={{ paddingVertical: 0 }}>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/blocked')} style={[styles.row, { borderBottomWidth: 0 }]}>
+            <AppText style={{ flex: 1 }}>已封鎖的帳號</AppText>
+            <AppText muted>{String(blocked?.length ?? 0)}</AppText>
+          </Pressable>
+        </Card>
         <Card style={{ gap: Spacing.sm }}>
           <AppText variant="label">版本</AppText>
           <AppText muted>{Constants.expoConfig?.version ?? '—'}</AppText>

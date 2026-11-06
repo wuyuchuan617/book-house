@@ -9,6 +9,7 @@ import { MinTouch, Radius, Spacing, StoreColors, type StoreColor } from '@/const
 import { useTheme } from '@/hooks/use-theme';
 import { useMyStore, type MyStore } from '@/lib/queries';
 import { readingError, SLUG_PATTERN, useSlugAvailability, useUpdateStore } from '@/lib/readings';
+import { WEB_URL } from '@/lib/links';
 
 /** M2 編輯書店資料。TODO(M6)：背景圖、頭貼上傳（Storage bucket 已建好） */
 export default function StoreEditScreen() {
@@ -77,7 +78,7 @@ function StoreEditForm({ store }: { store: MyStore }) {
           <View style={{ gap: 6 }}>
             <AppText variant="label">書店網址</AppText>
             <View style={[styles.slugBox, { borderColor: slugHint && !slugHint.ok ? c.danger : c.border, backgroundColor: c.surface }]}>
-              <AppText muted>bookhaus.app/</AppText>
+              <AppText muted>{`${WEB_URL.replace(/^https?:\/\//, '')}/s/`}</AppText>
               <TextInput
                 accessibilityLabel="書店網址"
                 value={slugInput}

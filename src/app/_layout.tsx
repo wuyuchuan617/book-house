@@ -58,6 +58,8 @@ function RootStack() {
         <Stack.Screen name="reading/manage/[id]" options={{ title: '店主閱讀' }} />
         <Stack.Screen name="store-edit" options={{ title: '編輯書店資料' }} />
         <Stack.Screen name="store-delete" options={{ title: '刪除書店' }} />
+        <Stack.Screen name="report/[id]" options={{ title: '檢舉書店', presentation: 'modal' }} />
+        <Stack.Screen name="blocked" options={{ title: '已封鎖的帳號' }} />
         <Stack.Screen name="settings" options={{ title: '設定' }} />
       </Stack>
       <LoginGate />

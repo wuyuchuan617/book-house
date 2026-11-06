@@ -1,11 +1,12 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { BookCover } from '@/components/book-cover';
 import { CurationView } from '@/components/curation-view';
 import { FollowButton, StoreAvatar } from '@/components/social';
+import { StoreMenu } from '@/components/store-menu';
 import { AppText, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing, StoreColors, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -17,7 +18,7 @@ type Tab = 'curation' | 'reading';
 
 const openBook = (id: string) => router.push({ pathname: '/book/[id]', params: { id } });
 
-/** A3 書店頁（策展）、A4 書店頁（店主閱讀）。TODO(M5)：⋯ 檢舉／封鎖（A6–A8） */
+/** A3 書店頁（策展）、A4 書店頁（店主閱讀）、A6 更多操作（分享、複製連結、檢舉、封鎖） */
 export default function StoreScreen() {
   const { slug, tab: initialTab } = useLocalSearchParams<{ slug: string; tab?: Tab }>();
   const c = useTheme();
@@ -25,6 +26,7 @@ export default function StoreScreen() {
   const { data: mine } = useMyStore();
   const [tab, setTab] = useState<Tab>(initialTab === 'reading' ? 'reading' : 'curation');
   const [index, setIndex] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
   const current = data?.curations[index];
   const { data: readings } = useStoreReadings(data?.store.id);
 
@@ -37,7 +39,6 @@ export default function StoreScreen() {
 
   const { store, curations } = data;
   const isMine = mine?.store.id === store.id;
-  const link = `https://bookhaus.app/${store.slug}`;
 
   return (
     <Screen>
@@ -45,12 +46,8 @@ export default function StoreScreen() {
         options={{
           title: store.name,
           headerRight: () => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="分享書店"
-              onPress={() => Share.share({ message: `來逛逛「${store.name}」：${link}`, url: link })}
-              style={styles.headerBtn}>
-              <Feather name="share" size={20} color={c.text} />
+            <Pressable accessibilityRole="button" accessibilityLabel="更多操作" onPress={() => setMenuOpen(true)} style={styles.headerBtn}>
+              <Feather name="more-horizontal" size={22} color={c.text} />
             </Pressable>
           ),
         }}
@@ -122,6 +119,7 @@ export default function StoreScreen() {
           <ReadingTab readings={readings} color={store.color} />
         )}
       </ScrollView>
+      <StoreMenu store={store} visible={menuOpen} onClose={() => setMenuOpen(false)} isMine={isMine} />
     </Screen>
   );
 }

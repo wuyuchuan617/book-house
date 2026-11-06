@@ -13,6 +13,7 @@ import { ReadingRemovalToast, ReadingSection, useReadingRemoval } from '@/compon
 import { useMyCurations } from '@/lib/curations';
 import { useMyReadings } from '@/lib/readings';
 import { useMyStore } from '@/lib/queries';
+import { storeLinkLabel } from '@/lib/links';
 
 /** 未開店 → O1 入口；已開店 → M1 我的書店（策展列表）。TODO(M4)：店主閱讀分頁 R1–R7、M2 編輯書店 */
 export default function MyStoreScreen() {
@@ -50,7 +51,7 @@ export default function MyStoreScreen() {
               <View style={{ padding: Spacing.lg }}>
                 <AppText variant="heading">{data.store.name}</AppText>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <AppText variant="caption" muted style={{ flex: 1 }}>{`bookhaus.app/${data.store.slug}`}</AppText>
+                  <AppText variant="caption" muted style={{ flex: 1 }}>{storeLinkLabel(data.store.slug)}</AppText>
                   <Button kind="secondary" label="編輯書店" style={{ minHeight: MinTouch - 4 }} onPress={() => router.push('/store-edit')} />
                 </View>
                 <Button kind="link" label="讀者視角" style={{ minHeight: MinTouch, alignSelf: 'flex-start', paddingHorizontal: 0 }} onPress={() => router.push({ pathname: '/store/[slug]', params: { slug: data.store.slug } })} />

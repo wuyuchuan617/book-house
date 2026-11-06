@@ -13,11 +13,14 @@ if (!url || !anonKey) {
 }
 
 // 型別產生後可改成 createClient<Database>(...)：npm run db:types
+// 網頁版伺服器端繪製時沒有 window／儲存空間：不保存登入狀態
+const isServer = typeof window === 'undefined';
+
 export const supabase = createClient(url, anonKey, {
   auth: {
-    storage: AsyncStorage,
-    autoRefreshToken: true,
-    persistSession: true,
+    storage: isServer ? undefined : AsyncStorage,
+    autoRefreshToken: !isServer,
+    persistSession: !isServer,
     detectSessionInUrl: false,
     flowType: 'pkce',
   },
