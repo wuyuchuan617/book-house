@@ -58,10 +58,13 @@ Deno.serve(async (req) => {
   const { data: me } = await userClient.auth.getUser();
   if (!me.user) return json({ error: 'sign in required' }, 401);
 
-  const [local, remote] = await Promise.all([
+  const [local, google] = await Promise.all([
     userClient.rpc('search_local_books', { p_query: q, p_limit: LIMIT }),
     searchGoogle(q),
   ]);
+  if (local.error) console.error('search_local_books', local.error.message);
+  // Google 失敗（沒金鑰時常見 429 配額用完）或查無結果 → 改查 Open Library
+  const remote = google.length > 0 ? google : await searchOpenLibrary(q);
 
   let saved: Book[] = [];
   if (remote.length > 0) {
@@ -86,7 +89,7 @@ Deno.serve(async (req) => {
     });
     if (books.length >= LIMIT) break;
   }
-  return json({ books, partial: remote.length === 0 && !!local.error });
+  return json({ books, source: google.length > 0 ? 'google_books' : remote.length > 0 ? 'open_library' : 'local' });
 });
 
 async function searchGoogle(q: string) {
@@ -98,7 +101,8 @@ async function searchGoogle(q: string) {
       signal: AbortSignal.timeout(6000),
     });
     if (!res.ok) {
-      console.error('google books', res.status);
+      // 400 = 金鑰無效；429 = 配額用完（沒設金鑰時，共用 IP 很快就會用完）
+      console.error('google books', res.status, (await res.text()).slice(0, 300));
       return [];
     }
     const body = (await res.json()) as { items?: GoogleVolume[] };
@@ -121,6 +125,48 @@ async function searchGoogle(q: string) {
       });
   } catch (e) {
     console.error('google books', e);
+    return [];
+  }
+}
+
+type OpenLibraryDoc = {
+  key: string;
+  title?: string;
+  author_name?: string[];
+  first_publish_year?: number;
+  isbn?: string[];
+  cover_i?: number;
+};
+
+async function searchOpenLibrary(q: string) {
+  const params = new URLSearchParams({
+    q,
+    limit: String(LIMIT),
+    fields: 'key,title,author_name,first_publish_year,isbn,cover_i',
+  });
+  try {
+    const res = await fetch(`https://openlibrary.org/search.json?${params}`, {
+      headers: { 'User-Agent': 'Bookhaus/1.0 (book-search edge function)' },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) {
+      console.error('open library', res.status);
+      return [];
+    }
+    const body = (await res.json()) as { docs?: OpenLibraryDoc[] };
+    return (body.docs ?? [])
+      .filter((d) => d.title)
+      .map((d) => ({
+        source: 'open_library',
+        external_id: d.key,
+        isbn13: d.isbn?.find((i) => /^[0-9]{13}$/.test(i)) ?? null,
+        title: d.title!,
+        authors: d.author_name?.length ? d.author_name.slice(0, 5) : ['佚名'],
+        cover_url: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : null,
+        published_year: d.first_publish_year ? String(d.first_publish_year) : null,
+      }));
+  } catch (e) {
+    console.error('open library', e);
     return [];
   }
 }
