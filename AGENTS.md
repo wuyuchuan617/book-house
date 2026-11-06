@@ -39,3 +39,11 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## Bookhaus project notes
+
+- 規格來源：README 裡的設計畫布與 PRD 連結。畫面以畫布編號命名（A1、C3、R2…），在程式註解裡標出對應編號。
+- 所有權限判斷放在 Postgres RLS 與 `security definer` 函式（`supabase/migrations`），App 端不能當成唯一防線。
+- 策展狀態只能透過 `publish_curation()`／`unpublish_curation()` 改變；開店只能透過 `create_bookstore()`。
+- 改動 migration 後跑 `npm run db:test`；改動 App 後跑 `npx tsc --noEmit` 與 `npx expo lint`。
+- UI 文案用繁體中文；用語依畫布 S7（追蹤＝書店、收藏＝書、店主閱讀、刪除／移除）。
