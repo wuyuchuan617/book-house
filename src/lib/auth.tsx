@@ -25,6 +25,18 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** 從回跳網址取出授權碼換成 session；失敗時把 Supabase 的錯誤說明丟出來 */
+async function completeOAuth(url: string) {
+  const parsed = new URL(url);
+  const hash = new URLSearchParams(parsed.hash.replace(/^#/, ''));
+  const err = parsed.searchParams.get('error_description') ?? hash.get('error_description');
+  if (err) throw new Error(err);
+  const code = parsed.searchParams.get('code');
+  if (!code) throw new Error('Google 登入沒有回傳授權碼');
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  if (error) throw error;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,17 +83,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = useCallback(async () => {
     const redirectTo = Linking.createURL('auth/callback');
+    if (__DEV__) console.log('[auth] redirectTo =', redirectTo); // 要加進 Supabase › URL Configuration › Redirect URLs
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo, skipBrowserRedirect: true },
+      options: { redirectTo, skipBrowserRedirect: true, queryParams: { prompt: 'select_account' } },
     });
     if (error) throw error;
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-    if (result.type !== 'success') return;
-    const code = new URL(result.url).searchParams.get('code');
-    if (!code) throw new Error('Google 登入沒有回傳授權碼');
-    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-    if (exchangeError) throw exchangeError;
+
+    // 上一次沒關掉的登入視窗會讓新的視窗打不開（一直轉圈），先關掉
+    WebBrowser.dismissAuthSession();
+
+    // 備援：有些情況回跳網址會改由系統開啟 App（不是登入視窗接住），這裡一樣能拿到授權碼
+    let viaLink: string | null = null;
+    const sub = Linking.addEventListener('url', ({ url }) => {
+      if (url.includes('auth/callback')) {
+        viaLink = url;
+        WebBrowser.dismissAuthSession();
+      }
+    });
+    try {
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo, { preferEphemeralSession: true });
+      const url = result.type === 'success' ? result.url : viaLink;
+      if (__DEV__) console.log('[auth] result =', result.type, url ?? '');
+      if (!url) return; // 使用者取消
+      await completeOAuth(url);
+    } finally {
+      sub.remove();
+    }
   }, []);
 
   const signInWithApple = useCallback(async () => {
