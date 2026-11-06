@@ -54,6 +54,10 @@ function RootStack() {
         <Stack.Screen name="store/[slug]" options={{ title: '' }} />
         <Stack.Screen name="reading/[id]" options={{ title: '' }} />
         <Stack.Screen name="book/[id]" options={{ title: '' }} />
+        <Stack.Screen name="reading/new" options={{ title: '記錄一本書' }} />
+        <Stack.Screen name="reading/manage/[id]" options={{ title: '店主閱讀' }} />
+        <Stack.Screen name="store-edit" options={{ title: '編輯書店資料' }} />
+        <Stack.Screen name="store-delete" options={{ title: '刪除書店' }} />
         <Stack.Screen name="settings" options={{ title: '設定' }} />
       </Stack>
       <LoginGate />

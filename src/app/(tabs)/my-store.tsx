@@ -1,5 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,6 +9,9 @@ import { MinTouch, Radius, Spacing, StoreColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { CurationSection } from '@/components/my-curations';
+import { ReadingRemovalToast, ReadingSection, useReadingRemoval } from '@/components/my-readings';
+import { useMyCurations } from '@/lib/curations';
+import { useMyReadings } from '@/lib/readings';
 import { useMyStore } from '@/lib/queries';
 
 /** 未開店 → O1 入口；已開店 → M1 我的書店（策展列表）。TODO(M4)：店主閱讀分頁 R1–R7、M2 編輯書店 */
@@ -15,6 +19,11 @@ export default function MyStoreScreen() {
   const c = useTheme();
   const { session, requireAuth } = useAuth();
   const { data, isLoading } = useMyStore();
+  const { data: curations } = useMyCurations();
+  const readings = useMyReadings();
+  const removal = useReadingRemoval();
+  const [tab, setTab] = useState<'curation' | 'reading'>('curation');
+  const readingCount = (readings.data ?? []).filter((r) => r.id !== removal.pending?.id).length;
 
   return (
     <Screen>
@@ -40,7 +49,11 @@ export default function MyStoreScreen() {
               <View style={{ height: 64, backgroundColor: StoreColors[data.store.color].hex }} />
               <View style={{ padding: Spacing.lg }}>
                 <AppText variant="heading">{data.store.name}</AppText>
-                <AppText variant="caption" muted>{`bookhaus.app/${data.store.slug}`}</AppText>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <AppText variant="caption" muted style={{ flex: 1 }}>{`bookhaus.app/${data.store.slug}`}</AppText>
+                  <Button kind="secondary" label="編輯書店" style={{ minHeight: MinTouch - 4 }} onPress={() => router.push('/store-edit')} />
+                </View>
+                <Button kind="link" label="讀者視角" style={{ minHeight: MinTouch, alignSelf: 'flex-start', paddingHorizontal: 0 }} onPress={() => router.push({ pathname: '/store/[slug]', params: { slug: data.store.slug } })} />
                 <View style={[styles.stats, { borderTopColor: c.divider }]}>
                   <Stat label="追蹤" value={data.stats?.follower_count ?? 0} />
                   <Stat label="本月拜訪" value={data.stats?.visits_this_month ?? 0} />
@@ -48,9 +61,26 @@ export default function MyStoreScreen() {
                 </View>
               </View>
             </Card>
-            <CurationSection />
+            <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
+              {(['curation', 'reading'] as const).map((t) => {
+                const selected = tab === t;
+                return (
+                  <Pressable key={t} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => setTab(t)} style={[styles.segmentItem, selected && { backgroundColor: c.surface }]}>
+                    <AppText variant="caption" style={{ fontWeight: '700', color: selected ? c.text : c.textSecondary }}>
+                      {t === 'curation' ? `策展 · ${curations?.length ?? 0}` : `店主閱讀 · ${readingCount}`}
+                    </AppText>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {tab === 'curation' ? (
+              <CurationSection />
+            ) : (
+              <ReadingSection readings={readings.data} loading={readings.isLoading} color={data.store.color} removal={removal} />
+            )}
           </ScrollView>
         )}
+        <ReadingRemovalToast removal={removal} />
       </SafeAreaView>
     </Screen>
   );
@@ -94,4 +124,6 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   icon: { width: MinTouch, height: MinTouch, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill },
   stats: { flexDirection: 'row', marginTop: Spacing.md, paddingTop: Spacing.md, borderTopWidth: 1 },
+  segment: { flexDirection: 'row', borderRadius: Radius.md, padding: 3, marginTop: Spacing.sm },
+  segmentItem: { flex: 1, minHeight: MinTouch - 4, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },
 });

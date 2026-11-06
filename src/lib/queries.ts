@@ -37,7 +37,7 @@ export type PublicStore = {
   follower_count: number;
 };
 
-export type MyStore = Omit<PublicStore, 'follower_count'> & { status: 'active' | 'paused' | 'deleted' };
+export type MyStore = Omit<PublicStore, 'follower_count'> & { status: 'active' | 'paused' | 'deleted'; reading_public_default: boolean };
 
 /** 失敗就丟出錯誤；成功回傳 data。T 由呼叫端指定（型別產生前的暫時做法） */
 export function unwrap<T>({ data, error }: { data: unknown; error: { message: string } | null }): T {

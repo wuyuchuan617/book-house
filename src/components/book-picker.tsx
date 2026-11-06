@@ -26,7 +26,7 @@ const bookMeta = (b: Pick<Book, 'authors' | 'published_year'>) =>
 // ---------------------------------------------------------------------------
 // 搜尋面板：O4 直接嵌在頁面裡，C3 放在 BookPicker 彈出面板裡
 // ---------------------------------------------------------------------------
-export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, busyId, autoFocus, header }: {
+export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, busyId, autoFocus, header, suggestions }: {
   storeColor: StoreColor;
   mode: 'multi' | 'single';
   isPicked: (book: Book) => boolean;
@@ -35,6 +35,8 @@ export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, 
   busyId?: string | null;
   autoFocus?: boolean;
   header?: React.ReactNode;
+  /** 還沒輸入時的快速選項（R3「最近在你的策展裡」） */
+  suggestions?: { label: string; books: Book[] };
 }) {
   const c = useTheme();
   const [query, setQuery] = useState('');
@@ -42,6 +44,36 @@ export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, 
   const { data, isFetching, error, refetch } = useBookSearch(q);
   const tooShort = [...q.trim()].length < 2;
   const pickedCount = data?.filter(isPicked).length ?? 0;
+
+  const renderRow = (b: Book) => {
+    const picked = isPicked(b);
+    const label = picked ? (mode === 'multi' ? '已加入' : '已在閱讀中') : mode === 'multi' ? '加入' : '選這本';
+    return (
+      <View key={b.id} style={[styles.row, { borderBottomColor: c.divider }]}>
+        <BookCover title={b.title} url={b.cover_url} color={storeColor} size="sm" />
+        <View style={{ flex: 1 }}>
+          <AppText variant="label" numberOfLines={2}>{b.title}</AppText>
+          <AppText variant="caption" muted numberOfLines={1}>{bookMeta(b)}</AppText>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${label}：${b.title}`}
+          accessibilityState={{ disabled: picked }}
+          disabled={picked || busyId === b.id}
+          onPress={() => onPick(b)}
+          style={[
+            styles.pick,
+            picked ? { backgroundColor: c.successSurface } : { backgroundColor: c.background, borderColor: c.border, borderWidth: 1 },
+          ]}>
+          {busyId === b.id ? (
+            <ActivityIndicator />
+          ) : (
+            <AppText variant="caption" style={{ fontWeight: '700', color: picked ? c.success : c.primary }}>{picked ? `✓ ${label}` : label}</AppText>
+          )}
+        </Pressable>
+      </View>
+    );
+  };
 
   return (
     <View style={{ gap: Spacing.md }}>
@@ -66,7 +98,15 @@ export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, 
       </View>
 
       {tooShort ? (
-        <AppText variant="caption" muted>輸入 2 個字以上開始搜尋</AppText>
+        <>
+          <AppText variant="caption" muted>輸入 2 個字以上開始搜尋</AppText>
+          {suggestions?.books.length ? (
+            <>
+              <AppText variant="label" style={{ marginTop: Spacing.sm }}>{suggestions.label}</AppText>
+              {suggestions.books.map(renderRow)}
+            </>
+          ) : null}
+        </>
       ) : isFetching && !data ? (
         <ActivityIndicator style={{ marginVertical: Spacing.lg }} />
       ) : error ? (
@@ -81,39 +121,7 @@ export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, 
               ? `找到 ${data.length} 本${pickedCount ? ` · ${mode === 'multi' ? '書架上已有' : '已在閱讀中'} ${pickedCount} 本` : ''}`
               : '沒有找到符合的書'}
           </AppText>
-          {data?.map((b) => {
-            const picked = isPicked(b);
-            const label = picked ? (mode === 'multi' ? '已加入' : '已在閱讀中') : mode === 'multi' ? '加入' : '選這本';
-            return (
-              <View key={b.id} style={[styles.row, { borderBottomColor: c.divider }]}>
-                <BookCover title={b.title} url={b.cover_url} color={storeColor} size="sm" />
-                <View style={{ flex: 1 }}>
-                  <AppText variant="label" numberOfLines={2}>{b.title}</AppText>
-                  <AppText variant="caption" muted numberOfLines={1}>{bookMeta(b)}</AppText>
-                </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`${label}：${b.title}`}
-                  accessibilityState={{ disabled: picked }}
-                  disabled={picked || busyId === b.id}
-                  onPress={() => onPick(b)}
-                  style={[
-                    styles.pick,
-                    picked
-                      ? { backgroundColor: c.successSurface }
-                      : { backgroundColor: c.background, borderColor: c.border, borderWidth: 1 },
-                  ]}>
-                  {busyId === b.id ? (
-                    <ActivityIndicator />
-                  ) : (
-                    <AppText variant="caption" style={{ fontWeight: '700', color: picked ? c.success : c.primary }}>
-                      {picked ? `✓ ${label}` : label}
-                    </AppText>
-                  )}
-                </Pressable>
-              </View>
-            );
-          })}
+          {data?.map(renderRow)}
         </>
       )}
 
@@ -225,7 +233,7 @@ export function NoteForm({ book, storeColor, caption, prompts = NOTE_PROMPTS, in
 // ---------------------------------------------------------------------------
 type Step = { kind: 'search' } | { kind: 'manual'; query: string } | { kind: 'note'; book: Book };
 
-export function BookPicker({ visible, mode, storeColor, pickedIds, askNote, shelfCount = 0, onAdd, onClose }: {
+export function BookPicker({ visible, mode, storeColor, pickedIds, askNote, shelfCount = 0, onAdd, onClose, suggestions }: {
   visible: boolean;
   mode: 'multi' | 'single';
   storeColor: StoreColor;
@@ -235,6 +243,7 @@ export function BookPicker({ visible, mode, storeColor, pickedIds, askNote, shel
   shelfCount?: number;
   onAdd: (book: Book, note: string | null) => Promise<void>;
   onClose: () => void;
+  suggestions?: { label: string; books: Book[] };
 }) {
   const c = useTheme();
   const [step, setStep] = useState<Step>({ kind: 'search' });
@@ -299,6 +308,7 @@ export function BookPicker({ visible, mode, storeColor, pickedIds, askNote, shel
                   onManual={(query) => setStep({ kind: 'manual', query })}
                   busyId={busyId}
                   autoFocus
+                  suggestions={suggestions}
                 />
               ) : step.kind === 'manual' ? (
                 <ManualBookForm

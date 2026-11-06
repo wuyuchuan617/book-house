@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { friendlyError, sortedItems, useCreateCuration, useCuration } from '@/lib/curations';
 import { currentPeriod, monthOf } from '@/lib/period';
 import { useMyStore } from '@/lib/queries';
+import { useMyReadings } from '@/lib/readings';
 
 type Task = { label: string; done: boolean; onPress?: () => void; soon?: boolean };
 
@@ -19,6 +20,7 @@ export default function OpenStoreDoneScreen() {
   const { data: store } = useMyStore();
   const { data: cur, isLoading } = useCuration(id);
   const create = useCreateCuration();
+  const { data: readings } = useMyReadings();
 
   if (!store || (id && isLoading)) return <ActivityIndicator style={{ marginTop: 48 }} />;
 
@@ -36,15 +38,18 @@ export default function OpenStoreDoneScreen() {
           done: items.every((it) => !!it.note),
           onPress: () => router.push({ pathname: '/open-store/reasons', params: { id: cur!.id } }),
         },
-        // TODO(M4)：O8 記錄正在讀的書（店主閱讀 R2，選書元件單選模式）
-        { label: '記錄一本正在讀的書', done: false, soon: true },
+        {
+          label: '記錄一本正在讀的書',
+          done: (readings?.length ?? 0) > 0,
+          onPress: () => router.push({ pathname: '/reading/new', params: { from: 'open-store' } }),
+        },
       ]
     : [
         { label: '取一個策展標題', done: !!cur?.title },
         { label: '放上至少 1 本書', done: items.length > 0 },
       ];
   const doneCount = tasks.filter((t) => t.done).length;
-  const allDone = published && tasks.filter((t) => !t.soon).every((t) => t.done);
+  const allDone = published && tasks.every((t) => t.done);
 
   const continueDraft = () => {
     if (cur) return router.replace({ pathname: '/curation/[id]', params: { id: cur.id } });

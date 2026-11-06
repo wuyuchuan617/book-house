@@ -26,6 +26,10 @@ src/app/            畫面（Expo Router，每個檔案一個畫面）
   store/[slug].tsx  A3／A4 書店頁（策展、店主閱讀）
   reading/[id].tsx  A5 店主閱讀心得時間軸（讀者）
   book/[id].tsx     書籍視角：哪些書店推薦過這本書
+  reading/new.tsx   R2／R4 記錄一本書、O8 記錄正在讀的書
+  reading/manage/   R5 店主閱讀編輯（狀態、公開、心得增改刪）
+  store-edit.tsx    M2 編輯書店資料（網址即時檢查）
+  store-delete.tsx  M9 刪除書店（輸入店名確認）
   settings.tsx      M3 設定
 src/components/     共用 UI：book-picker（S1 選書＋C4 手動新增＋C5 推薦理由）、
                     curation-actions（C7 更多操作＋C8 刪除確認）、tag-picker、login-gate（A9）
@@ -83,7 +87,7 @@ Bundle ID／package 目前暫定 `com.bookhaus.app`，送審前確認。
 - [x] M1 骨架：導覽、Apple／Google 登入、訪客模式與登入引導、資料庫 schema 與 RLS
 - [x] M2 開店與策展：O3–O9、C1–C8、選書元件 S1、`book-search` Edge Function（O8 記錄正在讀的書隨 M4 店主閱讀一起做）
 - [x] M3 逛店與互動：A2 搜尋與主題篩選、A3／A4 書店頁（策展＋店主閱讀）、A5 心得時間軸、書籍視角、B1／B2 收藏
-- [ ] M4 店主閱讀與設定：R1–R7、M2 編輯書店、通知、刪除書店
+- [x] M4 店主閱讀與設定：R1–R7、O8、M2 編輯書店、M9 刪除書店、設定頁書店區（通知 push 延到 M5，頭貼／背景圖上傳延到 M6）
 - [ ] M5 安全與分享：檢舉、封鎖、審核、網頁版書店頁、深層連結
 - [ ] M6 打磨與上架：空／錯誤狀態、無障礙、埋點、送審
 
