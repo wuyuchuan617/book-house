@@ -22,6 +22,7 @@ export type ExploreItem = {
   book_count: number;
   cover_urls: (string | null)[];
   tag_slugs: string[];
+  cover_titles: string[];
 };
 
 export type PublicStore = {
@@ -42,17 +43,6 @@ export type MyStore = Omit<PublicStore, 'follower_count'> & { status: 'active' |
 export function unwrap<T>({ data, error }: { data: unknown; error: { message: string } | null }): T {
   if (error) throw new Error(error.message);
   return data as T;
-}
-
-export function useExploreFeed(tag?: string) {
-  return useQuery({
-    queryKey: ['explore', tag ?? 'all'],
-    queryFn: async () => {
-      let q = supabase.from('explore_feed').select('*').order('published_at', { ascending: false }).limit(50);
-      if (tag) q = q.contains('tag_slugs', [tag]);
-      return unwrap<ExploreItem[]>(await q);
-    },
-  });
 }
 
 export function usePublicStore(slug: string) {
@@ -99,41 +89,6 @@ export function useMyStore() {
         stats: unwrap(stats) as { follower_count: number; visits_this_month: number; published_curation_count: number } | null,
         curations: unwrap(curations) as { id: string; period: string; title: string | null; status: 'draft' | 'scheduled' | 'published' }[],
       };
-    },
-  });
-}
-
-export function useFollowedStores() {
-  const { session } = useAuth();
-  return useQuery({
-    queryKey: ['follows', session?.user.id],
-    enabled: !!session,
-    queryFn: async () => {
-      const rows = unwrap<{ bookstore_id: string }[]>(await supabase.from('follows').select('bookstore_id'));
-      if (rows.length === 0) return [] as PublicStore[];
-      return unwrap<PublicStore[]>(
-        await supabase.from('public_bookstores').select('*').in('id', rows.map((r) => r.bookstore_id)),
-      );
-    },
-  });
-}
-
-export function useToggleFollow() {
-  const qc = useQueryClient();
-  const { session } = useAuth();
-  return useMutation({
-    mutationFn: async ({ bookstoreId, follow }: { bookstoreId: string; follow: boolean }) => {
-      const uid = session?.user.id;
-      if (!uid) throw new Error('sign in required');
-      const res = follow
-        ? await supabase.from('follows').insert({ follower_id: uid, bookstore_id: bookstoreId })
-        : await supabase.from('follows').delete().eq('follower_id', uid).eq('bookstore_id', bookstoreId);
-      if (res.error) throw new Error(res.error.message);
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['follows'] });
-      qc.invalidateQueries({ queryKey: ['explore'] });
-      qc.invalidateQueries({ queryKey: ['store'] });
     },
   });
 }

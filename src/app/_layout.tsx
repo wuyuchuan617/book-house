@@ -52,6 +52,8 @@ function RootStack() {
         <Stack.Screen name="curation/[id]" options={{ title: '策展' }} />
         <Stack.Screen name="curation/preview/[id]" options={{ title: '預覽' }} />
         <Stack.Screen name="store/[slug]" options={{ title: '' }} />
+        <Stack.Screen name="reading/[id]" options={{ title: '' }} />
+        <Stack.Screen name="book/[id]" options={{ title: '' }} />
         <Stack.Screen name="settings" options={{ title: '設定' }} />
       </Stack>
       <LoginGate />
