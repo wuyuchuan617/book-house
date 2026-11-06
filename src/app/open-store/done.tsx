@@ -1,0 +1,150 @@
+import Feather from '@expo/vector-icons/Feather';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
+
+import { BookCover } from '@/components/book-cover';
+import { AppText, Button, Card, Screen } from '@/components/ui';
+import { MinTouch, Radius, Spacing, StoreColors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { friendlyError, sortedItems, useCreateCuration, useCuration } from '@/lib/curations';
+import { currentPeriod, monthOf } from '@/lib/period';
+import { useMyStore } from '@/lib/queries';
+
+type Task = { label: string; done: boolean; onPress?: () => void; soon?: boolean };
+
+/** O5 開張完成／O6 略過策展／O9 清單全部完成 */
+export default function OpenStoreDoneScreen() {
+  const { id } = useLocalSearchParams<{ id?: string; skipped?: string }>();
+  const c = useTheme();
+  const { data: store } = useMyStore();
+  const { data: cur, isLoading } = useCuration(id);
+  const create = useCreateCuration();
+
+  if (!store || (id && isLoading)) return <ActivityIndicator style={{ marginTop: 48 }} />;
+
+  const color = StoreColors[store.store.color].hex;
+  const items = cur ? sortedItems(cur) : [];
+  const published = cur?.status === 'published';
+  const link = `bookhaus.app/${store.store.slug}`;
+  const month = monthOf(cur?.period ?? currentPeriod());
+
+  const tasks: Task[] = published
+    ? [
+        { label: '發布第一檔策展', done: true },
+        {
+          label: `替 ${items.length} 本書寫推薦理由`,
+          done: items.every((it) => !!it.note),
+          onPress: () => router.push({ pathname: '/open-store/reasons', params: { id: cur!.id } }),
+        },
+        // TODO(M4)：O8 記錄正在讀的書（店主閱讀 R2，選書元件單選模式）
+        { label: '記錄一本正在讀的書', done: false, soon: true },
+      ]
+    : [
+        { label: '取一個策展標題', done: !!cur?.title },
+        { label: '放上至少 1 本書', done: items.length > 0 },
+      ];
+  const doneCount = tasks.filter((t) => t.done).length;
+  const allDone = published && tasks.filter((t) => !t.soon).every((t) => t.done);
+
+  const continueDraft = () => {
+    if (cur) return router.replace({ pathname: '/curation/[id]', params: { id: cur.id } });
+    create.mutate(
+      { period: currentPeriod() },
+      {
+        onSuccess: (r) => router.replace({ pathname: '/curation/[id]', params: { id: r.id } }),
+        onError: (e) => Alert.alert('沒有成功', friendlyError(e.message)),
+      },
+    );
+  };
+
+  return (
+    <Screen>
+      <Stack.Screen options={{ title: '', headerBackVisible: false, gestureEnabled: false }} />
+      <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg }}>
+        <AppText variant="title" style={{ textAlign: 'center' }}>書店開張了</AppText>
+        <AppText muted style={{ textAlign: 'center' }}>
+          {!published
+            ? '發布第一檔策展後，讀者才會在探索頁看到你。'
+            : allDone
+              ? '書店都準備好了！讀者現在可以在探索頁看到你'
+              : '讀者現在可以在探索頁看到你的第一檔策展'}
+        </AppText>
+
+        <Card style={{ padding: 0, overflow: 'hidden' }}>
+          <View style={[styles.cover, { backgroundColor: color }]}>
+            {published ? (
+              <>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  {items.slice(0, 3).map((it) => (
+                    <BookCover key={it.id} title={it.books.title} url={it.books.cover_url} color={store.store.color} size="sm" />
+                  ))}
+                </View>
+                <AppText variant="caption" style={{ color: '#FFFFFF' }}>{`${items.length} 本書`}</AppText>
+                <AppText variant="heading" style={{ color: '#FFFFFF' }}>{cur!.title}</AppText>
+              </>
+            ) : (
+              <AppText variant="caption" style={{ color: '#FFFFFF' }}>策展封面會出現在這裡</AppText>
+            )}
+          </View>
+          <View style={{ padding: Spacing.lg, gap: 4 }}>
+            <AppText variant="label">{store.store.name}</AppText>
+            <AppText variant="caption" muted>{published ? `${month} 月策展` : `${month} 月策展 · 尚未發布 · 讀者暫時看不到`}</AppText>
+            {published ? (
+              <View style={styles.linkRow}>
+                <AppText variant="caption" style={{ flex: 1 }} selectable>{link}</AppText>
+                <Button
+                  kind="secondary"
+                  label="分享"
+                  style={{ minHeight: MinTouch }}
+                  onPress={() => Share.share({ message: `來逛逛我的書店「${store.store.name}」：https://${link}` })}
+                />
+              </View>
+            ) : null}
+          </View>
+        </Card>
+
+        <View style={{ gap: Spacing.sm }}>
+          <AppText variant="label">
+            {published
+              ? `讓書店更完整 · ${doneCount} / ${tasks.length}${allDone ? ' ✓' : ''}`
+              : doneCount === tasks.length
+                ? '第一檔策展準備好了，發布就完成'
+                : `發布第一檔策展 · 還差 ${tasks.length - doneCount} 步`}
+          </AppText>
+          {tasks.map((t) => (
+            <Pressable
+              key={t.label}
+              accessibilityRole={t.onPress && !t.done ? 'button' : undefined}
+              accessibilityState={{ checked: t.done, disabled: !t.onPress || t.done }}
+              disabled={!t.onPress || t.done}
+              onPress={t.onPress}
+              style={[styles.task, { backgroundColor: c.surface }]}>
+              <View style={[styles.check, t.done ? { backgroundColor: c.success, borderColor: c.success } : { borderColor: c.border }]}>
+                {t.done ? <Feather name="check" size={14} color="#FFFFFF" /> : null}
+              </View>
+              <AppText style={{ flex: 1, textDecorationLine: t.done ? 'line-through' : 'none', color: t.done ? c.textSecondary : c.text }}>{t.label}</AppText>
+              {t.soon ? <AppText variant="caption" muted>即將推出</AppText> : t.onPress && !t.done ? <Feather name="chevron-right" size={18} color={c.textTertiary} /> : null}
+            </Pressable>
+          ))}
+          {!published && cur ? <AppText variant="caption" muted>你填過的內容已存成草稿，接著完成就好。</AppText> : null}
+        </View>
+
+        {published ? (
+          <Button label="前往我的書店" onPress={() => router.navigate('/my-store')} />
+        ) : (
+          <>
+            <Button label={doneCount === tasks.length ? '去發布第一檔策展' : '完成第一檔策展'} loading={create.isPending} onPress={continueDraft} />
+            <Button kind="link" label="先去我的書店看看" onPress={() => router.navigate('/my-store')} />
+          </>
+        )}
+      </ScrollView>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  cover: { minHeight: 150, padding: Spacing.lg, justifyContent: 'flex-end', gap: 4 },
+  linkRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginTop: Spacing.sm },
+  task: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, minHeight: 52, paddingHorizontal: Spacing.lg, borderRadius: Radius.lg },
+  check: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+});

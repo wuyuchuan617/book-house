@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { StoreColor } from '@/constants/theme';
+import type { Book } from '@/lib/curations';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
@@ -38,7 +39,7 @@ export type PublicStore = {
 export type MyStore = Omit<PublicStore, 'follower_count'> & { status: 'active' | 'paused' | 'deleted' };
 
 /** 失敗就丟出錯誤；成功回傳 data。T 由呼叫端指定（型別產生前的暫時做法） */
-function unwrap<T>({ data, error }: { data: unknown; error: { message: string } | null }): T {
+export function unwrap<T>({ data, error }: { data: unknown; error: { message: string } | null }): T {
   if (error) throw new Error(error.message);
   return data as T;
 }
@@ -65,11 +66,11 @@ export function usePublicStore(slug: string) {
       const curations = unwrap<
         { id: string; period: string; title: string; description: string | null;
           curation_items: { id: string; note: string | null; position: number;
-            books: { id: string; title: string; authors: string[]; cover_url: string | null } }[] }[]
+            books: Book }[] }[]
       >(
         await supabase
           .from('curations')
-          .select('id, period, title, description, curation_items(id, note, position, books(id, title, authors, cover_url))')
+          .select('id, period, title, description, curation_items(id, note, position, books(id, source, title, authors, cover_url, published_year))')
           .eq('bookstore_id', store.id)
           .eq('status', 'published')
           .order('period', { ascending: false }),

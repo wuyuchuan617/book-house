@@ -2,7 +2,8 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { AppText, Button, Card, EmptyState, Screen } from '@/components/ui';
+import { CurationView } from '@/components/curation-view';
+import { AppText, Button, EmptyState, Screen } from '@/components/ui';
 import { Radius, Spacing, StoreColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
@@ -63,26 +64,7 @@ export default function StoreScreen() {
               ))}
             </ScrollView>
             {current ? (
-              <>
-                <AppText variant="heading">{current.title}</AppText>
-                {current.description ? <AppText muted numberOfLines={4}>{current.description}</AppText> : null}
-                <Card style={{ gap: Spacing.md }}>
-                  {[...current.curation_items]
-                    .sort((a, b) => a.position - b.position)
-                    .map((it) => (
-                      <View key={it.id} style={styles.book}>
-                        <View style={[styles.cover, { backgroundColor: color }]}>
-                          <AppText variant="caption" style={{ color: '#FFFFFF' }} numberOfLines={3}>{it.books.title}</AppText>
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <AppText variant="label">{it.books.title}</AppText>
-                          <AppText variant="caption" muted>{it.books.authors.join('、')}</AppText>
-                          {it.note ? <AppText variant="caption" style={{ marginTop: 4 }}>{it.note}</AppText> : null}
-                        </View>
-                      </View>
-                    ))}
-                </Card>
-              </>
+              <CurationView title={current.title} description={current.description} items={current.curation_items} color={store.color} />
             ) : null}
           </View>
         )}
@@ -94,6 +76,4 @@ export default function StoreScreen() {
 const styles = StyleSheet.create({
   hero: { padding: Spacing.xl, gap: 2 },
   pill: { minHeight: 44, paddingHorizontal: 14, borderRadius: Radius.pill, borderWidth: 1, justifyContent: 'center' },
-  book: { flexDirection: 'row', gap: Spacing.md },
-  cover: { width: 52, height: 78, borderRadius: 3, padding: 6 }, // 2:3；cover_url 有值時改用 expo-image
 });

@@ -44,7 +44,13 @@ function RootStack() {
       <Stack screenOptions={{ headerBackTitle: '返回', headerTintColor: c.text, headerStyle: { backgroundColor: c.background } }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="sign-in" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-        <Stack.Screen name="open-store" options={{ title: '開一間書店' }} />
+        <Stack.Screen name="open-store/index" options={{ title: '開一間書店' }} />
+        <Stack.Screen name="open-store/curation" options={{ title: '開店' }} />
+        <Stack.Screen name="open-store/shelf" options={{ title: '開店' }} />
+        <Stack.Screen name="open-store/done" options={{ title: '' }} />
+        <Stack.Screen name="open-store/reasons" options={{ title: '推薦理由' }} />
+        <Stack.Screen name="curation/[id]" options={{ title: '策展' }} />
+        <Stack.Screen name="curation/preview/[id]" options={{ title: '預覽' }} />
         <Stack.Screen name="store/[slug]" options={{ title: '' }} />
         <Stack.Screen name="settings" options={{ title: '設定' }} />
       </Stack>

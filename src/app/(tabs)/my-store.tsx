@@ -7,9 +7,10 @@ import { AppText, Button, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing, StoreColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
+import { CurationSection } from '@/components/my-curations';
 import { useMyStore } from '@/lib/queries';
 
-/** 未開店 → O1 入口；已開店 → M1 我的書店。TODO(M2)：C1–C8 策展 CRUD、R1–R7 店主閱讀 */
+/** 未開店 → O1 入口；已開店 → M1 我的書店（策展列表）。TODO(M4)：店主閱讀分頁 R1–R7、M2 編輯書店 */
 export default function MyStoreScreen() {
   const c = useTheme();
   const { session, requireAuth } = useAuth();
@@ -47,21 +48,7 @@ export default function MyStoreScreen() {
                 </View>
               </View>
             </Card>
-            {data.curations.length === 0 ? (
-              <Card>
-                <AppText variant="heading">{`${new Date().getMonth() + 1} 月還沒有策展`}</AppText>
-                <AppText muted style={{ marginTop: Spacing.xs }}>發布前讀者看不到你的書店。挑一個主題，放上一本書就能發布。</AppText>
-                {/* TODO(M2)：C1 新增策展 */}
-                <Button label="新增本月策展（開發中）" disabled style={{ marginTop: Spacing.lg }} />
-              </Card>
-            ) : (
-              data.curations.map((cur) => (
-                <Card key={cur.id}>
-                  <AppText variant="caption" muted>{`${cur.period.slice(0, 7)} · ${cur.status === 'published' ? '已發布' : '草稿'}`}</AppText>
-                  <AppText variant="label" style={{ marginTop: 4 }}>{cur.title ?? '（未命名）'}</AppText>
-                </Card>
-              ))
-            )}
+            <CurationSection />
           </ScrollView>
         )}
       </SafeAreaView>

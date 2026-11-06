@@ -8,7 +8,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { useCreateBookstore, useMyStore } from '@/lib/queries';
 
-/** O2 開店步驟 1：基本資料。按「開店」即建立書店。TODO(M2)：O3 第一檔策展、O4 放上書架、O5／O6 完成頁 */
+/** O2 開店步驟 1：基本資料。按「開店」即建立書店，接著 O3 第一檔策展 */
 export default function OpenStoreScreen() {
   const c = useTheme();
   const { session } = useAuth();
@@ -29,7 +29,7 @@ export default function OpenStoreScreen() {
     create.mutate(
       { name: name.trim(), ownerName: ownerName.trim(), color },
       {
-        onSuccess: () => router.replace('/my-store'),
+        onSuccess: () => router.replace('/open-store/curation'),
         onError: (e) => Alert.alert('開店沒有成功', e.message),
       },
     );
