@@ -160,6 +160,19 @@ select cron.schedule('purge-deleted-accounts', '0 19 * * *', 'select public.purg
 
 （後三個排程在 migration 裡也有寫，但只有在 pg_cron 已開啟時才會建立；先開 pg_cron 再執行這段最保險。）
 
+## 三個版本可以同時裝
+
+`app.config.ts` 依 `APP_VARIANT`（在 `eas.json` 各 profile 設定）改名稱與 bundle ID：
+
+| profile | 手機上的名稱 | iOS bundle ID／Android package |
+| --- | --- | --- |
+| development | 書棲 Dev | `com.bookhaus.app.dev` |
+| preview | 書棲 Preview | `com.bookhaus.app.preview` |
+| production | 書棲 Bookhaus | `com.bookhaus.app` |
+
+Apple 登入：Supabase › Authentication › Providers › Apple 的 Client IDs 要填三個（逗號分隔）：`com.bookhaus.app,com.bookhaus.app.dev,com.bookhaus.app.preview`。
+三個版本共用 `bookhaus://` 網址，Google 登入的回跳不受影響。
+
 ## Development build 與送審
 
 ```bash
