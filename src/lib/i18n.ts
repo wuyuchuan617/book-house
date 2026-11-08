@@ -6,7 +6,6 @@
  * 系統語言是英文時預設 English，其他一律繁體中文。
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getLocales } from 'expo-localization';
 import { useSyncExternalStore } from 'react';
 
 import { EN } from '@/lib/i18n-en';
@@ -17,13 +16,26 @@ type Vars = Record<string, string | number | null | undefined>;
 
 const KEY = 'bookhaus.language';
 
-export function systemLang(): Lang {
+/**
+ * 手機語言。expo-localization 是原生模組：還沒重新打包的舊版 App（dev／preview）沒有它，
+ * 這時改用 JS 內建的 Intl，App 不會因此打不開。
+ */
+function deviceLanguageCode(): string | undefined {
   try {
-    const first = getLocales()[0];
-    return first?.languageCode === 'en' ? 'en' : 'zh';
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { getLocales } = require('expo-localization') as typeof import('expo-localization');
+    return getLocales()[0]?.languageCode ?? undefined;
   } catch {
-    return 'zh';
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().locale.split('-')[0];
+    } catch {
+      return undefined;
+    }
   }
+}
+
+export function systemLang(): Lang {
+  return deviceLanguageCode() === 'en' ? 'en' : 'zh';
 }
 
 let pref: LangPref = 'system';
