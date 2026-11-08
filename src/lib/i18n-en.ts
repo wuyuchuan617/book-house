@@ -24,6 +24,7 @@ export const EN: Record<string, Entry> = {
   '關閉': 'Close',
   '儲存': 'Save',
   '儲存中…': 'Saving…',
+  '已儲存': 'Saved',
   '編輯': 'Edit',
   '刪除': 'Delete',
   '移除': 'Remove',

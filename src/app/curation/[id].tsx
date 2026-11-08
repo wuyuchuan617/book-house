@@ -39,7 +39,7 @@ import { tr } from '@/lib/i18n';
 
 /**
  * C1／C2 新增策展、C6 編輯策展。
- * 草稿與預約中：自動存檔，右上「儲存」可以馬上存。已發布：改動先留在本機，按「儲存」才送出。
+ * 草稿與預約中：自動存檔，下方「儲存」可以馬上存。已發布：改動先留在本機，按下方「儲存並更新」才送出。
  * 書架（加書、移除、排序、推薦理由）一律立即生效：點書直接寫推薦理由、往左滑編輯／移除、按住 ≡ 拖拉排序。
  * 發布時選上架日期（本月起 4 個月內，當月任一天）。
  */
@@ -188,20 +188,9 @@ export default function CurationEditorScreen() {
         options={{
           title: cur.status === 'draft' ? tr('新增策展') : tr('編輯策展'),
           headerRight: () => (
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={tr('儲存')}
-                accessibilityState={{ disabled: !dirty || !title.trim() && !!isPublished }}
-                disabled={!dirty || (isPublished && !title.trim())}
-                onPress={onSave}
-                style={styles.headerSave}>
-                <AppText style={{ fontWeight: '700', color: dirty ? c.primary : c.textTertiary }}>{update.isPending ? tr('儲存中…') : tr('儲存')}</AppText>
-              </Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel={tr('更多操作')} onPress={() => setActionsOpen(true)} style={styles.headerBtn}>
-                <Feather name="more-horizontal" size={22} color={c.text} />
-              </Pressable>
-            </View>
+            <Pressable accessibilityRole="button" accessibilityLabel={tr('更多操作')} onPress={() => setActionsOpen(true)} style={styles.headerBtn}>
+              <Feather name="more-horizontal" size={22} color={c.text} />
+            </Pressable>
           ),
         }}
       />
@@ -327,13 +316,14 @@ export default function CurationEditorScreen() {
             </AppText>
             <View style={styles.footerRow}>
               <Button kind="secondary" label={tr('預覽')} style={{ flex: 1 }} onPress={() => router.push({ pathname: '/curation/preview/[id]', params: { id: cur.id } })} />
+              <Button kind="secondary" label={update.isPending ? tr('儲存中…') : dirty ? tr('儲存') : tr('已儲存')} style={{ flex: 1 }} disabled={!dirty} onPress={onSave} />
               <Button label={publishLabel} style={{ flex: 2 }} disabled={!canPublish} loading={publish.isPending} onPress={() => setDateOpen(true)} />
             </View>
           </>
-        ) : isPublished && dirty ? (
+        ) : dirty ? (
           <View style={styles.footerRow}>
             <Button kind="secondary" label={tr('捨棄變更')} style={{ flex: 1 }} onPress={discard} />
-            <Button label={tr('儲存並更新')} style={{ flex: 2 }} disabled={!title.trim()} loading={update.isPending} onPress={onSave} />
+            <Button label={isPublished ? tr('儲存並更新') : tr('儲存')} style={{ flex: 2 }} disabled={!title.trim()} loading={update.isPending} onPress={onSave} />
           </View>
         ) : cur.status === 'scheduled' ? (
           <>
@@ -427,7 +417,6 @@ function StatCell({ label, value }: { label: string; value: number | undefined }
 }
 
 const styles = StyleSheet.create({
-  headerSave: { minHeight: MinTouch, paddingHorizontal: Spacing.sm, justifyContent: 'center' },
   statsRow: { flexDirection: 'row', borderWidth: 1, borderRadius: Radius.md, paddingVertical: Spacing.md },
   headerBtn: { width: MinTouch, height: MinTouch, alignItems: 'center', justifyContent: 'center' },
   banner: { borderRadius: Radius.md, padding: Spacing.md },
