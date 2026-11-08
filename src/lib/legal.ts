@@ -1,6 +1,6 @@
 /** 服務條款、隱私權政策（網頁 /terms、/privacy；App 內用瀏覽器打開）。上架前請請法律專業人士確認。 */
-const CONTACT = process.env.EXPO_PUBLIC_CONTACT_EMAIL || '[聯絡信箱]';
-const UPDATED = '2026 年 11 月 7 日';
+export const CONTACT = process.env.EXPO_PUBLIC_CONTACT_EMAIL || '[聯絡信箱]';
+export const UPDATED = '2026 年 11 月 9 日';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
 

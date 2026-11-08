@@ -10,8 +10,10 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { usePushNotifications } from '@/lib/push';
+import { loadAppearance } from '@/lib/appearance';
 
 SplashScreen.preventAutoHideAsync();
+void loadAppearance();
 
 const WELCOME_SEEN = 'bookhaus.welcome-seen';
 
@@ -65,6 +67,7 @@ function RootStack() {
         <Stack.Screen name="blocked" options={{ title: '已封鎖的帳號' }} />
         <Stack.Screen name="help" options={{ title: '說明與意見回饋' }} />
         <Stack.Screen name="admin" options={{ title: '審核後台' }} />
+        <Stack.Screen name="legal/[doc]" options={{ title: '', presentation: 'modal' }} />
         <Stack.Screen name="settings" options={{ title: '設定' }} />
       </Stack>
       <LoginGate />

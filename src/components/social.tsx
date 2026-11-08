@@ -83,13 +83,13 @@ export function SaveButton({ bookId, title, curationId, bookstoreId, withLabel }
     );
 
   if (withLabel) {
-    return <Button kind={saved ? 'secondary' : 'primary'} label={saved ? '✓ 已收藏' : '收藏這本書'} onPress={press} />;
+    return <Button kind={saved ? 'secondary' : 'primary'} label={saved ? '✓ 在想讀清單' : '加入想讀'} onPress={press} />;
   }
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: saved }}
-      accessibilityLabel={saved ? `取消收藏「${title}」` : `收藏「${title}」`}
+      accessibilityLabel={saved ? `從想讀移除「${title}」` : `加入想讀「${title}」`}
       onPress={press}
       hitSlop={6}
       style={styles.save}>

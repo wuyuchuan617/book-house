@@ -5,17 +5,20 @@ import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleShee
 
 import { BookCover } from '@/components/book-cover';
 import { BookPicker } from '@/components/book-picker';
-import { TextField } from '@/components/form';
+import { Chip, chipRow, TextField } from '@/components/form';
 import { AppText, Button, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Book } from '@/lib/curations';
 import { useMyStore } from '@/lib/queries';
+import { useUpsertWant } from '@/lib/browse';
+import { SOURCE_SUGGESTIONS } from '@/components/want-sheet';
 import { NOTE_BODY_MAX, readingError, useAddReading, useMyCurationBooks, useMyReadings, type ReadingStatus } from '@/lib/readings';
 
-/** R2／R4 記錄一本書；O8 從開張完成頁進來時固定為「正在讀」 */
+/** R2／R4 記錄一本書（想讀／正在讀／讀完了）；O8 從開張完成頁進來時固定為「正在讀」 */
+type Status = ReadingStatus | 'want';
 export default function NewReadingScreen() {
-  const { from } = useLocalSearchParams<{ from?: string }>();
+  const { from, status: initialStatus } = useLocalSearchParams<{ from?: string; status?: string }>();
   const fromOpen = from === 'open-store';
   const c = useTheme();
   const { data: store } = useMyStore();
@@ -24,7 +27,9 @@ export default function NewReadingScreen() {
   const add = useAddReading();
   const [book, setBook] = useState<Book | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [status, setStatus] = useState<ReadingStatus>('reading');
+  const [status, setStatus] = useState<Status>(initialStatus === 'want' ? 'want' : 'reading');
+  const [source, setSource] = useState('');
+  const upsertWant = useUpsertWant();
   const [note, setNote] = useState('');
   const [isPublic, setIsPublic] = useState<boolean | null>(null);
   const publicValue = isPublic ?? store?.store.reading_public_default ?? true;
@@ -32,16 +37,19 @@ export default function NewReadingScreen() {
 
   if (!store) return null;
 
-  const submit = () =>
-    book &&
-    add.mutate(
-      { bookId: book.id, status, isPublic: publicValue, note },
-      { onSuccess: () => router.back(), onError: (e) => Alert.alert('沒有加入成功', readingError(e.message)) },
-    );
+  const submit = () => {
+    if (!book) return;
+    const onError = (e: Error) => Alert.alert('沒有加入成功', readingError(e.message));
+    if (status === 'want') {
+      upsertWant.mutate({ bookId: book.id, note, sourceText: source }, { onSuccess: () => router.back(), onError });
+      return;
+    }
+    add.mutate({ bookId: book.id, status, isPublic: publicValue, note }, { onSuccess: () => router.back(), onError });
+  };
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: fromOpen ? '記錄一本正在讀的書' : '記錄一本書' }} />
+      <Stack.Screen options={{ title: fromOpen ? '記錄一本正在讀的書' : status === 'want' ? '加入想讀' : '記錄一本書' }} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={90}>
         <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.xl }} keyboardShouldPersistTaps="handled">
           {fromOpen ? <AppText muted>會以「正在讀」加入，之後可改成讀完。</AppText> : null}
@@ -76,15 +84,26 @@ export default function NewReadingScreen() {
             <View style={{ gap: 6 }}>
               <AppText variant="label">閱讀狀態</AppText>
               <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="radiogroup">
-                {(['reading', 'finished'] as ReadingStatus[]).map((s) => (
+                {(['want', 'reading', 'finished'] as Status[]).map((s) => (
                   <Pressable key={s} accessibilityRole="radio" accessibilityState={{ selected: status === s }} onPress={() => setStatus(s)} style={[styles.segmentItem, status === s && { backgroundColor: c.surface }]}>
-                    <AppText style={{ fontWeight: '700', color: status === s ? c.text : c.textSecondary }}>{s === 'reading' ? '正在讀' : '讀完了'}</AppText>
+                    <AppText style={{ fontWeight: '700', color: status === s ? c.text : c.textSecondary }}>{s === 'want' ? '想讀' : s === 'reading' ? '正在讀' : '讀完了'}</AppText>
                   </Pressable>
                 ))}
               </View>
             </View>
           ) : null}
 
+          {status === 'want' ? (
+            <>
+              <TextField label="為什麼想讀" optional multiline max={200} value={note} onChangeText={setNote} placeholder="哪一句話、哪個人讓你想讀它？" hint="開始讀的時候，這段會變成第一則心得。" />
+              <View style={{ gap: Spacing.sm }}>
+                <TextField label="在哪看到" optional max={60} value={source} onChangeText={setSource} placeholder="例如：朋友推薦" />
+                <View style={chipRow}>
+                  {SOURCE_SUGGESTIONS.map((s) => <Chip key={s} label={s} selected={source === s} onPress={() => setSource(source === s ? '' : s)} />)}
+                </View>
+              </View>
+            </>
+          ) : (
           <TextField
             label="第一則心得"
             optional
@@ -95,7 +114,9 @@ export default function NewReadingScreen() {
             placeholder="讀到哪、想到什麼都可以"
             hint="之後可以隨時再補一則，累積成閱讀時間軸。"
           />
+          )}
 
+          {status !== 'want' ? (
           <View style={[styles.switchRow, { backgroundColor: c.surface }]}>
             <View style={{ flex: 1 }}>
               <AppText variant="label">顯示在書店頁</AppText>
@@ -103,8 +124,11 @@ export default function NewReadingScreen() {
             </View>
             <Switch accessibilityLabel="顯示在書店頁" value={publicValue} onValueChange={setIsPublic} />
           </View>
+          ) : (
+            <AppText variant="caption" muted>想讀清單只有你自己看得到。</AppText>
+          )}
 
-          <Button label="加入店主閱讀" disabled={!book} loading={add.isPending} onPress={submit} />
+          <Button label={status === 'want' ? '加入想讀' : '加入店主閱讀'} disabled={!book} loading={add.isPending || upsertWant.isPending} onPress={submit} />
         </ScrollView>
       </KeyboardAvoidingView>
 
