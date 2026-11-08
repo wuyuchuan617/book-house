@@ -101,6 +101,8 @@ function RootStack() {
         <Stack.Screen name="diary/day/[date]" options={{ title: tr('日記') }} />
         <Stack.Screen name="diary/calendar" options={{ title: tr('日記月曆') }} />
         <Stack.Screen name="place/[id]" options={{ title: '' }} />
+        <Stack.Screen name="diary/week/[start]" options={{ title: tr('每週回顧') }} />
+        <Stack.Screen name="diary/weeks" options={{ title: tr('每週回顧') }} />
         <Stack.Screen name="store-edit" options={{ title: tr('編輯書店資料') }} />
         <Stack.Screen name="store-delete" options={{ title: tr('刪除書店') }} />
         <Stack.Screen name="report/[id]" options={{ title: tr('檢舉書店'), presentation: 'modal' }} />

@@ -3,7 +3,7 @@ import { router, Stack } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { AppText, Card, Screen } from '@/components/ui';
+import { AppText, Button, Card, Screen } from '@/components/ui';
 import { MinTouch, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { addDays, useActiveDays, useDiaryStreak } from '@/lib/diary';
@@ -72,6 +72,7 @@ export default function DiaryCalendarScreen() {
             })}
           </View>
         </Card>
+        <Button kind="secondary" label={tr('看每週回顧')} onPress={() => router.push('/diary/weeks')} />
         <AppText variant="caption" muted style={{ textAlign: 'center' }}>{tr('自己記的日記和當天寫的心得都算一天。日記只能記當天的。')}</AppText>
       </ScrollView>
     </Screen>

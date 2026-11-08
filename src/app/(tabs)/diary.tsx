@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StreakCard } from '@/components/diary';
 import { DiaryTimeline } from '@/components/diary-timeline';
+import { WeekCard } from '@/components/week-card';
 import { AppText, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -18,7 +19,7 @@ import { useMyStore } from '@/lib/queries';
 
 /**
  * D1 日記（只有自己看得到）：連續記錄、今天的時間軸（自己記的＋當天的心得、想讀、開始讀、讀完）、
- * 「記一筆」「打卡」兩個快速按鈕、最近幾天。只能記今天。
+ * 「記一筆」「打卡」兩個快速按鈕、最近幾天。只能記今天。週一到週三最上方有「上週回顧」（W1）。
  */
 export default function DiaryScreen() {
   const c = useTheme();
@@ -42,9 +43,14 @@ export default function DiaryScreen() {
     <View style={styles.header}>
       <AppText variant="title">{tr('日記')}</AppText>
       {session ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={tr('日記月曆')} onPress={() => router.push('/diary/calendar')} style={styles.icon}>
-          <Feather name="calendar" size={22} color={c.text} />
-        </Pressable>
+        <View style={{ flexDirection: 'row' }}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tr('每週回顧')} onPress={() => router.push('/diary/weeks')} style={styles.icon}>
+            <Feather name="bar-chart-2" size={22} color={c.text} />
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={tr('日記月曆')} onPress={() => router.push('/diary/calendar')} style={styles.icon}>
+            <Feather name="calendar" size={22} color={c.text} />
+          </Pressable>
+        </View>
       ) : null}
     </View>
   );
@@ -71,6 +77,7 @@ export default function DiaryScreen() {
         <ScrollView
           contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.md, gap: Spacing.md, paddingBottom: 40 }}
           refreshControl={<RefreshControl refreshing={day.isRefetching} onRefresh={refetch} />}>
+          <WeekCard color={mine?.store.color} />
           {streak.data ? <StreakCard streak={streak.data} today={today} activeDays={activeSet} onPress={() => router.push('/diary/calendar')} /> : null}
 
           <View style={{ flexDirection: 'row', gap: Spacing.sm }}>

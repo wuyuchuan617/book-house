@@ -31,7 +31,8 @@ export type EventName =
   | 'place_maps_opened'
   | 'weekly_review_opened'
   | 'weekly_reflection_saved'
-  | 'weekly_review_shared';
+  | 'weekly_review_shared'
+  | 'weekly_next_books_set';
 
 type Props = Record<string, string | number | boolean | null | undefined>;
 

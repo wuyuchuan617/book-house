@@ -93,6 +93,7 @@ export default function SettingsScreen() {
             <AppText variant="label">{tr('通知')}</AppText>
             <Card style={{ paddingVertical: 0 }}>
               <PrefRow label={tr('追蹤的書店有新策展')} value={prefs.new_curation_from_followed} onChange={(v) => setPref({ new_curation_from_followed: v })} />
+              <PrefRow label={tr('每週回顧')} sub={tr('週一早上整理好上一週；上週沒有紀錄就不通知')} value={prefs.weekly_review} onChange={(v) => setPref({ weekly_review: v })} />
               {store ? <PrefRow label={tr('有人追蹤我的書店')} value={prefs.new_follower} onChange={(v) => setPref({ new_follower: v })} /> : null}
               {store ? (
                 <PrefRow

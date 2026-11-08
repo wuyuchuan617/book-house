@@ -10,6 +10,7 @@ export type NotificationPrefs = {
   new_follower: boolean;
   monthly_reminder: boolean;
   reminder_day: 20 | 25 | -3 | null;
+  weekly_review: boolean;
 };
 
 export function useNotificationPrefs() {
@@ -19,7 +20,7 @@ export function useNotificationPrefs() {
     enabled: !!session,
     queryFn: async () =>
       unwrap<NotificationPrefs | null>(
-        await supabase.from('notification_prefs').select('new_curation_from_followed, new_follower, monthly_reminder, reminder_day').maybeSingle(),
+        await supabase.from('notification_prefs').select('new_curation_from_followed, new_follower, monthly_reminder, reminder_day, weekly_review').maybeSingle(),
       ),
   });
 }
