@@ -7,6 +7,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { track } from '@/lib/analytics';
 import { unregisterPush } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
+import { tr } from '@/lib/i18n';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -34,7 +35,7 @@ async function completeOAuth(url: string) {
   const err = parsed.searchParams.get('error_description') ?? hash.get('error_description');
   if (err) throw new Error(err);
   const code = parsed.searchParams.get('code');
-  if (!code) throw new Error('Google 登入沒有回傳授權碼');
+  if (!code) throw new Error(tr('Google 登入沒有回傳授權碼'));
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) throw error;
 }
@@ -123,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         AppleAuthentication.AppleAuthenticationScope.EMAIL,
       ],
     });
-    if (!credential.identityToken) throw new Error('Apple 登入沒有回傳 identity token');
+    if (!credential.identityToken) throw new Error(tr('Apple 登入沒有回傳 identity token'));
     const { data, error } = await supabase.auth.signInWithIdToken({
       provider: 'apple',
       token: credential.identityToken,

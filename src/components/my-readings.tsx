@@ -14,6 +14,7 @@ import { timeAgo } from '@/lib/period';
 import { useDeleteReading, type MyReading } from '@/lib/readings';
 import { wantSource, type SavedBook } from '@/lib/browse';
 import { WantSheet } from '@/components/want-sheet';
+import { tr } from '@/lib/i18n';
 
 type Filter = 'want' | 'reading' | 'finished';
 const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
@@ -55,7 +56,7 @@ export function useReadingRemoval() {
 export function ReadingRemovalToast({ removal }: { removal: ReturnType<typeof useReadingRemoval> }) {
   return (
     <UndoToast
-      message={removal.pending ? `已從店主閱讀移除「${removal.pending.books.title}」` : null}
+      message={removal.pending ? tr('已從店主閱讀移除「{title}」', { title: removal.pending.books.title }) : null}
       onUndo={removal.undo}
       onHide={removal.commit}
     />
@@ -86,9 +87,9 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
   if (visible.length === 0 && wantList.length === 0) {
     return (
       <Card style={{ alignItems: 'center', paddingVertical: 28, gap: Spacing.sm }}>
-          <AppText variant="heading">記下你正在讀的書</AppText>
-          <AppText muted style={{ textAlign: 'center' }}>{'讀到一半或剛讀完都可以，\n心得能一則一則慢慢累積。'}</AppText>
-          <Button label="記錄一本書" onPress={add} style={{ alignSelf: 'stretch', marginTop: Spacing.md }} />
+          <AppText variant="heading">{tr('記下你正在讀的書')}</AppText>
+          <AppText muted style={{ textAlign: 'center' }}>{tr('讀到一半或剛讀完都可以，\n心得能一則一則慢慢累積。')}</AppText>
+          <Button label={tr('記錄一本書')} onPress={add} style={{ alignSelf: 'stretch', marginTop: Spacing.md }} />
       </Card>
     );
   }
@@ -97,13 +98,13 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
     <View style={{ gap: Spacing.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={chipRow}>
-          <Chip label={`想讀 ${counts.want}`} selected={filter === 'want'} onPress={() => setFilter('want')} />
-          <Chip label={`在讀 ${counts.reading}`} selected={filter === 'reading'} onPress={() => setFilter('reading')} />
-          <Chip label={`讀完 ${counts.finished}`} selected={filter === 'finished'} onPress={() => setFilter('finished')} />
+          <Chip label={tr('想讀 {want}', { want: counts.want })} selected={filter === 'want'} onPress={() => setFilter('want')} />
+          <Chip label={tr('在讀 {reading}', { reading: counts.reading })} selected={filter === 'reading'} onPress={() => setFilter('reading')} />
+          <Chip label={tr('讀完 {finished}', { finished: counts.finished })} selected={filter === 'finished'} onPress={() => setFilter('finished')} />
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="記錄一本書" onPress={add} style={[styles.add, { backgroundColor: c.primary }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tr('記錄一本書')} onPress={add} style={[styles.add, { backgroundColor: c.primary }]}>
           <Feather name="plus" size={16} color={c.onPrimary} />
-          <AppText variant="caption" style={{ color: c.onPrimary, fontWeight: '700' }}>新增</AppText>
+          <AppText variant="caption" style={{ color: c.onPrimary, fontWeight: '700' }}>{tr('新增')}</AppText>
         </Pressable>
       </View>
 
@@ -112,23 +113,23 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
             const from = wantSource(w);
             return (
               <Card key={w.book_id} style={{ padding: 0 }}>
-                <Pressable accessibilityRole="button" accessibilityHint="編輯理由、開始讀" onPress={() => setOpenWant(w)} style={styles.main}>
+                <Pressable accessibilityRole="button" accessibilityHint={tr('編輯理由、開始讀')} onPress={() => setOpenWant(w)} style={styles.main}>
                   <BookCover title={w.books.title} url={w.books.cover_url} color={color} />
                   <View style={{ flex: 1, gap: 3 }}>
                     <View style={[styles.pill, { backgroundColor: c.surfaceMuted, alignSelf: 'flex-start' }]}>
-                      <AppText variant="caption" style={{ fontWeight: '700', color: c.textSecondary }}>想讀</AppText>
+                      <AppText variant="caption" style={{ fontWeight: '700', color: c.textSecondary }}>{tr('想讀')}</AppText>
                     </View>
                     <AppText variant="label" style={{ fontSize: 16 }}>{w.books.title}</AppText>
-                    {from ? <AppText variant="caption" muted numberOfLines={1}>{`在哪看到：${from}`}</AppText> : null}
-                    <AppText variant="caption" muted numberOfLines={2}>{w.note ? `「${w.note}」` : '還沒寫為什麼想讀'}</AppText>
+                    {from ? <AppText variant="caption" muted numberOfLines={1}>{tr('在哪看到：{from}', { from })}</AppText> : null}
+                    <AppText variant="caption" muted numberOfLines={2}>{w.note ? tr('「{note}」', { note: w.note }) : tr('還沒寫為什麼想讀')}</AppText>
                   </View>
-                  <AppText variant="caption" style={{ color: c.primary, fontWeight: '700', alignSelf: 'center' }}>開始讀</AppText>
+                  <AppText variant="caption" style={{ color: c.primary, fontWeight: '700', alignSelf: 'center' }}>{tr('開始讀')}</AppText>
                 </Pressable>
               </Card>
             );
           })
         : null}
-      {filter === 'want' && wantList.length === 0 ? <AppText muted style={{ textAlign: 'center', marginTop: Spacing.lg }}>{'還沒有想讀的書。\n在策展裡按書籤，或按「新增」加一本。'}</AppText> : null}
+      {filter === 'want' && wantList.length === 0 ? <AppText muted style={{ textAlign: 'center', marginTop: Spacing.lg }}>{tr('還沒有想讀的書。\n在策展裡按書籤，或按「新增」加一本。')}</AppText> : null}
       <WantSheet item={openWant} hasStore onClose={() => setOpenWant(null)} />
       {shown.map((r) => {
         const latest = r.reading_notes[0];
@@ -137,7 +138,7 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
             <View style={{ flexDirection: 'row' }}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`${r.books.title}，${r.status === 'reading' ? '在讀' : '讀完'}${r.is_public ? '' : '，只有自己看得到'}`}
+                accessibilityLabel={tr('{title}，{p1}{p2}', { title: r.books.title, p1: r.status === 'reading' ? tr('在讀') : tr('讀完'), p2: r.is_public ? '' : tr('，只有自己看得到') })}
                 onPress={() => router.push({ pathname: '/reading/manage/[id]', params: { id: r.id } })}
                 style={styles.main}>
                 <BookCover title={r.books.title} url={r.books.cover_url} color={color} />
@@ -145,29 +146,29 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
                     <View style={[styles.pill, { backgroundColor: r.status === 'reading' ? c.successSurface : c.surfaceMuted }]}>
                       <AppText variant="caption" style={{ fontWeight: '700', color: r.status === 'reading' ? c.success : c.textSecondary }}>
-                        {r.status === 'reading' ? '在讀' : `讀完${r.finished_at ? ` · ${md(r.finished_at)}` : ''}`}
+                        {r.status === 'reading' ? tr('在讀') : tr('讀完{p0}', { p0: r.finished_at ? ` · ${md(r.finished_at)}` : '' })}
                       </AppText>
                     </View>
                     {!r.is_public ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
                         <Feather name="lock" size={12} color={c.textSecondary} accessible={false} />
-                        <AppText variant="caption" muted>只有自己</AppText>
+                        <AppText variant="caption" muted>{tr('只有自己')}</AppText>
                       </View>
                     ) : null}
                     <AppText variant="caption" muted>{timeAgo(r.updated_at)}</AppText>
                   </View>
                   <AppText variant="label" style={{ fontSize: 16 }}>{r.books.title}</AppText>
-                  <AppText variant="caption" muted numberOfLines={2}>{latest ? `「${latest.body}」` : '還沒有心得'}</AppText>
+                  <AppText variant="caption" muted numberOfLines={2}>{latest ? tr('「{body}」', { body: latest.body }) : tr('還沒有心得')}</AppText>
                 </View>
               </Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel="更多操作" onPress={() => setMenuFor(r)} style={styles.menu}>
+              <Pressable accessibilityRole="button" accessibilityLabel={tr('更多操作')} onPress={() => setMenuFor(r)} style={styles.menu}>
                 <Feather name="more-horizontal" size={20} color={c.textSecondary} />
               </Pressable>
             </View>
           </Card>
         );
       })}
-      {filter !== 'want' && shown.length === 0 ? <AppText muted style={{ textAlign: 'center', marginTop: Spacing.lg }}>{filter === 'reading' ? '目前沒有在讀的書' : '還沒有讀完的書'}</AppText> : null}
+      {filter !== 'want' && shown.length === 0 ? <AppText muted style={{ textAlign: 'center', marginTop: Spacing.lg }}>{filter === 'reading' ? tr('目前沒有在讀的書') : tr('還沒有讀完的書')}</AppText> : null}
 
       {menuFor ? (
         <ReadingActions reading={menuFor} visible onClose={() => setMenuFor(null)} onRemove={() => remove(menuFor)} />

@@ -8,6 +8,7 @@ import { AppText, Button, Screen } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
+import { tr } from '@/lib/i18n';
 
 /** A1 歡迎／登入：可以先逛逛，不強迫登入 */
 export default function SignInScreen() {
@@ -19,9 +20,9 @@ export default function SignInScreen() {
   }, [session]);
 
   const points = [
-    ['每月一檔主題策展', '店主親選，附上為什麼推薦'],
-    ['追蹤喜歡的書店', '新策展上架時第一個知道'],
-    ['開一間自己的書店', '一分鐘建立，之後慢慢補書架'],
+    [tr('每月一檔主題策展'), tr('店主親選，附上為什麼推薦')],
+    [tr('追蹤喜歡的書店'), tr('新策展上架時第一個知道')],
+    [tr('開一間自己的書店'), tr('一分鐘建立，之後慢慢補書架')],
   ];
 
   return (
@@ -29,8 +30,8 @@ export default function SignInScreen() {
       <SafeAreaView style={{ flex: 1, padding: 28 }}>
         <View style={{ flex: 1, justifyContent: 'center', gap: Spacing.xl }}>
           <View style={{ alignItems: 'center', gap: Spacing.sm }}>
-            <AppText variant="title" style={{ fontSize: 34 }}>書棲</AppText>
-            <AppText muted>每月一檔策展，開一間你的獨立書店</AppText>
+            <AppText variant="title" style={{ fontSize: 34 }}>{tr('書棲')}</AppText>
+            <AppText muted>{tr('每月一檔策展，開一間你的獨立書店')}</AppText>
           </View>
           <View style={{ gap: Spacing.lg }}>
             {points.map(([t, s]) => (
@@ -42,12 +43,12 @@ export default function SignInScreen() {
           </View>
         </View>
         <SignInButtons />
-        <Button kind="link" label="先逛逛，稍後再登入" onPress={() => router.back()} style={styles.later} />
+        <Button kind="link" label={tr('先逛逛，稍後再登入')} onPress={() => router.back()} style={styles.later} />
         <AppText variant="caption" muted style={{ textAlign: 'center' }}>
-          {'繼續即表示同意'}
-          <AppText variant="caption" style={{ color: c.primary, textDecorationLine: 'underline' }} accessibilityRole="link" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'terms' } })}>服務條款</AppText>
-          {'與'}
-          <AppText variant="caption" style={{ color: c.primary, textDecorationLine: 'underline' }} accessibilityRole="link" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'privacy' } })}>隱私權政策</AppText>
+          {tr('繼續即表示同意')}
+          <AppText variant="caption" style={{ color: c.primary, textDecorationLine: 'underline' }} accessibilityRole="link" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'terms' } })}>{tr('服務條款')}</AppText>
+          {tr('與')}
+          <AppText variant="caption" style={{ color: c.primary, textDecorationLine: 'underline' }} accessibilityRole="link" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'privacy' } })}>{tr('隱私權政策')}</AppText>
         </AppText>
       </SafeAreaView>
     </Screen>

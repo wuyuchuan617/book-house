@@ -1,3 +1,4 @@
+import { tr } from '@/lib/i18n';
 /**
  * P5 分享連結：https://<網站>/s/<slug>
  * - 有裝 App：Universal Links／App Links 直接打開書店（見 src/app/+native-intent.tsx）
@@ -11,4 +12,4 @@ export const storeUrl = (slug: string) => `${WEB_URL}/s/${slug}`;
 /** 畫面上顯示用：bookhaus.app/s/my-cosmos */
 export const storeLinkLabel = (slug: string) => storeUrl(slug).replace(/^https?:\/\//, '');
 
-export const shareStoreMessage = (name: string, slug: string) => `來逛逛「${name}」：${storeUrl(slug)}`;
+export const shareStoreMessage = (name: string, slug: string) => tr('來逛逛「{name}」：{p1}', { name, p1: storeUrl(slug) });

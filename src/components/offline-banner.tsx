@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
+import { tr } from '@/lib/i18n';
 
 // TanStack Query 跟著網路狀態：斷線時暫停請求，連上後自動重新載入
 onlineManager.setEventListener((setOnline) =>
@@ -18,8 +19,8 @@ export function OfflineBanner() {
   if (net.isConnected !== false && net.isInternetReachable !== false) return null;
   return (
     <View pointerEvents="none" style={[styles.bar, { paddingTop: insets.top + 6 }]} accessibilityLiveRegion="assertive">
-      <AppText variant="caption" style={{ color: '#FFFFFF', fontWeight: '700' }}>目前沒有網路連線</AppText>
-      <AppText variant="caption" style={{ color: '#FFFFFF' }}>連上網路後會自動重新載入，你填的內容不會遺失</AppText>
+      <AppText variant="caption" style={{ color: '#FFFFFF', fontWeight: '700' }}>{tr('目前沒有網路連線')}</AppText>
+      <AppText variant="caption" style={{ color: '#FFFFFF' }}>{tr('連上網路後會自動重新載入，你填的內容不會遺失')}</AppText>
     </View>
   );
 }

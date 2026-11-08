@@ -3,25 +3,24 @@ import { ScrollView } from 'react-native';
 
 import { AppText, Screen } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
-import { CONTACT, PRIVACY, TERMS, UPDATED } from '@/lib/legal';
+import { currentLang } from '@/lib/i18n';
+import { legalContent } from '@/lib/legal';
 
 /** 服務條款、隱私權政策（App 內，離線也能看；網頁版在 /terms、/privacy） */
 export default function LegalScreen() {
   const { doc } = useLocalSearchParams<{ doc: 'terms' | 'privacy' }>();
-  const isTerms = doc === 'terms';
-  const sections = isTerms ? TERMS : PRIVACY;
-  const title = isTerms ? '服務條款' : '隱私權政策';
+  const { title, updated, contact, sections } = legalContent(doc === 'terms' ? 'terms' : 'privacy', currentLang());
 
   return (
     <Screen>
       <Stack.Screen options={{ title }} />
       <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.sm, paddingBottom: 48 }}>
         <AppText variant="title">{title}</AppText>
-        <AppText variant="caption" muted>{`最後更新：${UPDATED}`}</AppText>
+        <AppText variant="caption" muted>{updated}</AppText>
         {sections.map(([h, ps]) => (
           <ScrollSection key={h} heading={h} paragraphs={ps} />
         ))}
-        <AppText variant="caption" muted style={{ marginTop: Spacing.xl }}>{`有任何問題，請寫信到 ${CONTACT}。`}</AppText>
+        <AppText variant="caption" muted style={{ marginTop: Spacing.xl }}>{contact}</AppText>
       </ScrollView>
     </Screen>
   );

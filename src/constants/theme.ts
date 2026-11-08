@@ -5,6 +5,7 @@
 import '@/global.css';
 
 import { Platform } from 'react-native';
+import { tr } from '@/lib/i18n';
 
 export const Colors = {
   light: {
@@ -45,12 +46,12 @@ export type ThemeColors = { [K in keyof typeof Colors.light]: string };
 
 /** 店面顏色（bookstores.color enum） */
 export const StoreColors = {
-  moss: { label: '苔綠', hex: '#667659' },
-  mist: { label: '霧藍', hex: '#5E7594' },
-  olive: { label: '橄欖', hex: '#857039' },
-  wisteria: { label: '紫藤', hex: '#6E5A9E' },
-  clay: { label: '陶粉', hex: '#9A6457' },
-  ochre: { label: '赭褐', hex: '#8B4F37' },
+  moss: { get label() { return tr('苔綠'); }, hex: '#667659' },
+  mist: { get label() { return tr('霧藍'); }, hex: '#5E7594' },
+  olive: { get label() { return tr('橄欖'); }, hex: '#857039' },
+  wisteria: { get label() { return tr('紫藤'); }, hex: '#6E5A9E' },
+  clay: { get label() { return tr('陶粉'); }, hex: '#9A6457' },
+  ochre: { get label() { return tr('赭褐'); }, hex: '#8B4F37' },
 } as const;
 
 export type StoreColor = keyof typeof StoreColors;

@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppText, Button } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
+import { tr } from '@/lib/i18n';
 
 /** 掃書背的 ISBN 條碼（EAN-13，978／979 開頭）；掃到就回傳 13 碼 ISBN */
 export function IsbnScanner({ visible, onClose, onScanned }: { visible: boolean; onClose: () => void; onScanned: (isbn: string) => void }) {
@@ -33,21 +34,21 @@ export function IsbnScanner({ visible, onClose, onScanned }: { visible: boolean;
         <SafeAreaView style={styles.overlay}>
           <View style={styles.top}>
             <Pressable accessibilityRole="button" onPress={onClose} style={styles.close}>
-              <AppText style={{ color: '#FFFFFF', fontWeight: '700' }}>取消</AppText>
+              <AppText style={{ color: '#FFFFFF', fontWeight: '700' }}>{tr('取消')}</AppText>
             </Pressable>
           </View>
           {permission?.granted ? (
             <View style={{ alignItems: 'center', gap: Spacing.lg }}>
               <View style={styles.frame} accessible={false} />
-              <AppText style={{ color: '#FFFFFF', textAlign: 'center' }}>{'把書背的條碼放進框裡\n通常在封底右下角，978 開頭'}</AppText>
+              <AppText style={{ color: '#FFFFFF', textAlign: 'center' }}>{tr('把書背的條碼放進框裡\n通常在封底右下角，978 開頭')}</AppText>
             </View>
           ) : (
             <View style={styles.ask}>
-              <AppText style={{ color: '#FFFFFF', textAlign: 'center' }}>需要使用相機才能掃描書背條碼。</AppText>
+              <AppText style={{ color: '#FFFFFF', textAlign: 'center' }}>{tr('需要使用相機才能掃描書背條碼。')}</AppText>
               {permission?.canAskAgain === false ? (
-                <Button label="到設定開啟相機" onPress={() => void Linking.openSettings()} />
+                <Button label={tr('到設定開啟相機')} onPress={() => void Linking.openSettings()} />
               ) : (
-                <Button label="允許使用相機" onPress={() => void requestPermission()} />
+                <Button label={tr('允許使用相機')} onPress={() => void requestPermission()} />
               )}
             </View>
           )}

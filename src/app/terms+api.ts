@@ -1,5 +1,6 @@
-import { legalPage, TERMS } from '@/lib/legal';
+import { legalPage, requestLang } from '@/lib/legal';
 
-export function GET() {
-  return legalPage('服務條款', TERMS);
+/** /terms（?lang=en 或依瀏覽器語言） */
+export function GET(request: Request) {
+  return legalPage('terms', requestLang(request));
 }

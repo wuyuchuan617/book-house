@@ -11,6 +11,7 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
+import { tr } from '@/lib/i18n';
 
 const TOKEN_KEY = 'bookhaus.push-token';
 
@@ -24,7 +25,7 @@ async function register() {
   if (!projectId) return;
   if (Platform.OS === 'android') {
     // eslint-disable-next-line import/namespace -- expo-notifications 用 export * 匯出，TS 型別正確
-    await Notifications.setNotificationChannelAsync('default', { name: '書棲通知', importance: Notifications.AndroidImportance.DEFAULT });
+    await Notifications.setNotificationChannelAsync('default', { name: tr('書棲通知'), importance: Notifications.AndroidImportance.DEFAULT });
   }
   let { status } = await Notifications.getPermissionsAsync();
   if (status !== 'granted') ({ status } = await Notifications.requestPermissionsAsync());

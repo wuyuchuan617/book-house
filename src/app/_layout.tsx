@@ -11,9 +11,11 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { usePushNotifications } from '@/lib/push';
 import { loadAppearance } from '@/lib/appearance';
+import { loadLanguage, localeTag, tr, useLang } from '@/lib/i18n';
+import { supabase } from '@/lib/supabase';
 
 SplashScreen.preventAutoHideAsync();
-void loadAppearance();
+const prefsLoaded = Promise.all([loadAppearance(), loadLanguage()]);
 
 const WELCOME_SEEN = 'bookhaus.welcome-seen';
 
@@ -23,6 +25,14 @@ function RootStack() {
   const c = Colors[scheme];
   usePushNotifications(session?.user.id);
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
+  const lang = useLang();
+  const uid = session?.user.id;
+
+  // 推播用的語言跟著 App 設定走
+  useEffect(() => {
+    if (!uid) return;
+    supabase.from('profiles').update({ locale: localeTag(lang) }).eq('id', uid).then(() => {}, () => {});
+  }, [uid, lang]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -46,29 +56,29 @@ function RootStack() {
         ...base,
         colors: { ...base.colors, background: c.background, card: c.surface, text: c.text, primary: c.primary, border: c.border },
       }}>
-      <Stack screenOptions={{ headerBackTitle: '返回', headerTintColor: c.text, headerStyle: { backgroundColor: c.background } }}>
+      <Stack key={lang} screenOptions={{ headerBackTitle: tr('返回'), headerTintColor: c.text, headerStyle: { backgroundColor: c.background } }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="sign-in" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-        <Stack.Screen name="open-store/index" options={{ title: '開一間書店' }} />
-        <Stack.Screen name="open-store/curation" options={{ title: '開店' }} />
-        <Stack.Screen name="open-store/shelf" options={{ title: '開店' }} />
+        <Stack.Screen name="open-store/index" options={{ title: tr('開一間書店') }} />
+        <Stack.Screen name="open-store/curation" options={{ title: tr('開店') }} />
+        <Stack.Screen name="open-store/shelf" options={{ title: tr('開店') }} />
         <Stack.Screen name="open-store/done" options={{ title: '' }} />
-        <Stack.Screen name="open-store/reasons" options={{ title: '推薦理由' }} />
-        <Stack.Screen name="curation/[id]" options={{ title: '策展' }} />
-        <Stack.Screen name="curation/preview/[id]" options={{ title: '預覽' }} />
+        <Stack.Screen name="open-store/reasons" options={{ title: tr('推薦理由') }} />
+        <Stack.Screen name="curation/[id]" options={{ title: tr('策展') }} />
+        <Stack.Screen name="curation/preview/[id]" options={{ title: tr('預覽') }} />
         <Stack.Screen name="store/[slug]" options={{ title: '' }} />
         <Stack.Screen name="reading/[id]" options={{ title: '' }} />
         <Stack.Screen name="book/[id]" options={{ title: '' }} />
-        <Stack.Screen name="reading/new" options={{ title: '記錄一本書' }} />
-        <Stack.Screen name="reading/manage/[id]" options={{ title: '店主閱讀' }} />
-        <Stack.Screen name="store-edit" options={{ title: '編輯書店資料' }} />
-        <Stack.Screen name="store-delete" options={{ title: '刪除書店' }} />
-        <Stack.Screen name="report/[id]" options={{ title: '檢舉書店', presentation: 'modal' }} />
-        <Stack.Screen name="blocked" options={{ title: '已封鎖的帳號' }} />
-        <Stack.Screen name="help" options={{ title: '說明與意見回饋' }} />
-        <Stack.Screen name="admin" options={{ title: '審核後台' }} />
+        <Stack.Screen name="reading/new" options={{ title: tr('記錄一本書') }} />
+        <Stack.Screen name="reading/manage/[id]" options={{ title: tr('店主閱讀') }} />
+        <Stack.Screen name="store-edit" options={{ title: tr('編輯書店資料') }} />
+        <Stack.Screen name="store-delete" options={{ title: tr('刪除書店') }} />
+        <Stack.Screen name="report/[id]" options={{ title: tr('檢舉書店'), presentation: 'modal' }} />
+        <Stack.Screen name="blocked" options={{ title: tr('已封鎖的帳號') }} />
+        <Stack.Screen name="help" options={{ title: tr('說明與意見回饋') }} />
+        <Stack.Screen name="admin" options={{ title: tr('審核後台') }} />
         <Stack.Screen name="legal/[doc]" options={{ title: '', presentation: 'modal' }} />
-        <Stack.Screen name="settings" options={{ title: '設定' }} />
+        <Stack.Screen name="settings" options={{ title: tr('設定') }} />
       </Stack>
       <LoginGate />
       <OfflineBanner />
@@ -78,6 +88,11 @@ function RootStack() {
 
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { staleTime: 30_000 } } }));
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    prefsLoaded.finally(() => setReady(true));
+  }, []);
+  if (!ready) return null; // 啟動畫面還在
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>

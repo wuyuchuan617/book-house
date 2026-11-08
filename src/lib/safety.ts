@@ -6,15 +6,16 @@ import { userMessage } from '@/lib/errors';
 import { useAuth } from '@/lib/auth';
 import { unwrap } from '@/lib/queries';
 import { supabase } from '@/lib/supabase';
+import { tr } from '@/lib/i18n';
 
 export type ReportReason = 'inappropriate' | 'infringement' | 'spam' | 'impersonation' | 'other';
 
 export const REPORT_REASONS: { value: ReportReason; label: string; sub?: string }[] = [
-  { value: 'inappropriate', label: '不當或冒犯性內容' },
-  { value: 'infringement', label: '侵權或盜版', sub: '例如整本書內容、未授權圖片' },
-  { value: 'spam', label: '垃圾訊息或廣告' },
-  { value: 'impersonation', label: '冒充他人' },
-  { value: 'other', label: '其他' },
+  { value: 'inappropriate', get label() { return tr('不當或冒犯性內容'); } },
+  { value: 'infringement', get label() { return tr('侵權或盜版'); }, get sub() { return tr('例如整本書內容、未授權圖片'); } },
+  { value: 'spam', get label() { return tr('垃圾訊息或廣告'); } },
+  { value: 'impersonation', get label() { return tr('冒充他人'); } },
+  { value: 'other', get label() { return tr('其他'); } },
 ];
 
 /** 封鎖／解除封鎖後，所有看得到書店的畫面都要重新整理 */
@@ -78,8 +79,8 @@ export function useUnblock() {
 }
 
 export function safetyError(message: string) {
-  if (message.includes('already reported')) return '你在 24 小時內已經檢舉過這間書店，我們正在審核。';
-  if (message.includes('cannot block yourself')) return '不能封鎖自己。';
-  if (message.includes('not found')) return '找不到這間書店，它可能已經關閉。';
+  if (message.includes('already reported')) return tr('你在 24 小時內已經檢舉過這間書店，我們正在審核。');
+  if (message.includes('cannot block yourself')) return tr('不能封鎖自己。');
+  if (message.includes('not found')) return tr('找不到這間書店，它可能已經關閉。');
   return userMessage(message);
 }

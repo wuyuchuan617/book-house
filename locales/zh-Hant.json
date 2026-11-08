@@ -1,0 +1,6 @@
+{
+  "ios": {
+    "NSCameraUsageDescription": "允許書棲使用相機，掃描書背的條碼就能直接找到這本書。",
+    "NSPhotoLibraryUsageDescription": "允許書棲讀取照片，才能更換書店的頭貼與背景圖。"
+  }
+}

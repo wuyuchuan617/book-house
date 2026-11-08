@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, Button } from '@/components/ui';
 import { MinTouch, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { tr } from '@/lib/i18n';
 
 export type SheetAction = {
   label: string;
@@ -26,7 +27,7 @@ export function ActionSheet({ visible, title, subtitle, actions, onClose }: {
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="關閉" />
+      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel={tr('關閉')} />
       <View style={[styles.sheet, { backgroundColor: c.surface, paddingBottom: Math.max(insets.bottom, 16) }]}>
         {title ? (
           <View style={[styles.head, { borderBottomColor: c.divider }]}>
@@ -49,7 +50,7 @@ export function ActionSheet({ visible, title, subtitle, actions, onClose }: {
             {a.sub ? <AppText variant="caption" muted>{a.sub}</AppText> : null}
           </Pressable>
         ))}
-        <Button kind="secondary" label="取消" onPress={onClose} style={{ marginTop: Spacing.md, marginHorizontal: Spacing.lg }} />
+        <Button kind="secondary" label={tr('取消')} onPress={onClose} style={{ marginTop: Spacing.md, marginHorizontal: Spacing.lg }} />
       </View>
     </Modal>
   );
@@ -61,7 +62,7 @@ export function Dialog({ visible, onClose, children }: { visible: boolean; onClo
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.center}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="關閉" />
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel={tr('關閉')} />
         <View style={[styles.dialog, { backgroundColor: c.surface }]}>
           <ScrollView contentContainerStyle={{ gap: Spacing.md }}>{children}</ScrollView>
         </View>

@@ -16,6 +16,44 @@ type Store = { id: string; slug: string; name: string; owner_name: string; tagli
 type Item = { note: string | null; position: number; books: { title: string; authors: string[]; cover_url: string | null } };
 type Curation = { id: string; period: string; title: string; description: string | null; curation_items: Item[] };
 
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const plural = (n: number, one: string) => `${n} ${n === 1 ? one : one + 's'}`;
+
+/** 網頁版文字（?lang=en 或瀏覽器語言是英文時用英文） */
+const TEXT = {
+  zh: {
+    html: 'zh-Hant', site: '書棲 Bookhaus', brand: '書棲', app: '書棲 App', barSub: '追蹤這間書店，新策展第一個知道',
+    notFoundTitle: '找不到這間書店｜書棲', notFound: '找不到這間書店', typo: '這個連結可能打錯了。',
+    errDesc: '暫時無法載入，請稍後再試。', errH: '暫時無法載入', errP: '請稍後再試一次。',
+    pausedTitle: '暫停營業中｜書棲', pausedDesc: '這間書店目前沒有營業。', pausedH: '這間書店暫停營業中', pausedP: '可能已經關閉，或店主暫時休息。到書棲 App 看看其他書店吧。',
+    month: (m: number) => `${m} 月策展`, books: (n: number) => `${n} 本書`,
+    ownerIndie: (o: string) => `${o} 的獨立書店 · 書棲`, owner: (o: string, f: number) => `店主 ${o} · ${f} 人追蹤`,
+    authorSep: '、', more: (n: number) => `還有 ${n} 本，在 App 裡看完整書架`,
+    empty: '這間書店還沒有發布策展。追蹤後，新策展上架時會通知你。', follow: (n: string) => `在 App 追蹤「${n}」`,
+    download: '還沒有 App？前往下載', hint: '沒有 App 會前往 App Store／Google Play；裝好後再點一次連結就會打開這間書店',
+    titleSep: '｜', curTitle: (name: string, m: number, t: string) => `${name}｜${m} 月策展：${t}`,
+  },
+  en: {
+    html: 'en', site: 'Bookhaus', brand: 'Bookhaus', app: 'Bookhaus app', barSub: 'Follow this bookstore to hear about new curations first',
+    notFoundTitle: 'Bookstore not found | Bookhaus', notFound: 'Bookstore not found', typo: 'This link may be mistyped.',
+    errDesc: 'Couldn’t load right now. Please try again later.', errH: 'Couldn’t load', errP: 'Please try again in a moment.',
+    pausedTitle: 'Temporarily closed | Bookhaus', pausedDesc: 'This bookstore isn’t open right now.', pausedH: 'This bookstore is closed for now', pausedP: 'It may have closed, or the owner is taking a break. Find other bookstores in the Bookhaus app.',
+    month: (m: number) => `${MONTHS[m - 1]} curation`, books: (n: number) => plural(n, 'book'),
+    ownerIndie: (o: string) => `${o}’s indie bookstore · Bookhaus`, owner: (o: string, f: number) => `By ${o} · ${plural(f, 'follower')}`,
+    authorSep: ', ', more: (n: number) => `${plural(n, 'more book')} — see the full shelf in the app`,
+    empty: 'No curations yet. Follow to get notified when one goes live.', follow: (n: string) => `Follow “${n}” in the app`,
+    download: 'Don’t have the app? Download it', hint: 'Without the app you’ll go to the App Store / Google Play. Once installed, tap the link again to open this bookstore.',
+    titleSep: ' | ', curTitle: (name: string, m: number, t: string) => `${name} | ${MONTHS[m - 1]} curation: ${t}`,
+  },
+};
+type Text = (typeof TEXT)['zh'];
+
+function langOf(request: Request, url: URL): Text {
+  const q = url.searchParams.get('lang');
+  if (q === 'en' || q === 'zh') return TEXT[q];
+  return (request.headers.get('accept-language') ?? '').toLowerCase().startsWith('en') ? TEXT.en : TEXT.zh;
+}
+
 const esc = (s: string | null | undefined) =>
   (s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
 
@@ -25,16 +63,16 @@ async function rest<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-function page({ title, description, body, status = 200, url }: { title: string; description: string; body: string; status?: number; url: string }) {
+function page(L: Text, { title, description, body, status = 200, url }: { title: string; description: string; body: string; status?: number; url: string }) {
   const html = `<!doctype html>
-<html lang="zh-Hant">
+<html lang="${L.html}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="書棲 Bookhaus">
+<meta property="og:site_name" content="${L.site}">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${esc(url)}">
@@ -67,13 +105,13 @@ ${status === 200 ? '' : '<meta name="robots" content="noindex">'}
 </style>
 </head>
 <body>
-<div class="bar"><div class="logo">書</div><div><b>書棲 App</b><small>追蹤這間書店，新策展第一個知道</small></div></div>
+<div class="bar"><div class="logo">書</div><div><b>${L.app}</b><small>${L.barSub}</small></div></div>
 <main>${body}</main>
 </body>
 </html>`;
   return new Response(html, {
     status,
-    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=60, s-maxage=300' },
+    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=60, s-maxage=300', Vary: 'Accept-Language' },
   });
 }
 
@@ -84,13 +122,14 @@ function currentPeriod() {
 
 export async function GET(request: Request, { slug }: { slug: string }) {
   const url = new URL(request.url);
+  const L = langOf(request, url);
   const s = (slug ?? '').toLowerCase();
   const appLink = `bookhaus://store/${encodeURIComponent(s)}`;
   const ua = request.headers.get('user-agent') ?? '';
   const storeLink = /android/i.test(ua) ? ANDROID_STORE_URL : IOS_STORE_URL;
 
   if (!/^[a-z0-9-]{3,30}$/.test(s) || !SUPABASE_URL) {
-    return page({ title: '找不到這間書店｜書棲', description: '這個連結可能打錯了。', status: 404, url: url.href, body: '<h2 style="margin-top:32px">找不到這間書店</h2><p>這個連結可能打錯了。</p>' });
+    return page(L, { title: L.notFoundTitle, description: L.typo, status: 404, url: url.href, body: `<h2 style="margin-top:32px">${L.notFound}</h2><p>${L.typo}</p>` });
   }
 
   let store: Store | undefined;
@@ -104,19 +143,19 @@ export async function GET(request: Request, { slug }: { slug: string }) {
       );
     }
   } catch {
-    return page({ title: '書棲', description: '暫時無法載入，請稍後再試。', status: 503, url: url.href, body: '<h2 style="margin-top:32px">暫時無法載入</h2><p>請稍後再試一次。</p>' });
+    return page(L, { title: L.brand, description: L.errDesc, status: 503, url: url.href, body: `<h2 style="margin-top:32px">${L.errH}</h2><p>${L.errP}</p>` });
   }
 
   // 暫停營業、刪除申請中、找不到：public_bookstores 不會回傳
   if (!store) {
-    return page({ title: '暫停營業中｜書棲', description: '這間書店目前沒有營業。', status: 404, url: url.href, body: '<h2 style="margin-top:32px">這間書店暫停營業中</h2><p>可能已經關閉，或店主暫時休息。到書棲 App 看看其他書店吧。</p>' });
+    return page(L, { title: L.pausedTitle, description: L.pausedDesc, status: 404, url: url.href, body: `<h2 style="margin-top:32px">${L.pausedH}</h2><p>${L.pausedP}</p>` });
   }
 
   const color = COLORS[store.color] ?? COLORS.moss;
   const items = (cur?.curation_items ?? []).sort((a, b) => a.position - b.position);
   const month = cur ? Number(cur.period.slice(5, 7)) : null;
-  const title = cur ? `${store.name}｜${month} 月策展：${cur.title}` : store.name;
-  const description = cur ? `${items.length} 本書 · 書棲 bookhaus` : store.tagline ?? `${store.owner_name} 的獨立書店 · 書棲`;
+  const title = cur && month ? L.curTitle(store.name, month, cur.title) : store.name;
+  const description = cur ? `${L.books(items.length)} · ${L.site}` : store.tagline ?? L.ownerIndie(store.owner_name);
 
   const cover = (b: Item['books']) =>
     b.cover_url
@@ -128,31 +167,31 @@ export async function GET(request: Request, { slug }: { slug: string }) {
 <div class="hero" style="background:${color}">
   <div class="avatar">${esc([...store.name][0] ?? '書')}</div>
   <h1>${esc(store.name)}</h1>
-  <p>店主 ${esc(store.owner_name)} · ${store.follower_count} 人追蹤</p>
+  <p>${esc(L.owner(store.owner_name, store.follower_count))}</p>
   ${store.tagline ? `<p style="margin-top:10px">${esc(store.tagline)}</p>` : ''}
 </div>
 ${
   cur
-    ? `<div class="label">${month} 月策展</div>
+    ? `<div class="label">${L.month(month ?? 1)}</div>
 <h2>${esc(cur.title)}</h2>
 ${cur.description ? `<p style="color:var(--muted);margin:0">${esc(cur.description)}</p>` : ''}
 <div class="card">
 ${shown
   .map(
-    (i) => `<div class="book">${cover(i.books)}<div><b>${esc(i.books.title)}</b><small>${esc(i.books.authors.join('、'))}</small>${
+    (i) => `<div class="book">${cover(i.books)}<div><b>${esc(i.books.title)}</b><small>${esc(i.books.authors.join(L.authorSep))}</small>${
       i.note ? `<p>${esc(i.note)}</p>` : ''
     }</div></div>`,
   )
   .join('')}
-${items.length > 2 ? `<p class="more">還有 ${items.length - 2} 本，在 App 裡看完整書架</p>` : ''}
+${items.length > 2 ? `<p class="more">${esc(L.more(items.length - 2))}</p>` : ''}
 </div>`
-    : `<div class="card"><p style="margin:0;color:var(--muted)">這間書店還沒有發布策展。追蹤後，新策展上架時會通知你。</p></div>`
+    : `<div class="card"><p style="margin:0;color:var(--muted)">${L.empty}</p></div>`
 }
 <div class="cta">
-  <a class="btn" href="${esc(appLink)}" data-open>在 App 追蹤「${esc(store.name)}」</a>
-  ${storeLink ? `<a href="${esc(storeLink)}" style="color:var(--primary);font-weight:700;text-decoration:none;min-height:44px;display:grid;place-items:center">還沒有 App？前往下載</a>` : ''}
-  <small>沒有 App 會前往 App Store／Google Play；裝好後再點一次連結就會打開這間書店</small>
+  <a class="btn" href="${esc(appLink)}" data-open>${esc(L.follow(store.name))}</a>
+  ${storeLink ? `<a href="${esc(storeLink)}" style="color:var(--primary);font-weight:700;text-decoration:none;min-height:44px;display:grid;place-items:center">${L.download}</a>` : ''}
+  <small>${L.hint}</small>
 </div>`;
 
-  return page({ title, description, body, url: url.href });
+  return page(L, { title, description, body, url: url.href });
 }

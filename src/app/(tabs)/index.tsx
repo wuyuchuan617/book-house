@@ -23,11 +23,12 @@ import {
 } from '@/lib/browse';
 import { currentPeriod, monthOf, periodLabel, previousPeriod } from '@/lib/period';
 import { useMyStore, type ExploreItem } from '@/lib/queries';
+import { tagLabel, tr } from '@/lib/i18n';
 
 type Scope = 'all' | 'following';
 type FeedCard = ExploreItem & { visited?: boolean; is_following?: boolean };
 
-const SORTS: [ExploreSort, string][] = [['recommend', '推薦'], ['latest', '最新'], ['popular', '熱門']];
+const SORTS = (): [ExploreSort, string][] => [['recommend', tr('推薦')], ['latest', tr('最新')], ['popular', tr('熱門')]];
 
 /**
  * A2 探索 v1.1：全部／追蹤中、月份切換、推薦／最新／熱門、已逛過（標示、可只看沒逛過）、
@@ -86,51 +87,52 @@ export default function ExploreScreen() {
   const older = idx >= 0 && idx < periods.length - 1 ? periods[idx + 1] : null;
   const newer = idx > 0 ? periods[idx - 1] : null;
 
-  const tagName = tags?.find((t) => t.slug === tag)?.name;
+  const tagRow = tags?.find((t) => t.slug === tag);
+  const tagName = tagRow ? tagLabel(tagRow) : undefined;
   const suggest = tags?.find((t) => t.slug !== tag);
   const count = query ? (search.data?.length ?? 0) : (list.data?.length ?? 0);
 
   const empty = query ? (
     <View style={{ paddingTop: 48, alignItems: 'center', gap: Spacing.sm }}>
-      <AppText variant="heading" style={{ textAlign: 'center' }}>{`找不到「${query}」`}</AppText>
-      <AppText muted style={{ textAlign: 'center' }}>{`${tagName ? `「${tagName}」主題裡` : ''}目前還沒有書店策展這本書。\n試試其他關鍵字，或看看熱門主題。`}</AppText>
-      {suggest ? <Button label={`看看${suggest.name}主題`} style={{ alignSelf: 'stretch', marginTop: Spacing.lg }} onPress={() => { setInput(''); setQuery(''); setTag(suggest.slug); }} /> : null}
-      <Button kind="link" label="清除搜尋" onPress={() => { setInput(''); setQuery(''); }} />
+      <AppText variant="heading" style={{ textAlign: 'center' }}>{tr('找不到「{query}」', { query })}</AppText>
+      <AppText muted style={{ textAlign: 'center' }}>{tr('{p0}目前還沒有書店策展這本書。\n試試其他關鍵字，或看看熱門主題。', { p0: tagName ? tr('「{tagName}」主題裡', { tagName }) : '' })}</AppText>
+      {suggest ? <Button label={tr('看看{name}主題', { name: tagLabel(suggest) })} style={{ alignSelf: 'stretch', marginTop: Spacing.lg }} onPress={() => { setInput(''); setQuery(''); setTag(suggest.slug); }} /> : null}
+      <Button kind="link" label={tr('清除搜尋')} onPress={() => { setInput(''); setQuery(''); }} />
     </View>
   ) : following && !session ? (
-    <EmptyState title="登入後看追蹤中的書店" body="追蹤喜歡的店主，新策展上架時會出現在這裡。" actionLabel="登入" onAction={() => requireAuth(() => {})} />
+    <EmptyState title={tr('登入後看追蹤中的書店')} body={tr('追蹤喜歡的店主，新策展上架時會出現在這裡。')} actionLabel={tr('登入')} onAction={() => requireAuth(() => {})} />
   ) : following ? (
-    <EmptyState title={unvisitedOnly ? '追蹤的書店都逛過了' : '還沒有追蹤的書店'} body={unvisitedOnly ? '有新策展上架時會出現在這裡。' : '在書店頁按「追蹤」，他們的策展會集中在這裡。'} actionLabel="看全部策展" onAction={() => setScope('all')} />
+    <EmptyState title={unvisitedOnly ? tr('追蹤的書店都逛過了') : tr('還沒有追蹤的書店')} body={unvisitedOnly ? tr('有新策展上架時會出現在這裡。') : tr('在書店頁按「追蹤」，他們的策展會集中在這裡。')} actionLabel={tr('看全部策展')} onAction={() => setScope('all')} />
   ) : unvisitedOnly ? (
-    <EmptyState title="這個月的策展都逛過了" body="看看其他月份，或關掉「只看沒逛過」。" actionLabel="顯示全部" onAction={() => setUnvisitedOnly(false)} />
+    <EmptyState title={tr('這個月的策展都逛過了')} body={tr('看看其他月份，或關掉「只看沒逛過」。')} actionLabel={tr('顯示全部')} onAction={() => setUnvisitedOnly(false)} />
   ) : tag ? (
-    <EmptyState title={`${monthOf(period)} 月還沒有「${tagName ?? ''}」的策展`} body="換個主題看看，或回到全部。" actionLabel="看全部策展" onAction={() => setTag(undefined)} />
+    <EmptyState title={tr('{p0} 月還沒有「{p1}」的策展', { p0: monthOf(period), p1: tagName ?? '' })} body={tr('換個主題看看，或回到全部。')} actionLabel={tr('看全部策展')} onAction={() => setTag(undefined)} />
   ) : (
-    <EmptyState title={`${monthOf(period)} 月還沒有策展`} body="第一間書店開張後，策展就會出現在這裡。" actionLabel="開一間自己的書店" onAction={() => router.navigate('/my-store')} />
+    <EmptyState title={tr('{p0} 月還沒有策展', { p0: monthOf(period) })} body={tr('第一間書店開張後，策展就會出現在這裡。')} actionLabel={tr('開一間自己的書店')} onAction={() => router.navigate('/my-store')} />
   );
 
   return (
     <Screen>
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         <View style={styles.header}>
-          <AppText variant="title">探索</AppText>
+          <AppText variant="title">{tr('探索')}</AppText>
           {!following && !query ? (
             <View style={styles.month}>
-              <Pressable accessibilityRole="button" accessibilityLabel="上一個月" disabled={!older} onPress={() => older && setPeriod(older)} style={[styles.arrow, { opacity: older ? 1 : 0.3 }]}>
+              <Pressable accessibilityRole="button" accessibilityLabel={tr('上一個月')} disabled={!older} onPress={() => older && setPeriod(older)} style={[styles.arrow, { opacity: older ? 1 : 0.3 }]}>
                 <Feather name="chevron-left" size={20} color={c.text} />
               </Pressable>
-              <AppText variant="label" accessibilityLiveRegion="polite">{isCurrent ? `${monthOf(period)} 月 · 本月` : periodLabel(period)}</AppText>
-              <Pressable accessibilityRole="button" accessibilityLabel="下一個月" disabled={!newer} onPress={() => newer && setPeriod(newer)} style={[styles.arrow, { opacity: newer ? 1 : 0.3 }]}>
+              <AppText variant="label" accessibilityLiveRegion="polite">{isCurrent ? tr('{p0} 月 · 本月', { p0: monthOf(period) }) : periodLabel(period)}</AppText>
+              <Pressable accessibilityRole="button" accessibilityLabel={tr('下一個月')} disabled={!newer} onPress={() => newer && setPeriod(newer)} style={[styles.arrow, { opacity: newer ? 1 : 0.3 }]}>
                 <Feather name="chevron-right" size={20} color={c.text} />
               </Pressable>
             </View>
           ) : (
-            <AppText variant="caption" muted>{query ? `${count} 檔符合（所有月份）` : `${count} 檔`}</AppText>
+            <AppText variant="caption" muted>{query ? tr('{count} 檔符合（所有月份）', { count }) : tr('{count} 檔', { count })}</AppText>
           )}
         </View>
 
         <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
-          {([['all', '全部'], ['following', '追蹤中']] as const).map(([s, label]) => (
+          {([['all', tr('全部')], ['following', tr('追蹤中')]] as const).map(([s, label]) => (
             <Pressable key={s} accessibilityRole="tab" accessibilityState={{ selected: scope === s }} onPress={() => setScope(s)} style={[styles.segmentItem, scope === s && { backgroundColor: c.surface }]}>
               <AppText variant="caption" style={{ fontWeight: '700', color: scope === s ? c.text : c.textSecondary }}>{label}</AppText>
             </Pressable>
@@ -140,8 +142,8 @@ export default function ExploreScreen() {
         <View style={[styles.search, { backgroundColor: c.surface, borderColor: c.border }]}>
           <Feather name="search" size={18} color={c.textSecondary} />
           <TextInput
-            accessibilityLabel="搜尋策展、書店或書名"
-            placeholder="搜尋策展、書店或書名"
+            accessibilityLabel={tr('搜尋策展、書店或書名')}
+            placeholder={tr('搜尋策展、書店或書名')}
             placeholderTextColor={c.textTertiary}
             value={input}
             onChangeText={setInput}
@@ -150,7 +152,7 @@ export default function ExploreScreen() {
             style={[styles.searchInput, { color: c.text }]}
           />
           {input ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="清除搜尋" onPress={() => { setInput(''); setQuery(''); }} style={styles.clear}>
+            <Pressable accessibilityRole="button" accessibilityLabel={tr('清除搜尋')} onPress={() => { setInput(''); setQuery(''); }} style={styles.clear}>
               <Feather name="x-circle" size={18} color={c.textTertiary} />
             </Pressable>
           ) : null}
@@ -158,15 +160,15 @@ export default function ExploreScreen() {
 
         <View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tags}>
-            <Chip label="全部主題" selected={!tag} onPress={() => setTag(undefined)} />
-            {tags?.map((t) => <Chip key={t.slug} label={t.name} selected={tag === t.slug} onPress={() => setTag(tag === t.slug ? undefined : t.slug)} />)}
+            <Chip label={tr('全部主題')} selected={!tag} onPress={() => setTag(undefined)} />
+            {tags?.map((t) => <Chip key={t.slug} label={tagLabel(t)} selected={tag === t.slug} onPress={() => setTag(tag === t.slug ? undefined : t.slug)} />)}
           </ScrollView>
         </View>
 
         {!query ? (
           <View style={styles.sortRow}>
             <View style={{ flexDirection: 'row', gap: Spacing.md }} accessibilityRole="radiogroup">
-              {SORTS.map(([s, label]) => (
+              {SORTS().map(([s, label]) => (
                 <Pressable key={s} accessibilityRole="radio" accessibilityState={{ selected: sort === s }} onPress={() => setSort(s)} hitSlop={8} style={styles.sortItem}>
                   <AppText variant="caption" style={{ fontWeight: sort === s ? '700' : '500', color: sort === s ? c.primary : c.textSecondary }}>{label}</AppText>
                 </Pressable>
@@ -174,7 +176,7 @@ export default function ExploreScreen() {
             </View>
             <Pressable accessibilityRole="switch" accessibilityState={{ checked: unvisitedOnly }} onPress={() => setUnvisitedOnly(!unvisitedOnly)} hitSlop={8} style={styles.sortItem}>
               <Feather name={unvisitedOnly ? 'check-square' : 'square'} size={16} color={unvisitedOnly ? c.primary : c.textSecondary} />
-              <AppText variant="caption" style={{ color: unvisitedOnly ? c.primary : c.textSecondary, fontWeight: '600' }}>只看沒逛過</AppText>
+              <AppText variant="caption" style={{ color: unvisitedOnly ? c.primary : c.textSecondary, fontWeight: '600' }}>{tr('只看沒逛過')}</AppText>
             </Pressable>
           </View>
         ) : null}
@@ -182,9 +184,9 @@ export default function ExploreScreen() {
         {loading ? (
           <ActivityIndicator style={{ marginTop: 48 }} />
         ) : paused ? (
-          <EmptyState title="目前沒有網路連線" body="連上網路後會自動重新載入。" actionLabel="重試" onAction={refetch} />
+          <EmptyState title={tr('目前沒有網路連線')} body={tr('連上網路後會自動重新載入。')} actionLabel={tr('重試')} onAction={refetch} />
         ) : (query ? search.error : list.error) ? (
-          <EmptyState title="沒有載入成功" body="檢查網路後再試一次。" actionLabel="重試" onAction={refetch} />
+          <EmptyState title={tr('沒有載入成功')} body={tr('檢查網路後再試一次。')} actionLabel={tr('重試')} onAction={refetch} />
         ) : (
           <FlatList
             data={rest}
@@ -197,13 +199,13 @@ export default function ExploreScreen() {
               first ? (
                 <View style={{ gap: Spacing.md }}>
                   <FeaturedCard item={first} ownStoreId={mine?.store.id} />
-                  {rest.length && prevStart !== 0 ? <AppText variant="label" style={{ marginTop: Spacing.md }}>{`更多 ${monthOf(period)} 月策展`}</AppText> : null}
+                  {rest.length && prevStart !== 0 ? <AppText variant="label" style={{ marginTop: Spacing.md }}>{tr('更多 {p0} 月策展', { p0: monthOf(period) })}</AppText> : null}
                 </View>
               ) : undefined
             }
             renderItem={({ item, index }) => (
               <>
-                {index === prevStart ? <AppText variant="label" style={{ marginTop: Spacing.md }}>{`${monthOf(previousPeriod())} 月的策展`}</AppText> : null}
+                {index === prevStart ? <AppText variant="label" style={{ marginTop: Spacing.md }}>{tr('{p0} 月的策展', { p0: monthOf(previousPeriod()) })}</AppText> : null}
                 <CompactCard item={item} showMonth={!!query || following} />
               </>
             )}
@@ -221,7 +223,7 @@ function VisitedBadge() {
   const c = useTheme();
   return (
     <View style={[styles.badge, { backgroundColor: c.surfaceMuted }]}>
-      <AppText variant="caption" style={{ color: c.textSecondary, fontWeight: '600' }}>已逛過</AppText>
+      <AppText variant="caption" style={{ color: c.textSecondary, fontWeight: '600' }}>{tr('已逛過')}</AppText>
     </View>
   );
 }
@@ -230,7 +232,7 @@ function FeaturedCard({ item, ownStoreId }: { item: FeedCard; ownStoreId?: strin
   const color = StoreColors[item.color]?.hex ?? StoreColors.moss.hex;
   return (
     <Card style={{ padding: 0, overflow: 'hidden' }}>
-      <Pressable accessibilityRole="link" accessibilityLabel={`${item.title}，${item.store_name}的策展，${item.book_count} 本書${item.visited ? '，已逛過' : ''}`} onPress={() => openStore(item.slug)}>
+      <Pressable accessibilityRole="link" accessibilityLabel={tr('{title}，{store_name}的策展，{book_count} 本書{p3}', { title: item.title, store_name: item.store_name, book_count: item.book_count, p3: item.visited ? tr('，已逛過') : '' })} onPress={() => openStore(item.slug)}>
         <View style={[styles.band, { backgroundColor: color }]}>
           <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
             {item.cover_titles.slice(0, 3).map((t, i) => (
@@ -239,7 +241,7 @@ function FeaturedCard({ item, ownStoreId }: { item: FeedCard; ownStoreId?: strin
               </View>
             ))}
           </View>
-          <AppText variant="caption" style={styles.bandText}>{`${item.book_count} 本書`}</AppText>
+          <AppText variant="caption" style={styles.bandText}>{tr('{book_count} 本書', { book_count: item.book_count })}</AppText>
         </View>
         <View style={{ padding: Spacing.lg, paddingBottom: 0, gap: Spacing.xs }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
@@ -254,7 +256,7 @@ function FeaturedCard({ item, ownStoreId }: { item: FeedCard; ownStoreId?: strin
           <StoreAvatar name={item.store_name} color={item.color} size={32} path={item.avatar_path} />
           <View style={{ flex: 1 }}>
             <AppText variant="label">{item.store_name}</AppText>
-            <AppText variant="caption" muted>{`${item.owner_name} · ${item.follower_count} 人追蹤`}</AppText>
+            <AppText variant="caption" muted>{tr('{owner_name} · {follower_count} 人追蹤', { owner_name: item.owner_name, follower_count: item.follower_count })}</AppText>
           </View>
         </Pressable>
         {item.bookstore_id !== ownStoreId ? <FollowButton bookstoreId={item.bookstore_id} storeName={item.store_name} /> : null}
@@ -268,7 +270,7 @@ function CompactCard({ item, showMonth }: { item: FeedCard; showMonth?: boolean 
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={`${item.title}，${item.store_name}${item.visited ? '，已逛過' : ''}`}
+      accessibilityLabel={tr('{title}，{store_name}{p2}', { title: item.title, store_name: item.store_name, p2: item.visited ? tr('，已逛過') : '' })}
       onPress={() => openStore(item.slug)}
       style={({ pressed }) => ({ opacity: pressed ? 0.8 : item.visited ? 0.72 : 1 })}>
       <Card style={{ flexDirection: 'row', gap: Spacing.md, alignItems: 'center' }}>
@@ -280,8 +282,8 @@ function CompactCard({ item, showMonth }: { item: FeedCard; showMonth?: boolean 
           </View>
           {item.description ? <AppText variant="caption" muted numberOfLines={1}>{item.description}</AppText> : null}
           <AppText variant="caption" muted>
-            {[showMonth ? `${monthOf(item.period)} 月` : null, item.store_name, `${item.book_count} 本書`].filter(Boolean).join(' · ')}
-            {item.is_following ? <AppText variant="caption" style={{ color: c.primary }}>{' · 追蹤中'}</AppText> : null}
+            {[showMonth ? tr('{p0} 月', { p0: monthOf(item.period) }) : null, item.store_name, tr('{book_count} 本書', { book_count: item.book_count })].filter(Boolean).join(' · ')}
+            {item.is_following ? <AppText variant="caption" style={{ color: c.primary }}>{tr(' · 追蹤中')}</AppText> : null}
           </AppText>
         </View>
       </Card>

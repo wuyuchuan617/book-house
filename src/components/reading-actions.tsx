@@ -5,6 +5,7 @@ import { ActionSheet, type SheetAction } from '@/components/sheet';
 import { friendlyError, useAddItem, useCreateCuration } from '@/lib/curations';
 import { monthOf, nextPeriod } from '@/lib/period';
 import { useUpdateReading, type MyReading } from '@/lib/readings';
+import { tr } from '@/lib/i18n';
 
 /** R6 店主閱讀・更多操作 */
 export function ReadingActions({ reading, visible, onClose, onRemove, inDetail }: {
@@ -17,7 +18,7 @@ export function ReadingActions({ reading, visible, onClose, onRemove, inDetail }
   const update = useUpdateReading();
   const createCuration = useCreateCuration();
   const addItem = useAddItem();
-  const fail = (e: Error) => Alert.alert('沒有成功', friendlyError(e.message));
+  const fail = (e: Error) => Alert.alert(tr('沒有成功'), friendlyError(e.message));
   const next = nextPeriod();
 
   const toNextCuration = async () => {
@@ -31,15 +32,15 @@ export function ReadingActions({ reading, visible, onClose, onRemove, inDetail }
   };
 
   const actions: SheetAction[] = [
-    ...(!inDetail ? [{ label: '查看與編輯心得', onPress: () => router.push({ pathname: '/reading/manage/[id]', params: { id: reading.id } }) }] : []),
+    ...(!inDetail ? [{ label: tr('查看與編輯心得'), onPress: () => router.push({ pathname: '/reading/manage/[id]', params: { id: reading.id } }) }] : []),
     reading.status === 'reading'
-      ? { label: '標記為讀完', onPress: () => update.mutate({ id: reading.id, status: 'finished' }, { onError: fail }) }
-      : { label: '改回正在讀', onPress: () => update.mutate({ id: reading.id, status: 'reading' }, { onError: fail }) },
+      ? { label: tr('標記為讀完'), onPress: () => update.mutate({ id: reading.id, status: 'finished' }, { onError: fail }) }
+      : { label: tr('改回正在讀'), onPress: () => update.mutate({ id: reading.id, status: 'reading' }, { onError: fail }) },
     reading.is_public
-      ? { label: '從書店頁隱藏', sub: '只有自己看得到', onPress: () => update.mutate({ id: reading.id, is_public: false }, { onError: fail }) }
-      : { label: '顯示在書店頁', sub: '讀者可以在「店主閱讀」看到', onPress: () => update.mutate({ id: reading.id, is_public: true }, { onError: fail }) },
-    { label: `放進 ${monthOf(next)} 月策展`, sub: '加到下個月的草稿書架', onPress: () => void toNextCuration() },
-    { label: '從店主閱讀移除', destructive: true, onPress: onRemove },
+      ? { label: tr('從書店頁隱藏'), sub: tr('只有自己看得到'), onPress: () => update.mutate({ id: reading.id, is_public: false }, { onError: fail }) }
+      : { label: tr('顯示在書店頁'), sub: tr('讀者可以在「店主閱讀」看到'), onPress: () => update.mutate({ id: reading.id, is_public: true }, { onError: fail }) },
+    { label: tr('放進 {p0} 月策展', { p0: monthOf(next) }), sub: tr('加到下個月的草稿書架'), onPress: () => void toNextCuration() },
+    { label: tr('從店主閱讀移除'), destructive: true, onPress: onRemove },
   ];
 
   const n = reading.reading_notes.length;
@@ -47,7 +48,7 @@ export function ReadingActions({ reading, visible, onClose, onRemove, inDetail }
     <ActionSheet
       visible={visible}
       title={reading.books.title}
-      subtitle={`${reading.status === 'reading' ? '在讀' : '讀完'} · ${n} 則心得 · ${reading.is_public ? '公開在書店頁' : '只有自己看得到'}`}
+      subtitle={tr('{p0} · {n} 則心得 · {p2}', { p0: reading.status === 'reading' ? tr('在讀') : tr('讀完'), n, p2: reading.is_public ? tr('公開在書店頁') : tr('只有自己看得到') })}
       actions={actions}
       onClose={onClose}
     />

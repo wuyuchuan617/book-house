@@ -9,6 +9,7 @@ import type { PublicReading } from '@/lib/browse';
 import type { Book } from '@/lib/curations';
 import { unwrap, useMyStore } from '@/lib/queries';
 import { supabase } from '@/lib/supabase';
+import { tr } from '@/lib/i18n';
 
 const BOOK_COLS = 'id, source, title, authors, cover_url, published_year, publisher';
 
@@ -222,9 +223,9 @@ export function useDeleteStore() {
 
 /** 把 Supabase 錯誤換成給店主看的中文 */
 export function readingError(message: string) {
-  if (message.includes('bookstores_slug_key') || message.includes('duplicate key')) return '這個網址已經有人用了，換一個試試。';
-  if (message.includes('reserved')) return '這個網址是保留字，換一個試試。';
-  if (message.includes('slug_check')) return '網址只能用小寫英文、數字和「-」，3–30 個字。';
-  if (message.includes('reading_notes_body_check')) return '心得 1–1000 字。';
+  if (message.includes('bookstores_slug_key') || message.includes('duplicate key')) return tr('這個網址已經有人用了，換一個試試。');
+  if (message.includes('reserved')) return tr('這個網址是保留字，換一個試試。');
+  if (message.includes('slug_check')) return tr('網址只能用小寫英文、數字和「-」，3–30 個字。');
+  if (message.includes('reading_notes_body_check')) return tr('心得 1–1000 字。');
   return userMessage(message);
 }

@@ -8,6 +8,7 @@ import { track } from '@/lib/analytics';
 import { getVisitorKey, unwrap, type ExploreItem, type PublicStore } from '@/lib/queries';
 import { previousPeriod } from '@/lib/period';
 import { supabase } from '@/lib/supabase';
+import { tr } from '@/lib/i18n';
 
 const BOOK_COLS = 'id, source, title, authors, cover_url, published_year, publisher';
 
@@ -171,8 +172,8 @@ export type SavedBook = {
 /** 想讀清單上顯示的「在哪看到」：從策展收藏的自動帶入書店與策展 */
 export function wantSource(b: SavedBook) {
   if (b.source_text) return b.source_text;
-  if (b.bookstores) return `${b.bookstores.name}${b.curations?.title ? ` · ${b.curations.title}` : b.from_curation_id ? '' : ' · 店主正在讀'}`;
-  if (b.from_bookstore_id || b.from_curation_id) return '來源書店目前看不到';
+  if (b.bookstores) return `${b.bookstores.name}${b.curations?.title ? ` · ${b.curations.title}` : b.from_curation_id ? '' : tr(' · 店主正在讀')}`;
+  if (b.from_bookstore_id || b.from_curation_id) return tr('來源書店目前看不到');
   return null;
 }
 

@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/auth';
 import { useFollowIds, useSaveIds, useToggleFollow, useToggleSave } from '@/lib/browse';
 import { storageUrl } from '@/lib/uploads';
 import { userMessage } from '@/lib/errors';
+import { tr } from '@/lib/i18n';
 
 /** 書店頭像：沒有上傳圖片時用店面顏色＋店名第一個字 */
 export function StoreAvatar({ name, color, size = 40, path }: { name: string; color: StoreColor; size?: number; path?: string | null }) {
@@ -20,7 +21,7 @@ export function StoreAvatar({ name, color, size = 40, path }: { name: string; co
   }
   return (
     <View style={[styles.avatar, { width: size, height: size, borderRadius: size * 0.28, backgroundColor: StoreColors[color].hex }]}>
-      <AppText style={{ color: '#FFFFFF', fontWeight: '700', fontSize: size * 0.42 }}>{[...name][0] ?? '書'}</AppText>
+      <AppText style={{ color: '#FFFFFF', fontWeight: '700', fontSize: size * 0.42 }}>{[...name][0] ?? tr('書')}</AppText>
     </View>
   );
 }
@@ -35,10 +36,10 @@ export function FollowButton({ bookstoreId, storeName, onColor }: { bookstoreId:
 
   const press = () =>
     requireAuth(() => {
-      if (!following) return toggle.mutate({ bookstoreId, follow: true }, { onError: (e) => Alert.alert('沒有成功', userMessage(e)) });
-      Alert.alert(`取消追蹤「${storeName}」？`, '之後新策展上架時不會再通知你。', [
-        { text: '繼續追蹤', style: 'cancel' },
-        { text: '取消追蹤', style: 'destructive', onPress: () => toggle.mutate({ bookstoreId, follow: false }) },
+      if (!following) return toggle.mutate({ bookstoreId, follow: true }, { onError: (e) => Alert.alert(tr('沒有成功'), userMessage(e)) });
+      Alert.alert(tr('取消追蹤「{storeName}」？', { storeName }), tr('之後新策展上架時不會再通知你。'), [
+        { text: tr('繼續追蹤'), style: 'cancel' },
+        { text: tr('取消追蹤'), style: 'destructive', onPress: () => toggle.mutate({ bookstoreId, follow: false }) },
       ]);
     });
 
@@ -46,7 +47,7 @@ export function FollowButton({ bookstoreId, storeName, onColor }: { bookstoreId:
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: following }}
-      accessibilityLabel={following ? `已追蹤${storeName}，點兩下取消追蹤` : `追蹤${storeName}`}
+      accessibilityLabel={following ? tr('已追蹤{storeName}，點兩下取消追蹤', { storeName }) : tr('追蹤{storeName}', { storeName })}
       onPress={press}
       style={({ pressed }) => [
         styles.follow,
@@ -58,7 +59,7 @@ export function FollowButton({ bookstoreId, storeName, onColor }: { bookstoreId:
       <AppText
         variant="caption"
         style={{ fontWeight: '700', color: following ? (onColor ? '#FFFFFF' : c.text) : onColor ? c.text : c.onPrimary }}>
-        {following ? '追蹤中' : '＋ 追蹤'}
+        {following ? tr('追蹤中') : tr('＋ 追蹤')}
       </AppText>
     </Pressable>
   );
@@ -79,17 +80,17 @@ export function SaveButton({ bookId, title, curationId, bookstoreId, withLabel }
   const saved = !!ids?.has(bookId);
   const press = () =>
     requireAuth(() =>
-      toggle.mutate({ bookId, save: !saved, curationId, bookstoreId }, { onError: (e) => Alert.alert('沒有成功', userMessage(e)) }),
+      toggle.mutate({ bookId, save: !saved, curationId, bookstoreId }, { onError: (e) => Alert.alert(tr('沒有成功'), userMessage(e)) }),
     );
 
   if (withLabel) {
-    return <Button kind={saved ? 'secondary' : 'primary'} label={saved ? '✓ 在想讀清單' : '加入想讀'} onPress={press} />;
+    return <Button kind={saved ? 'secondary' : 'primary'} label={saved ? tr('✓ 在想讀清單') : tr('加入想讀')} onPress={press} />;
   }
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: saved }}
-      accessibilityLabel={saved ? `從想讀移除「${title}」` : `加入想讀「${title}」`}
+      accessibilityLabel={saved ? tr('從想讀移除「{title}」', { title }) : tr('加入想讀「{title}」', { title })}
       onPress={press}
       hitSlop={6}
       style={styles.save}>
@@ -118,7 +119,7 @@ export function UndoToast({ message, onUndo, onHide }: { message: string | null;
       style={[styles.toast, { opacity, backgroundColor: c.text, bottom: Math.max(insets.bottom, 12) + 8 }]}>
       <AppText style={{ color: c.background, flex: 1 }} numberOfLines={2}>{message}</AppText>
       <Pressable accessibilityRole="button" onPress={onUndo} style={styles.undo}>
-        <AppText style={{ color: c.background, fontWeight: '700', textDecorationLine: 'underline' }}>復原</AppText>
+        <AppText style={{ color: c.background, fontWeight: '700', textDecorationLine: 'underline' }}>{tr('復原')}</AppText>
       </Pressable>
     </Animated.View>
   );

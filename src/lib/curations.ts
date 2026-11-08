@@ -5,6 +5,7 @@ import { userMessage } from '@/lib/errors';
 import { useAuth } from '@/lib/auth';
 import { unwrap } from '@/lib/queries';
 import { supabase } from '@/lib/supabase';
+import { tr } from '@/lib/i18n';
 
 export type CurationStatus = 'draft' | 'scheduled' | 'published';
 
@@ -319,13 +320,13 @@ export function useDeleteCuration() {
 
 /** 把伺服器錯誤換成給店主看的中文 */
 export function friendlyError(message: string) {
-  if (message.includes('title is required')) return '先取一個策展標題才能發布。';
-  if (message.includes('at least 1 book to publish')) return '書架上至少要有 1 本書才能發布。';
-  if (message.includes('already has a published')) return '這個月已經有一檔發布中的策展了。';
-  if (message.includes('needs at least 1 book')) return '發布中的策展至少要留 1 本書。想清空書架請先取消發布。';
-  if (message.includes('at most 3 tags')) return '主題標籤最多 3 個。';
-  if (message.includes('at most 20 books')) return '一檔策展最多放 20 本書。';
-  if (message.includes('only this month or next month')) return '只能發布本月或預約下個月的策展。';
-  if (message.includes('tag name must be')) return '標籤名稱 1–12 個字。';
+  if (message.includes('title is required')) return tr('先取一個策展標題才能發布。');
+  if (message.includes('at least 1 book to publish')) return tr('書架上至少要有 1 本書才能發布。');
+  if (message.includes('already has a published')) return tr('這個月已經有一檔發布中的策展了。');
+  if (message.includes('needs at least 1 book')) return tr('發布中的策展至少要留 1 本書。想清空書架請先取消發布。');
+  if (message.includes('at most 3 tags')) return tr('主題標籤最多 3 個。');
+  if (message.includes('at most 20 books')) return tr('一檔策展最多放 20 本書。');
+  if (message.includes('only this month or next month')) return tr('只能發布本月或預約下個月的策展。');
+  if (message.includes('tag name must be')) return tr('標籤名稱 1–12 個字。');
   return userMessage(message);
 }

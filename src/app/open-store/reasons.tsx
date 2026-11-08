@@ -8,6 +8,7 @@ import { MinTouch, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { friendlyError, sortedItems, useCuration, useUpdateItemNote, type Curation, type CurationItem } from '@/lib/curations';
 import { useMyStore } from '@/lib/queries';
+import { tr } from '@/lib/i18n';
 
 /** O7 補推薦理由（逐本）：只列還沒寫理由的書，可逐本略過 */
 export default function OpenStoreReasonsScreen() {
@@ -33,10 +34,10 @@ function ReasonsFlow({ cur, color }: { cur: Curation; color: StoreColor }) {
     <Screen>
       <Stack.Screen
         options={{
-          title: queue.length ? `推薦理由 · ${Math.min(index + 1, queue.length)} / ${queue.length}` : '推薦理由',
+          title: queue.length ? tr('推薦理由 · {p0} / {length}', { p0: Math.min(index + 1, queue.length), length: queue.length }) : tr('推薦理由'),
           headerRight: () => (
             <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.later}>
-              <AppText style={{ color: c.primary, fontWeight: '700' }}>稍後再寫</AppText>
+              <AppText style={{ color: c.primary, fontWeight: '700' }}>{tr('稍後再寫')}</AppText>
             </Pressable>
           ),
         }}
@@ -44,23 +45,23 @@ function ReasonsFlow({ cur, color }: { cur: Curation; color: StoreColor }) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={90}>
         <ScrollView contentContainerStyle={{ padding: Spacing.xl }} keyboardShouldPersistTaps="handled">
           {!item ? (
-            <AppText muted>每本書都有推薦理由了。</AppText>
+            <AppText muted>{tr('每本書都有推薦理由了。')}</AppText>
           ) : (
             <NoteForm
               key={item.id}
               book={item.books}
               storeColor={color}
-              caption={`「${cur.title}」第 ${all.findIndex((x) => x.id === item.id) + 1} 本`}
-              prompts={['適合誰讀', '最難忘的一段', '讀完我做了什麼']}
-              skipLabel="略過這本"
-              submitLabel={last ? '完成' : '下一本 →'}
+              caption={tr('「{title}」第 {p1} 本', { title: cur.title, p1: all.findIndex((x) => x.id === item.id) + 1 })}
+              prompts={[tr('適合誰讀'), tr('最難忘的一段'), tr('讀完我做了什麼')]}
+              skipLabel={tr('略過這本')}
+              submitLabel={last ? tr('完成') : tr('下一本 →')}
               saving={save.isPending}
               onSkip={advance}
               onSubmit={(note) => {
                 if (!note.trim()) return advance();
                 save.mutate(
                   { curationId: cur.id, itemId: item.id, note },
-                  { onSuccess: advance, onError: (e) => Alert.alert('沒有儲存成功', friendlyError(e.message)) },
+                  { onSuccess: advance, onError: (e) => Alert.alert(tr('沒有儲存成功'), friendlyError(e.message)) },
                 );
               }}
             />

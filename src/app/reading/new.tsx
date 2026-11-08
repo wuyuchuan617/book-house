@@ -14,6 +14,7 @@ import { useMyStore } from '@/lib/queries';
 import { useUpsertWant } from '@/lib/browse';
 import { SOURCE_SUGGESTIONS } from '@/components/want-sheet';
 import { NOTE_BODY_MAX, readingError, useAddReading, useMyCurationBooks, useMyReadings, type ReadingStatus } from '@/lib/readings';
+import { tr } from '@/lib/i18n';
 
 /** R2／R4 記錄一本書（想讀／正在讀／讀完了）；O8 從開張完成頁進來時固定為「正在讀」 */
 type Status = ReadingStatus | 'want';
@@ -39,7 +40,7 @@ export default function NewReadingScreen() {
 
   const submit = () => {
     if (!book) return;
-    const onError = (e: Error) => Alert.alert('沒有加入成功', readingError(e.message));
+    const onError = (e: Error) => Alert.alert(tr('沒有加入成功'), readingError(e.message));
     if (status === 'want') {
       upsertWant.mutate({ bookId: book.id, note, sourceText: source }, { onSuccess: () => router.back(), onError });
       return;
@@ -49,16 +50,16 @@ export default function NewReadingScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: fromOpen ? '記錄一本正在讀的書' : status === 'want' ? '加入想讀' : '記錄一本書' }} />
+      <Stack.Screen options={{ title: fromOpen ? tr('記錄一本正在讀的書') : status === 'want' ? tr('加入想讀') : tr('記錄一本書') }} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={90}>
         <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.xl }} keyboardShouldPersistTaps="handled">
-          {fromOpen ? <AppText muted>會以「正在讀」加入，之後可改成讀完。</AppText> : null}
+          {fromOpen ? <AppText muted>{tr('會以「正在讀」加入，之後可改成讀完。')}</AppText> : null}
 
           <View style={{ gap: 6 }}>
-            <AppText variant="label">書</AppText>
+            <AppText variant="label">{tr('書')}</AppText>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={book ? `已選：${book.title}，點兩下換一本` : '選一本書'}
+              accessibilityLabel={book ? tr('已選：{title}，點兩下換一本', { title: book.title }) : tr('選一本書')}
               onPress={() => setPickerOpen(true)}
               style={[styles.bookField, { borderColor: c.border, backgroundColor: c.surface }]}>
               {book ? (
@@ -66,27 +67,27 @@ export default function NewReadingScreen() {
                   <BookCover title={book.title} url={book.cover_url} color={store.store.color} size="sm" />
                   <View style={{ flex: 1 }}>
                     <AppText variant="label">{book.title}</AppText>
-                    <AppText variant="caption" muted>{book.authors.join('、')}</AppText>
+                    <AppText variant="caption" muted>{book.authors.join(tr('、'))}</AppText>
                   </View>
-                  <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>換一本</AppText>
+                  <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('換一本')}</AppText>
                 </>
               ) : (
                 <>
                   <Feather name="search" size={18} color={c.textSecondary} />
-                  <AppText muted style={{ flex: 1 }}>搜尋書名或作者</AppText>
+                  <AppText muted style={{ flex: 1 }}>{tr('搜尋書名或作者')}</AppText>
                 </>
               )}
             </Pressable>
-            {!book ? <AppText variant="caption" muted>點一下開啟搜尋，找不到也能手動新增。</AppText> : null}
+            {!book ? <AppText variant="caption" muted>{tr('點一下開啟搜尋，找不到也能手動新增。')}</AppText> : null}
           </View>
 
           {!fromOpen ? (
             <View style={{ gap: 6 }}>
-              <AppText variant="label">閱讀狀態</AppText>
+              <AppText variant="label">{tr('閱讀狀態')}</AppText>
               <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="radiogroup">
                 {(['want', 'reading', 'finished'] as Status[]).map((s) => (
                   <Pressable key={s} accessibilityRole="radio" accessibilityState={{ selected: status === s }} onPress={() => setStatus(s)} style={[styles.segmentItem, status === s && { backgroundColor: c.surface }]}>
-                    <AppText style={{ fontWeight: '700', color: status === s ? c.text : c.textSecondary }}>{s === 'want' ? '想讀' : s === 'reading' ? '正在讀' : '讀完了'}</AppText>
+                    <AppText style={{ fontWeight: '700', color: status === s ? c.text : c.textSecondary }}>{s === 'want' ? tr('想讀') : s === 'reading' ? tr('正在讀') : tr('讀完了')}</AppText>
                   </Pressable>
                 ))}
               </View>
@@ -95,40 +96,40 @@ export default function NewReadingScreen() {
 
           {status === 'want' ? (
             <>
-              <TextField label="為什麼想讀" optional multiline max={200} value={note} onChangeText={setNote} placeholder="哪一句話、哪個人讓你想讀它？" hint="開始讀的時候，這段會變成第一則心得。" />
+              <TextField label={tr('為什麼想讀')} optional multiline max={200} value={note} onChangeText={setNote} placeholder={tr('哪一句話、哪個人讓你想讀它？')} hint={tr('開始讀的時候，這段會變成第一則心得。')} />
               <View style={{ gap: Spacing.sm }}>
-                <TextField label="在哪看到" optional max={60} value={source} onChangeText={setSource} placeholder="例如：朋友推薦" />
+                <TextField label={tr('在哪看到')} optional max={60} value={source} onChangeText={setSource} placeholder={tr('例如：朋友推薦')} />
                 <View style={chipRow}>
-                  {SOURCE_SUGGESTIONS.map((s) => <Chip key={s} label={s} selected={source === s} onPress={() => setSource(source === s ? '' : s)} />)}
+                  {SOURCE_SUGGESTIONS().map((s) => <Chip key={s} label={s} selected={source === s} onPress={() => setSource(source === s ? '' : s)} />)}
                 </View>
               </View>
             </>
           ) : (
           <TextField
-            label="第一則心得"
+            label={tr('第一則心得')}
             optional
             multiline
             max={NOTE_BODY_MAX}
             value={note}
             onChangeText={setNote}
-            placeholder="讀到哪、想到什麼都可以"
-            hint="之後可以隨時再補一則，累積成閱讀時間軸。"
+            placeholder={tr('讀到哪、想到什麼都可以')}
+            hint={tr('之後可以隨時再補一則，累積成閱讀時間軸。')}
           />
           )}
 
           {status !== 'want' ? (
           <View style={[styles.switchRow, { backgroundColor: c.surface }]}>
             <View style={{ flex: 1 }}>
-              <AppText variant="label">顯示在書店頁</AppText>
-              <AppText variant="caption" muted>讀者可以在「店主閱讀」看到</AppText>
+              <AppText variant="label">{tr('顯示在書店頁')}</AppText>
+              <AppText variant="caption" muted>{tr('讀者可以在「店主閱讀」看到')}</AppText>
             </View>
-            <Switch accessibilityLabel="顯示在書店頁" value={publicValue} onValueChange={setIsPublic} />
+            <Switch accessibilityLabel={tr('顯示在書店頁')} value={publicValue} onValueChange={setIsPublic} />
           </View>
           ) : (
-            <AppText variant="caption" muted>想讀清單只有你自己看得到。</AppText>
+            <AppText variant="caption" muted>{tr('想讀清單只有你自己看得到。')}</AppText>
           )}
 
-          <Button label={status === 'want' ? '加入想讀' : '加入店主閱讀'} disabled={!book} loading={add.isPending || upsertWant.isPending} onPress={submit} />
+          <Button label={status === 'want' ? tr('加入想讀') : tr('加入店主閱讀')} disabled={!book} loading={add.isPending || upsertWant.isPending} onPress={submit} />
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -137,7 +138,7 @@ export default function NewReadingScreen() {
         mode="single"
         storeColor={store.store.color}
         pickedIds={pickedIds}
-        suggestions={suggestions?.length ? { label: '最近在你的策展裡', books: suggestions } : undefined}
+        suggestions={suggestions?.length ? { label: tr('最近在你的策展裡'), books: suggestions } : undefined}
         onClose={() => setPickerOpen(false)}
         onAdd={async (b) => setBook(b)}
       />

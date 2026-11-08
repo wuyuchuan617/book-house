@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, TextInput, View, type TextInputProps } from 'rea
 import { AppText } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { tr } from '@/lib/i18n';
 
 type FieldProps = Omit<TextInputProps, 'style'> & {
   label: string;
@@ -21,7 +22,7 @@ export function TextField({ label, max, hint, optional, multiline, value = '', .
       <View style={styles.row}>
         <AppText variant="label">
           {label}
-          {optional ? <AppText variant="caption" muted>{'  選填'}</AppText> : null}
+          {optional ? <AppText variant="caption" muted>{tr('  選填')}</AppText> : null}
         </AppText>
         {max ? <AppText variant="caption" muted>{`${[...value].length} / ${max}`}</AppText> : null}
       </View>

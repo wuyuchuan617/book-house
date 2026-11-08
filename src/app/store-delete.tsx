@@ -10,6 +10,7 @@ import { useMyStore } from '@/lib/queries';
 import { useDeleteStore, useStoreDeleteImpact } from '@/lib/readings';
 import { storeLinkLabel } from '@/lib/links';
 import { userMessage } from '@/lib/errors';
+import { tr } from '@/lib/i18n';
 
 /** M9 刪除書店：輸入店名確認。帳號還在，之後可以重新開店 */
 export default function StoreDeleteScreen() {
@@ -24,37 +25,37 @@ export default function StoreDeleteScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: '刪除書店' }} />
+      <Stack.Screen options={{ title: tr('刪除書店') }} />
       <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg }} keyboardShouldPersistTaps="handled">
-        <AppText variant="heading">{`刪除「${name}」？`}</AppText>
+        <AppText variant="heading">{tr('刪除「{name}」？', { name })}</AppText>
         <View style={{ gap: 4 }}>
-          <AppText muted>刪除後無法復原，以下內容會一起刪除：</AppText>
-          <AppText>{`• ${impact?.curation_count ?? 0} 檔策展與書架上的書`}</AppText>
-          <AppText>{`• ${impact?.reading_count ?? 0} 筆店主閱讀與心得`}</AppText>
-          <AppText>{`• ${impact?.follower_count ?? 0} 位追蹤者會收不到你的更新`}</AppText>
-          <AppText>{`• 網址 ${storeLinkLabel(impact?.slug ?? data.store.slug)} 會被釋出`}</AppText>
+          <AppText muted>{tr('刪除後無法復原，以下內容會一起刪除：')}</AppText>
+          <AppText>{tr('• {p0} 檔策展與書架上的書', { p0: impact?.curation_count ?? 0 })}</AppText>
+          <AppText>{tr('• {p0} 筆店主閱讀與心得', { p0: impact?.reading_count ?? 0 })}</AppText>
+          <AppText>{tr('• {p0} 位追蹤者會收不到你的更新', { p0: impact?.follower_count ?? 0 })}</AppText>
+          <AppText>{tr('• 網址 {p0} 會被釋出', { p0: storeLinkLabel(impact?.slug ?? data.store.slug) })}</AppText>
         </View>
         <Card style={{ gap: 4, backgroundColor: c.surfaceMuted }}>
-          <AppText variant="label">只是想休息？</AppText>
-          <AppText variant="caption" muted>暫停營業（內容都保留）會在之後的版本推出。現在也可以先把策展取消發布，讀者就看不到內容。</AppText>
+          <AppText variant="label">{tr('只是想休息？')}</AppText>
+          <AppText variant="caption" muted>{tr('暫停營業（內容都保留）會在之後的版本推出。現在也可以先把策展取消發布，讀者就看不到內容。')}</AppText>
         </Card>
-        <TextField label={`請輸入書店名稱「${name}」以確認`} value={confirm} onChangeText={setConfirm} autoCapitalize="none" />
+        <TextField label={tr('請輸入書店名稱「{name}」以確認', { name })} value={confirm} onChangeText={setConfirm} autoCapitalize="none" />
         <Button
           kind="danger"
-          label="永久刪除書店"
+          label={tr('永久刪除書店')}
           disabled={confirm.trim() !== name}
           loading={del.isPending}
           onPress={() =>
             del.mutate(undefined, {
               onSuccess: () => {
-                Alert.alert('書店已刪除', '你的帳號還在，之後隨時可以重新開店。');
+                Alert.alert(tr('書店已刪除'), tr('你的帳號還在，之後隨時可以重新開店。'));
                 router.navigate('/my-store');
               },
-              onError: (e) => Alert.alert('沒有刪除成功', userMessage(e)),
+              onError: (e) => Alert.alert(tr('沒有刪除成功'), userMessage(e)),
             })
           }
         />
-        <Button kind="link" label="取消" onPress={() => router.back()} />
+        <Button kind="link" label={tr('取消')} onPress={() => router.back()} />
       </ScrollView>
     </Screen>
   );

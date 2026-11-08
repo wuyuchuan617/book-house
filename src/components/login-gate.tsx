@@ -5,6 +5,7 @@ import { AppText, Button } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
+import { tr } from '@/lib/i18n';
 
 /** A9 訪客登入引導：登入後 AuthProvider 會自動完成剛才的動作 */
 export function LoginGate() {
@@ -14,14 +15,15 @@ export function LoginGate() {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={cancelPending}>
-      <Pressable style={styles.backdrop} onPress={cancelPending} accessibilityLabel="關閉登入引導" />
+      <Pressable style={styles.backdrop} onPress={cancelPending} accessibilityLabel={tr('關閉登入引導')} />
       <View style={[styles.sheet, { backgroundColor: c.surface }]}>
-        <AppText variant="heading" style={styles.center}>登入後就能繼續</AppText>
+        <AppText variant="heading" style={styles.center}>{tr('登入後就能繼續')}</AppText>
         <AppText muted style={[styles.center, { marginTop: Spacing.sm, marginBottom: Spacing.xl }]}>
-          登入後會自動幫你完成剛才的動作，不用再按一次。
+          
+          {tr('登入後會自動幫你完成剛才的動作，不用再按一次。')}
         </AppText>
         <SignInButtons />
-        <Button kind="link" label="繼續逛逛" onPress={cancelPending} />
+        <Button kind="link" label={tr('繼續逛逛')} onPress={cancelPending} />
       </View>
     </Modal>
   );

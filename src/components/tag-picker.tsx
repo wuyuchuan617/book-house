@@ -5,6 +5,7 @@ import { Chip, chipRow, TextField } from '@/components/form';
 import { AppText, Button } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { friendlyError, useCreateCustomTag, useTags } from '@/lib/curations';
+import { tagLabel, tr } from '@/lib/i18n';
 
 const MAX_TAGS = 3;
 
@@ -28,7 +29,7 @@ export function TagPicker({ selected, onChange }: { selected: string[]; onChange
         setName('');
         setAdding(false);
       },
-      onError: (e) => Alert.alert('沒有新增成功', friendlyError(e.message)),
+      onError: (e) => Alert.alert(tr('沒有新增成功'), friendlyError(e.message)),
     });
 
   // 已選的排前面，讓自訂標籤看得到
@@ -37,27 +38,27 @@ export function TagPicker({ selected, onChange }: { selected: string[]; onChange
   return (
     <View style={{ gap: Spacing.sm }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <AppText variant="label">主題標籤</AppText>
-        <AppText variant="caption" muted>{`最多 ${MAX_TAGS} 個 · 讀者可在探索頁篩選`}</AppText>
+        <AppText variant="label">{tr('主題標籤')}</AppText>
+        <AppText variant="caption" muted>{tr('最多 {MAX_TAGS} 個 · 讀者可在探索頁篩選', { MAX_TAGS })}</AppText>
       </View>
       <View style={chipRow}>
         {ordered.map((t) => (
           <Chip
             key={t.id}
-            label={t.kind === 'custom' ? `#${t.name}` : t.name}
+            label={t.kind === 'custom' ? `#${t.name}` : tagLabel(t)}
             selected={selected.includes(t.id)}
             disabled={full && !selected.includes(t.id)}
             onPress={() => toggle(t.id)}
           />
         ))}
-        {ALLOW_CUSTOM && !adding ? <Chip label="＋ 自訂標籤" disabled={full} onPress={() => setAdding(true)} /> : null}
+        {ALLOW_CUSTOM && !adding ? <Chip label={tr('＋ 自訂標籤')} disabled={full} onPress={() => setAdding(true)} /> : null}
       </View>
       {adding ? (
         <View style={{ gap: Spacing.sm }}>
-          <TextField label="自訂標籤" max={12} value={name} onChangeText={setName} autoFocus placeholder="例如：觀星新手" onSubmitEditing={submit} returnKeyType="done" />
+          <TextField label={tr('自訂標籤')} max={12} value={name} onChangeText={setName} autoFocus placeholder={tr('例如：觀星新手')} onSubmitEditing={submit} returnKeyType="done" />
           <View style={{ flexDirection: 'row', gap: Spacing.md }}>
-            <Button kind="secondary" label="取消" onPress={() => { setAdding(false); setName(''); }} style={{ flex: 1 }} />
-            <Button label="新增標籤" disabled={!name.trim()} loading={createTag.isPending} onPress={submit} style={{ flex: 1 }} />
+            <Button kind="secondary" label={tr('取消')} onPress={() => { setAdding(false); setName(''); }} style={{ flex: 1 }} />
+            <Button label={tr('新增標籤')} disabled={!name.trim()} loading={createTag.isPending} onPress={submit} style={{ flex: 1 }} />
           </View>
         </View>
       ) : null}

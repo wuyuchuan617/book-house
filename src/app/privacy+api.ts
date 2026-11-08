@@ -1,5 +1,6 @@
-import { legalPage, PRIVACY } from '@/lib/legal';
+import { legalPage, requestLang } from '@/lib/legal';
 
-export function GET() {
-  return legalPage('隱私權政策', PRIVACY);
+/** /privacy（?lang=en 或依瀏覽器語言） */
+export function GET(request: Request) {
+  return legalPage('privacy', requestLang(request));
 }

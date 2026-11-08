@@ -12,6 +12,7 @@ import { track } from '@/lib/analytics';
 import { useMyStore } from '@/lib/queries';
 import { useMyReadings } from '@/lib/readings';
 import { shareStoreMessage, storeLinkLabel } from '@/lib/links';
+import { tr } from '@/lib/i18n';
 
 type Task = { label: string; done: boolean; onPress?: () => void; soon?: boolean };
 
@@ -34,21 +35,21 @@ export default function OpenStoreDoneScreen() {
 
   const tasks: Task[] = published
     ? [
-        { label: '發布第一檔策展', done: true },
+        { label: tr('發布第一檔策展'), done: true },
         {
-          label: `替 ${items.length} 本書寫推薦理由`,
+          label: tr('替 {length} 本書寫推薦理由', { length: items.length }),
           done: items.every((it) => !!it.note),
           onPress: () => router.push({ pathname: '/open-store/reasons', params: { id: cur!.id } }),
         },
         {
-          label: '記錄一本正在讀的書',
+          label: tr('記錄一本正在讀的書'),
           done: (readings?.length ?? 0) > 0,
           onPress: () => router.push({ pathname: '/reading/new', params: { from: 'open-store' } }),
         },
       ]
     : [
-        { label: '取一個策展標題', done: !!cur?.title },
-        { label: '放上至少 1 本書', done: items.length > 0 },
+        { label: tr('取一個策展標題'), done: !!cur?.title },
+        { label: tr('放上至少 1 本書'), done: items.length > 0 },
       ];
   const doneCount = tasks.filter((t) => t.done).length;
   const allDone = published && tasks.every((t) => t.done);
@@ -59,7 +60,7 @@ export default function OpenStoreDoneScreen() {
       { period: currentPeriod() },
       {
         onSuccess: (r) => router.replace({ pathname: '/curation/[id]', params: { id: r.id } }),
-        onError: (e) => Alert.alert('沒有成功', friendlyError(e.message)),
+        onError: (e) => Alert.alert(tr('沒有成功'), friendlyError(e.message)),
       },
     );
   };
@@ -68,13 +69,13 @@ export default function OpenStoreDoneScreen() {
     <Screen>
       <Stack.Screen options={{ title: '', headerBackVisible: false, gestureEnabled: false }} />
       <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg }}>
-        <AppText variant="title" style={{ textAlign: 'center' }}>書店開張了</AppText>
+        <AppText variant="title" style={{ textAlign: 'center' }}>{tr('書店開張了')}</AppText>
         <AppText muted style={{ textAlign: 'center' }}>
           {!published
-            ? '發布第一檔策展後，讀者才會在探索頁看到你。'
+            ? tr('發布第一檔策展後，讀者才會在探索頁看到你。')
             : allDone
-              ? '書店都準備好了！讀者現在可以在探索頁看到你'
-              : '讀者現在可以在探索頁看到你的第一檔策展'}
+              ? tr('書店都準備好了！讀者現在可以在探索頁看到你')
+              : tr('讀者現在可以在探索頁看到你的第一檔策展')}
         </AppText>
 
         <Card style={{ padding: 0, overflow: 'hidden' }}>
@@ -86,25 +87,25 @@ export default function OpenStoreDoneScreen() {
                     <BookCover key={it.id} title={it.books.title} url={it.books.cover_url} color={store.store.color} size="sm" />
                   ))}
                 </View>
-                <AppText variant="caption" style={{ color: '#FFFFFF' }}>{`${items.length} 本書`}</AppText>
+                <AppText variant="caption" style={{ color: '#FFFFFF' }}>{tr('{length} 本書', { length: items.length })}</AppText>
                 <AppText variant="heading" style={{ color: '#FFFFFF' }}>{cur!.title}</AppText>
               </>
             ) : (
-              <AppText variant="caption" style={{ color: '#FFFFFF' }}>策展封面會出現在這裡</AppText>
+              <AppText variant="caption" style={{ color: '#FFFFFF' }}>{tr('策展封面會出現在這裡')}</AppText>
             )}
           </View>
           <View style={{ padding: Spacing.lg, gap: 4 }}>
             <AppText variant="label">{store.store.name}</AppText>
-            <AppText variant="caption" muted>{published ? `${month} 月策展` : `${month} 月策展 · 尚未發布 · 讀者暫時看不到`}</AppText>
+            <AppText variant="caption" muted>{published ? tr('{month} 月策展', { month }) : tr('{month} 月策展 · 尚未發布 · 讀者暫時看不到', { month })}</AppText>
             {published && store.store.slug.startsWith('store-') ? (
-              <Button kind="link" label="幫書店取一個好記的網址" style={{ alignSelf: 'flex-start', paddingHorizontal: 0, minHeight: MinTouch }} onPress={() => router.push('/store-edit')} />
+              <Button kind="link" label={tr('幫書店取一個好記的網址')} style={{ alignSelf: 'flex-start', paddingHorizontal: 0, minHeight: MinTouch }} onPress={() => router.push('/store-edit')} />
             ) : null}
             {published ? (
               <View style={styles.linkRow}>
                 <AppText variant="caption" style={{ flex: 1 }} selectable>{link}</AppText>
                 <Button
                   kind="secondary"
-                  label="分享"
+                  label={tr('分享')}
                   style={{ minHeight: MinTouch }}
                   onPress={() => { track('share_link_copied', { channel: 'system' }); void Share.share({ message: shareStoreMessage(store.store.name, store.store.slug) }); }}
                 />
@@ -116,10 +117,10 @@ export default function OpenStoreDoneScreen() {
         <View style={{ gap: Spacing.sm }}>
           <AppText variant="label">
             {published
-              ? `讓書店更完整 · ${doneCount} / ${tasks.length}${allDone ? ' ✓' : ''}`
+              ? tr('讓書店更完整 · {doneCount} / {length}{p2}', { doneCount, length: tasks.length, p2: allDone ? ' ✓' : '' })
               : doneCount === tasks.length
-                ? '第一檔策展準備好了，發布就完成'
-                : `發布第一檔策展 · 還差 ${tasks.length - doneCount} 步`}
+                ? tr('第一檔策展準備好了，發布就完成')
+                : tr('發布第一檔策展 · 還差 {p0} 步', { p0: tasks.length - doneCount })}
           </AppText>
           {tasks.map((t) => (
             <Pressable
@@ -133,18 +134,18 @@ export default function OpenStoreDoneScreen() {
                 {t.done ? <Feather name="check" size={14} color="#FFFFFF" /> : null}
               </View>
               <AppText style={{ flex: 1, textDecorationLine: t.done ? 'line-through' : 'none', color: t.done ? c.textSecondary : c.text }}>{t.label}</AppText>
-              {t.soon ? <AppText variant="caption" muted>即將推出</AppText> : t.onPress && !t.done ? <Feather name="chevron-right" size={18} color={c.textTertiary} /> : null}
+              {t.soon ? <AppText variant="caption" muted>{tr('即將推出')}</AppText> : t.onPress && !t.done ? <Feather name="chevron-right" size={18} color={c.textTertiary} /> : null}
             </Pressable>
           ))}
-          {!published && cur ? <AppText variant="caption" muted>你填過的內容已存成草稿，接著完成就好。</AppText> : null}
+          {!published && cur ? <AppText variant="caption" muted>{tr('你填過的內容已存成草稿，接著完成就好。')}</AppText> : null}
         </View>
 
         {published ? (
-          <Button label="前往我的書店" onPress={() => router.navigate('/my-store')} />
+          <Button label={tr('前往我的書店')} onPress={() => router.navigate('/my-store')} />
         ) : (
           <>
-            <Button label={doneCount === tasks.length ? '去發布第一檔策展' : '完成第一檔策展'} loading={create.isPending} onPress={continueDraft} />
-            <Button kind="link" label="先去我的書店看看" onPress={() => router.navigate('/my-store')} />
+            <Button label={doneCount === tasks.length ? tr('去發布第一檔策展') : tr('完成第一檔策展')} loading={create.isPending} onPress={continueDraft} />
+            <Button kind="link" label={tr('先去我的書店看看')} onPress={() => router.navigate('/my-store')} />
           </>
         )}
       </ScrollView>

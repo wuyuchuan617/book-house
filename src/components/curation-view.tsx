@@ -7,6 +7,7 @@ import { AppText, Card } from '@/components/ui';
 import { MinTouch, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { CurationItem } from '@/lib/curations';
+import { tr } from '@/lib/i18n';
 
 /** 讀者看到的一檔策展（A3 書店頁、C7 以讀者身分預覽共用）。interactive：可點書看書籍視角、可收藏 */
 export function CurationView({ title, description, items, color, interactive }: {
@@ -20,11 +21,11 @@ export function CurationView({ title, description, items, color, interactive }: 
   const sorted = [...items].sort((a, b) => a.position - b.position);
   return (
     <View style={{ gap: Spacing.md }}>
-      <AppText variant="heading">{title || '（還沒有標題）'}</AppText>
+      <AppText variant="heading">{title || tr('（還沒有標題）')}</AppText>
       {description ? <AppText muted style={{ lineHeight: 23 }}>{description}</AppText> : null}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <AppText variant="label">{`書架 · ${sorted.length} 本`}</AppText>
-        <AppText variant="caption" muted>依店主排序</AppText>
+        <AppText variant="label">{tr('書架 · {length} 本', { length: sorted.length })}</AppText>
+        <AppText variant="caption" muted>{tr('依店主排序')}</AppText>
       </View>
       <Card style={{ gap: Spacing.lg }}>
         {sorted.map((it) => {
@@ -33,7 +34,7 @@ export function CurationView({ title, description, items, color, interactive }: 
               <BookCover title={it.books.title} url={it.books.cover_url} color={color} />
               <View style={{ flex: 1 }}>
                 <AppText variant="label">{it.books.title}</AppText>
-                <AppText variant="caption" muted>{it.books.authors.join('、')}</AppText>
+                <AppText variant="caption" muted>{it.books.authors.join(tr('、'))}</AppText>
                 {it.note ? <AppText variant="caption" style={{ marginTop: 6, lineHeight: 19 }}>{it.note}</AppText> : null}
               </View>
             </>
@@ -43,7 +44,7 @@ export function CurationView({ title, description, items, color, interactive }: 
             <View key={it.id} style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
               <Pressable
                 accessibilityRole="link"
-                accessibilityHint="看看還有哪些書店推薦這本書"
+                accessibilityHint={tr('看看還有哪些書店推薦這本書')}
                 onPress={() => interactive.onOpenBook(it.books.id)}
                 style={({ pressed }) => ({ flex: 1, flexDirection: 'row', gap: Spacing.md, opacity: pressed ? 0.7 : 1, minHeight: MinTouch })}>
                 {body}

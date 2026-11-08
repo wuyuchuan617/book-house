@@ -1,0 +1,6 @@
+{
+  "ios": {
+    "NSCameraUsageDescription": "Bookhaus uses the camera to scan a book’s barcode so you can find it right away.",
+    "NSPhotoLibraryUsageDescription": "Bookhaus needs access to your photos to change your store’s avatar and banner."
+  }
+}

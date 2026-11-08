@@ -15,6 +15,7 @@ import { useMyReadings } from '@/lib/readings';
 import { useSavedBooks } from '@/lib/browse';
 import { useMyStore } from '@/lib/queries';
 import { storeLinkLabel } from '@/lib/links';
+import { tr } from '@/lib/i18n';
 
 /** 未開店 → O1 入口；已開店 → M1 我的書店（策展列表）。TODO(M4)：店主閱讀分頁 R1–R7、M2 編輯書店 */
 export default function MyStoreScreen() {
@@ -32,16 +33,16 @@ export default function MyStoreScreen() {
     <Screen>
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         <View style={styles.header}>
-          <AppText variant="title">我的書店</AppText>
+          <AppText variant="title">{tr('我的書店')}</AppText>
           {session ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="設定" onPress={() => router.push('/settings')} style={styles.icon}>
+            <Pressable accessibilityRole="button" accessibilityLabel={tr('設定')} onPress={() => router.push('/settings')} style={styles.icon}>
               <Feather name="settings" size={20} color={c.text} />
             </Pressable>
           ) : null}
         </View>
 
         {!session ? (
-          <EmptyState title="開一間只屬於你的書店" body="登入後就能開店，三個步驟、大約 3 分鐘。" actionLabel="登入" onAction={() => requireAuth(() => router.push('/open-store'))} />
+          <EmptyState title={tr('開一間只屬於你的書店')} body={tr('登入後就能開店，三個步驟、大約 3 分鐘。')} actionLabel={tr('登入')} onAction={() => requireAuth(() => router.push('/open-store'))} />
         ) : isLoading ? (
           <ActivityIndicator style={{ marginTop: 48 }} />
         ) : !data ? (
@@ -54,13 +55,13 @@ export default function MyStoreScreen() {
                 <AppText variant="heading">{data.store.name}</AppText>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <AppText variant="caption" muted style={{ flex: 1 }}>{storeLinkLabel(data.store.slug)}</AppText>
-                  <Button kind="secondary" label="編輯書店" style={{ minHeight: MinTouch - 4 }} onPress={() => router.push('/store-edit')} />
+                  <Button kind="secondary" label={tr('編輯書店')} style={{ minHeight: MinTouch - 4 }} onPress={() => router.push('/store-edit')} />
                 </View>
-                <Button kind="link" label="讀者視角" style={{ minHeight: MinTouch, alignSelf: 'flex-start', paddingHorizontal: 0 }} onPress={() => router.push({ pathname: '/store/[slug]', params: { slug: data.store.slug } })} />
+                <Button kind="link" label={tr('讀者視角')} style={{ minHeight: MinTouch, alignSelf: 'flex-start', paddingHorizontal: 0 }} onPress={() => router.push({ pathname: '/store/[slug]', params: { slug: data.store.slug } })} />
                 <View style={[styles.stats, { borderTopColor: c.divider }]}>
-                  <Stat label="追蹤" value={data.stats?.follower_count ?? 0} />
-                  <Stat label="本月拜訪" value={data.stats?.visits_this_month ?? 0} />
-                  <Stat label="檔策展" value={data.stats?.published_curation_count ?? 0} />
+                  <Stat label={tr('追蹤')} value={data.stats?.follower_count ?? 0} />
+                  <Stat label={tr('本月拜訪')} value={data.stats?.visits_this_month ?? 0} />
+                  <Stat label={tr('檔策展')} value={data.stats?.published_curation_count ?? 0} />
                 </View>
               </View>
             </Card>
@@ -70,7 +71,7 @@ export default function MyStoreScreen() {
                 return (
                   <Pressable key={t} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => setTab(t)} style={[styles.segmentItem, selected && { backgroundColor: c.surface }]}>
                     <AppText variant="caption" style={{ fontWeight: '700', color: selected ? c.text : c.textSecondary }}>
-                      {t === 'curation' ? `策展 · ${curations?.length ?? 0}` : `店主閱讀 · ${readingCount}`}
+                      {t === 'curation' ? tr('策展 · {p0}', { p0: curations?.length ?? 0 }) : tr('店主閱讀 · {readingCount}', { readingCount })}
                     </AppText>
                   </Pressable>
                 );
@@ -91,14 +92,14 @@ export default function MyStoreScreen() {
 
 function OpenStoreIntro() {
   const steps = [
-    ['取店名、選店面顏色', '完成這步，書店就開張了'],
-    ['想好這個月的策展主題', '有範本可以挑 · 可略過'],
-    ['放上第一本書', '1 本就能發布 · 可略過'],
+    [tr('取店名、選店面顏色'), tr('完成這步，書店就開張了')],
+    [tr('想好這個月的策展主題'), tr('有範本可以挑 · 可略過')],
+    [tr('放上第一本書'), tr('1 本就能發布 · 可略過')],
   ];
   return (
     <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg }}>
-      <AppText variant="heading">開一間只屬於你的書店</AppText>
-      <AppText muted>三個步驟、大約 3 分鐘。除了店名，其他都能之後再補。</AppText>
+      <AppText variant="heading">{tr('開一間只屬於你的書店')}</AppText>
+      <AppText muted>{tr('三個步驟、大約 3 分鐘。除了店名，其他都能之後再補。')}</AppText>
       {steps.map(([t, s], i) => (
         <View key={t} style={{ flexDirection: 'row', gap: Spacing.md }}>
           <AppText variant="label">{i + 1}</AppText>
@@ -108,8 +109,8 @@ function OpenStoreIntro() {
           </View>
         </View>
       ))}
-      <Button label="開始開店" onPress={() => router.push('/open-store')} />
-      <Button kind="link" label="先看看別人的書店" onPress={() => router.navigate('/')} />
+      <Button label={tr('開始開店')} onPress={() => router.push('/open-store')} />
+      <Button kind="link" label={tr('先看看別人的書店')} onPress={() => router.navigate('/')} />
     </ScrollView>
   );
 }

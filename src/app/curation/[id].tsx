@@ -32,6 +32,7 @@ import {
 } from '@/lib/curations';
 import { currentPeriod, monthOf, nextPeriod, periodLabel, periodRelative, timeAgo } from '@/lib/period';
 import { useMyStore } from '@/lib/queries';
+import { tr } from '@/lib/i18n';
 
 /**
  * C1／C2 新增策展、C6 編輯策展。
@@ -94,9 +95,9 @@ export default function CurationEditorScreen() {
   // 已發布且有未儲存的變更：離開前確認
   const [allowLeave, setAllowLeave] = useState(false);
   usePreventRemove(isPublished && dirty && !allowLeave, ({ repeat }) => {
-    Alert.alert('捨棄未儲存的變更？', '標題與說明的修改還沒有更新給讀者。', [
-      { text: '繼續編輯', style: 'cancel' },
-      { text: '捨棄', style: 'destructive', onPress: repeat },
+    Alert.alert(tr('捨棄未儲存的變更？'), tr('標題與說明的修改還沒有更新給讀者。'), [
+      { text: tr('繼續編輯'), style: 'cancel' },
+      { text: tr('捨棄'), style: 'destructive', onPress: repeat },
     ]);
   });
 
@@ -105,7 +106,7 @@ export default function CurationEditorScreen() {
   const tagIds = cur?.curation_tags.map((t) => t.tag_id) ?? [];
 
   if (isLoading) return <ActivityIndicator style={{ marginTop: 48 }} />;
-  if (!cur || !store) return <EmptyState title="找不到這檔策展" body="它可能已經被刪除了。" actionLabel="回我的書店" onAction={() => router.navigate('/my-store')} />;
+  if (!cur || !store) return <EmptyState title={tr('找不到這檔策展')} body={tr('它可能已經被刪除了。')} actionLabel={tr('回我的書店')} onAction={() => router.navigate('/my-store')} />;
 
   const color = store.store.color;
   const month = monthOf(cur.period);
@@ -116,18 +117,18 @@ export default function CurationEditorScreen() {
   const otherLiveSameMonth = mine?.some((m) => m.period === cur.period && m.status !== 'draft' && m.id !== cur.id);
 
   const missing: string[] = [];
-  if (!title.trim()) missing.push('取一個策展標題');
-  if (items.length === 0) missing.push('放上至少 1 本書');
+  if (!title.trim()) missing.push(tr('取一個策展標題'));
+  if (items.length === 0) missing.push(tr('放上至少 1 本書'));
   const canPublish = cur.status === 'draft' && missing.length === 0 && !isPast && !otherLiveSameMonth;
-  const publishLabel = isNext ? `預約發布（${month}/1）` : '發布策展';
+  const publishLabel = isNext ? tr('預約發布（{month}/1）', { month }) : tr('發布策展');
 
   const banner = (() => {
-    if (cur.status === 'published') return `已發布於 ${month} 月。標題與說明按「儲存並更新」才會送出；書架的變更（加書、排序、理由）會立刻更新給讀者。`;
-    if (cur.status === 'scheduled') return `已預約，${month}/1 自動上架。上架前都能修改。`;
-    if (isPast) return `這是 ${month} 月的草稿，已經過了發布時間。可以從「⋯」複製成新的草稿接著用。`;
-    if (otherLiveSameMonth) return `${month} 月已經有一檔發布中的策展。要發布這檔，請先取消發布那一檔。`;
-    if (isNext) return `${currentLive ? `${monthOf(currentPeriod())} 月已發布。` : ''}這檔會在 ${month}/1 自動上架，上架前都能修改。`;
-    return `這是 ${month} 月策展，發布後讀者馬上就看得到。`;
+    if (cur.status === 'published') return tr('已發布於 {month} 月。標題與說明按「儲存並更新」才會送出；書架的變更（加書、排序、理由）會立刻更新給讀者。', { month });
+    if (cur.status === 'scheduled') return tr('已預約，{month}/1 自動上架。上架前都能修改。', { month });
+    if (isPast) return tr('這是 {month} 月的草稿，已經過了發布時間。可以從「⋯」複製成新的草稿接著用。', { month });
+    if (otherLiveSameMonth) return tr('{month} 月已經有一檔發布中的策展。要發布這檔，請先取消發布那一檔。', { month });
+    if (isNext) return tr('{p0}這檔會在 {month}/1 自動上架，上架前都能修改。', { p0: currentLive ? tr('{p0} 月已發布。', { p0: monthOf(currentPeriod()) }) : '', month });
+    return tr('這是 {month} 月策展，發布後讀者馬上就看得到。', { month });
   })();
 
   const move = (it: CurationItem, delta: -1 | 1 | 'top') => {
@@ -142,23 +143,23 @@ export default function CurationEditorScreen() {
       if (j < 0 || j >= ids.length) return;
       [ids[i], ids[j]] = [ids[j], ids[i]];
     }
-    reorder.mutate({ curationId: cur.id, itemIds: ids }, { onError: (e) => Alert.alert('排序沒有成功', friendlyError(e.message)) });
+    reorder.mutate({ curationId: cur.id, itemIds: ids }, { onError: (e) => Alert.alert(tr('排序沒有成功'), friendlyError(e.message)) });
   };
 
   const remove = (it: CurationItem) =>
-    removeItem.mutate({ curationId: cur.id, itemId: it.id }, { onError: (e) => Alert.alert('沒有移除成功', friendlyError(e.message)) });
+    removeItem.mutate({ curationId: cur.id, itemId: it.id }, { onError: (e) => Alert.alert(tr('沒有移除成功'), friendlyError(e.message)) });
 
   const onPublish = async () => {
     try {
       if (dirty) await update.mutateAsync({ id: cur.id, title, description });
       const res = await publish.mutateAsync(cur.id);
       Alert.alert(
-        res.status === 'scheduled' ? `已預約 ${month}/1 上架` : '策展發布了',
-        res.status === 'scheduled' ? '上架前都還能修改。' : '讀者現在可以在探索頁看到這檔策展。',
+        res.status === 'scheduled' ? tr('已預約 {month}/1 上架', { month }) : tr('策展發布了'),
+        res.status === 'scheduled' ? tr('上架前都還能修改。') : tr('讀者現在可以在探索頁看到這檔策展。'),
       );
       router.back();
     } catch (e) {
-      Alert.alert('沒有發布成功', friendlyError((e as Error).message));
+      Alert.alert(tr('沒有發布成功'), friendlyError((e as Error).message));
     }
   };
 
@@ -167,7 +168,7 @@ export default function CurationEditorScreen() {
       { id: cur.id, title, description },
       {
         onSuccess: () => setSavedAt(new Date().toISOString()),
-        onError: (e) => Alert.alert('沒有儲存成功', friendlyError(e.message)),
+        onError: (e) => Alert.alert(tr('沒有儲存成功'), friendlyError(e.message)),
       },
     );
 
@@ -180,9 +181,9 @@ export default function CurationEditorScreen() {
     <Screen>
       <Stack.Screen
         options={{
-          title: cur.status === 'draft' ? '新增策展' : '編輯策展',
+          title: cur.status === 'draft' ? tr('新增策展') : tr('編輯策展'),
           headerRight: () => (
-            <Pressable accessibilityRole="button" accessibilityLabel="更多操作" onPress={() => setActionsOpen(true)} style={styles.headerBtn}>
+            <Pressable accessibilityRole="button" accessibilityLabel={tr('更多操作')} onPress={() => setActionsOpen(true)} style={styles.headerBtn}>
               <Feather name="more-horizontal" size={22} color={c.text} />
             </Pressable>
           ),
@@ -192,12 +193,12 @@ export default function CurationEditorScreen() {
         <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.xl, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
           <AppText variant="caption" muted accessibilityLiveRegion="polite">
             {isPublished
-              ? dirty ? '● 有未儲存的變更' : '已發布 · 讀者看得到'
-              : update.isPending ? '儲存中…' : savedAt ? `已自動存成草稿 · ${timeAgo(savedAt)}` : '會自動存成草稿'}
+              ? dirty ? tr('● 有未儲存的變更') : tr('已發布 · 讀者看得到')
+              : update.isPending ? tr('儲存中…') : savedAt ? tr('已自動存成草稿 · {p0}', { p0: timeAgo(savedAt) }) : tr('會自動存成草稿')}
           </AppText>
 
           <View style={{ gap: 6 }}>
-            <AppText variant="label">策展月份</AppText>
+            <AppText variant="label">{tr('策展月份')}</AppText>
             <AppText style={{ fontSize: 16, fontWeight: '600' }}>
               {periodLabel(cur.period)}
               <AppText muted>{periodRelative(cur.period) ? ` · ${periodRelative(cur.period)}` : ''}</AppText>
@@ -207,31 +208,31 @@ export default function CurationEditorScreen() {
             </View>
           </View>
 
-          <TextField label="策展標題" max={TITLE_MAX} value={title} onChangeText={setTitle} placeholder="例如：冬天的星空指南" />
+          <TextField label={tr('策展標題')} max={TITLE_MAX} value={title} onChangeText={setTitle} placeholder={tr('例如：冬天的星空指南')} />
           <TagPicker
             selected={tagIds}
-            onChange={(ids) => setTags.mutate({ id: cur.id, tagIds: ids }, { onError: (e) => Alert.alert('沒有成功', friendlyError(e.message)) })}
+            onChange={(ids) => setTags.mutate({ id: cur.id, tagIds: ids }, { onError: (e) => Alert.alert(tr('沒有成功'), friendlyError(e.message)) })}
           />
           <TextField
-            label="策展說明"
+            label={tr('策展說明')}
             optional
             multiline
             max={DESCRIPTION_MAX}
             value={description}
             onChangeText={setDescription}
-            placeholder="這個月為什麼選這些書？讀完會有什麼感覺？"
+            placeholder={tr('這個月為什麼選這些書？讀完會有什麼感覺？')}
           />
 
           <View style={{ gap: Spacing.sm }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <AppText variant="label">{items.length ? `書架 · ${items.length} 本` : '書架'}</AppText>
-              <AppText variant="caption" muted>{items.length > 1 ? '點書可以排序、改理由' : '建議 3–7 本'}</AppText>
+              <AppText variant="label">{items.length ? tr('書架 · {length} 本', { length: items.length }) : tr('書架')}</AppText>
+              <AppText variant="caption" muted>{items.length > 1 ? tr('點書可以排序、改理由') : tr('建議 3–7 本')}</AppText>
             </View>
             {items.length === 0 ? (
               <Pressable accessibilityRole="button" onPress={() => setPickerOpen(true)} style={[styles.empty, { borderColor: c.border }]}>
                 <Feather name="plus" size={22} color={c.primary} />
-                <AppText variant="label" style={{ color: c.primary }}>加入第一本書</AppText>
-                <AppText variant="caption" muted>搜尋書名或作者</AppText>
+                <AppText variant="label" style={{ color: c.primary }}>{tr('加入第一本書')}</AppText>
+                <AppText variant="caption" muted>{tr('搜尋書名或作者')}</AppText>
               </Pressable>
             ) : (
               <Card style={{ paddingVertical: Spacing.xs }}>
@@ -239,22 +240,22 @@ export default function CurationEditorScreen() {
                   <Pressable
                     key={it.id}
                     accessibilityRole="button"
-                    accessibilityLabel={`第 ${i + 1} 本：${it.books.title}`}
-                    accessibilityHint="開啟排序、推薦理由與移除選項"
+                    accessibilityLabel={tr('第 {p0} 本：{title}', { p0: i + 1, title: it.books.title })}
+                    accessibilityHint={tr('開啟排序、推薦理由與移除選項')}
                     onPress={() => setItemMenu(it)}
                     style={[styles.item, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.divider }]}>
                     <BookCover title={it.books.title} url={it.books.cover_url} color={color} size="sm" />
                     <View style={{ flex: 1 }}>
                       <AppText variant="label" numberOfLines={2}>{it.books.title}</AppText>
                       {it.note ? (
-                        <AppText variant="caption" muted numberOfLines={2}>{`理由：${it.note}`}</AppText>
+                        <AppText variant="caption" muted numberOfLines={2}>{tr('理由：{note}', { note: it.note })}</AppText>
                       ) : (
-                        <AppText variant="caption" style={{ color: c.primary }}>＋ 加上推薦理由</AppText>
+                        <AppText variant="caption" style={{ color: c.primary }}>{tr('＋ 加上推薦理由')}</AppText>
                       )}
                     </View>
                     {justAdded === it.books.id ? (
                       <View style={[styles.badge, { backgroundColor: c.successSurface }]}>
-                        <AppText variant="caption" style={{ color: c.success, fontWeight: '700' }}>剛加入</AppText>
+                        <AppText variant="caption" style={{ color: c.success, fontWeight: '700' }}>{tr('剛加入')}</AppText>
                       </View>
                     ) : (
                       <Feather name="more-vertical" size={18} color={c.textTertiary} />
@@ -263,7 +264,7 @@ export default function CurationEditorScreen() {
                 ))}
               </Card>
             )}
-            {items.length > 0 ? <Button kind="secondary" label="再加一本書" onPress={() => setPickerOpen(true)} /> : null}
+            {items.length > 0 ? <Button kind="secondary" label={tr('再加一本書')} onPress={() => setPickerOpen(true)} /> : null}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -274,32 +275,32 @@ export default function CurationEditorScreen() {
           <>
             <AppText variant="caption" muted style={{ textAlign: 'center' }}>
               {isPast || otherLiveSameMonth
-                ? '這檔目前不能發布'
+                ? tr('這檔目前不能發布')
                 : missing.length
-                  ? `還差 ${missing.length} 步：${missing.join('、')}`
+                  ? tr('還差 {length} 步：{p1}', { length: missing.length, p1: missing.join(tr('、')) })
                   : items.length < 3
-                    ? `可以${isNext ? '預約' : ''}發布了，再加 ${3 - items.length} 本會更完整`
+                    ? tr('可以{p0}發布了，再加 {p1} 本會更完整', { p0: isNext ? tr('預約') : '', p1: 3 - items.length })
                     : items.length <= 7
-                      ? `很棒，${items.length} 本剛剛好，可以${isNext ? '預約' : ''}發布`
-                      : `準備好了，可以${isNext ? '預約' : ''}發布`}
+                      ? tr('很棒，{length} 本剛剛好，可以{p1}發布', { length: items.length, p1: isNext ? tr('預約') : '' })
+                      : tr('準備好了，可以{p0}發布', { p0: isNext ? tr('預約') : '' })}
             </AppText>
             <View style={styles.footerRow}>
-              <Button kind="secondary" label="預覽" style={{ flex: 1 }} onPress={() => router.push({ pathname: '/curation/preview/[id]', params: { id: cur.id } })} />
+              <Button kind="secondary" label={tr('預覽')} style={{ flex: 1 }} onPress={() => router.push({ pathname: '/curation/preview/[id]', params: { id: cur.id } })} />
               <Button label={publishLabel} style={{ flex: 2 }} disabled={!canPublish} loading={publish.isPending} onPress={onPublish} />
             </View>
           </>
         ) : isPublished && dirty ? (
           <View style={styles.footerRow}>
-            <Button kind="secondary" label="捨棄變更" style={{ flex: 1 }} onPress={discard} />
-            <Button label="儲存並更新" style={{ flex: 2 }} disabled={!title.trim()} loading={update.isPending} onPress={onSave} />
+            <Button kind="secondary" label={tr('捨棄變更')} style={{ flex: 1 }} onPress={discard} />
+            <Button label={tr('儲存並更新')} style={{ flex: 2 }} disabled={!title.trim()} loading={update.isPending} onPress={onSave} />
           </View>
         ) : cur.status === 'scheduled' ? (
           <View style={styles.footerRow}>
-            <Button kind="secondary" label="預覽" style={{ flex: 1 }} onPress={() => router.push({ pathname: '/curation/preview/[id]', params: { id: cur.id } })} />
-            <Button kind="secondary" label="取消預約" style={{ flex: 1 }} loading={unpublish.isPending} onPress={() => unpublish.mutate(cur.id)} />
+            <Button kind="secondary" label={tr('預覽')} style={{ flex: 1 }} onPress={() => router.push({ pathname: '/curation/preview/[id]', params: { id: cur.id } })} />
+            <Button kind="secondary" label={tr('取消預約')} style={{ flex: 1 }} loading={unpublish.isPending} onPress={() => unpublish.mutate(cur.id)} />
           </View>
         ) : (
-          <Button kind="secondary" label="以讀者身分預覽" onPress={() => router.push({ pathname: '/curation/preview/[id]', params: { id: cur.id } })} />
+          <Button kind="secondary" label={tr('以讀者身分預覽')} onPress={() => router.push({ pathname: '/curation/preview/[id]', params: { id: cur.id } })} />
         )}
       </SafeAreaView>
 
@@ -320,20 +321,20 @@ export default function CurationEditorScreen() {
       <ActionSheet
         visible={!!itemMenu}
         title={itemMenu?.books.title}
-        subtitle={itemMenu ? `書架上第 ${items.findIndex((x) => x.id === itemMenu.id) + 1} 本` : undefined}
+        subtitle={itemMenu ? tr('書架上第 {p0} 本', { p0: items.findIndex((x) => x.id === itemMenu.id) + 1 }) : undefined}
         onClose={() => setItemMenu(null)}
         actions={
           itemMenu
             ? [
-                { label: itemMenu.note ? '編輯推薦理由' : '加上推薦理由', onPress: () => setNoteFor(itemMenu) },
-                { label: '移到最前面', disabled: items[0]?.id === itemMenu.id, onPress: () => move(itemMenu, 'top') },
-                { label: '往前移', disabled: items[0]?.id === itemMenu.id, onPress: () => move(itemMenu, -1) },
-                { label: '往後移', disabled: items[items.length - 1]?.id === itemMenu.id, onPress: () => move(itemMenu, 1) },
+                { label: itemMenu.note ? tr('編輯推薦理由') : tr('加上推薦理由'), onPress: () => setNoteFor(itemMenu) },
+                { label: tr('移到最前面'), disabled: items[0]?.id === itemMenu.id, onPress: () => move(itemMenu, 'top') },
+                { label: tr('往前移'), disabled: items[0]?.id === itemMenu.id, onPress: () => move(itemMenu, -1) },
+                { label: tr('往後移'), disabled: items[items.length - 1]?.id === itemMenu.id, onPress: () => move(itemMenu, 1) },
                 {
-                  label: '從書架移除',
+                  label: tr('從書架移除'),
                   destructive: true,
                   disabled: isPublished && items.length === 1,
-                  sub: isPublished && items.length === 1 ? '發布中的策展至少要留 1 本書' : undefined,
+                  sub: isPublished && items.length === 1 ? tr('發布中的策展至少要留 1 本書') : undefined,
                   onPress: () => remove(itemMenu),
                 },
               ]
@@ -345,21 +346,21 @@ export default function CurationEditorScreen() {
         <Screen>
           <SafeAreaView style={{ flex: 1 }}>
             <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg }} keyboardShouldPersistTaps="handled">
-              <AppText variant="heading">推薦理由</AppText>
+              <AppText variant="heading">{tr('推薦理由')}</AppText>
               {noteFor ? (
                 <NoteForm
                   key={noteFor.id}
                   book={noteFor.books}
                   storeColor={color}
                   initial={noteFor.note ?? ''}
-                  skipLabel="取消"
-                  submitLabel="儲存"
+                  skipLabel={tr('取消')}
+                  submitLabel={tr('儲存')}
                   saving={updateNote.isPending}
                   onSkip={() => setNoteFor(null)}
                   onSubmit={(note) =>
                     updateNote.mutate(
                       { curationId: cur.id, itemId: noteFor.id, note },
-                      { onSuccess: () => setNoteFor(null), onError: (e) => Alert.alert('沒有儲存成功', friendlyError(e.message)) },
+                      { onSuccess: () => setNoteFor(null), onError: (e) => Alert.alert(tr('沒有儲存成功'), friendlyError(e.message)) },
                     )
                   }
                 />

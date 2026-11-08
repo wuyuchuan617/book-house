@@ -10,6 +10,7 @@ import { AppText, Button, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { friendlyError, NOTE_MAX, useBookSearch, useCreateManualBook, type Book } from '@/lib/curations';
+import { tr } from '@/lib/i18n';
 
 /** 輸入停一下才查詢，避免每打一個字就打一次 API */
 function useDebounced<T>(value: T, ms = 350) {
@@ -22,7 +23,7 @@ function useDebounced<T>(value: T, ms = 350) {
 }
 
 const bookMeta = (b: Pick<Book, 'authors' | 'published_year' | 'publisher'>) =>
-  [b.authors.join('、'), b.publisher, b.published_year].filter(Boolean).join(' · ');
+  [b.authors.join(tr('、')), b.publisher, b.published_year].filter(Boolean).join(' · ');
 
 // ---------------------------------------------------------------------------
 // 搜尋面板：O4 直接嵌在頁面裡，C3 放在 BookPicker 彈出面板裡
@@ -49,7 +50,7 @@ export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, 
 
   const renderRow = (b: Book) => {
     const picked = isPicked(b);
-    const label = picked ? (mode === 'multi' ? '已加入' : '已在閱讀中') : mode === 'multi' ? '加入' : '選這本';
+    const label = picked ? (mode === 'multi' ? tr('已加入') : tr('已在閱讀中')) : mode === 'multi' ? tr('加入') : tr('選這本');
     return (
       <View key={b.id} style={[styles.row, { borderBottomColor: c.divider }]}>
         <BookCover title={b.title} url={b.cover_url} color={storeColor} size="sm" />
@@ -59,7 +60,7 @@ export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, 
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${label}：${b.title}`}
+          accessibilityLabel={tr('{label}：{title}', { label, title: b.title })}
           accessibilityState={{ disabled: picked }}
           disabled={picked || busyId === b.id}
           onPress={() => onPick(b)}
@@ -83,8 +84,8 @@ export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, 
       <View style={[styles.search, { backgroundColor: c.surface, borderColor: c.border }]}>
         <Feather name="search" size={18} color={c.textSecondary} />
         <TextInput
-          accessibilityLabel="搜尋書名或作者"
-          placeholder="搜尋書名或作者"
+          accessibilityLabel={tr('搜尋書名或作者')}
+          placeholder={tr('搜尋書名或作者')}
           placeholderTextColor={c.textTertiary}
           value={query}
           onChangeText={setQuery}
@@ -93,12 +94,12 @@ export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, 
           style={[styles.searchInput, { color: c.text }]}
         />
         {query ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="清除搜尋" onPress={() => setQuery('')} style={styles.clear}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tr('清除搜尋')} onPress={() => setQuery('')} style={styles.clear}>
             <Feather name="x-circle" size={18} color={c.textTertiary} />
           </Pressable>
         ) : null}
         {Platform.OS !== 'web' ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="掃描書背條碼" onPress={() => setScanning(true)} style={[styles.clear, { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: c.border }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tr('掃描書背條碼')} onPress={() => setScanning(true)} style={[styles.clear, { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: c.border }]}>
             <Feather name="maximize" size={18} color={c.primary} />
           </Pressable>
         ) : null}
@@ -107,7 +108,7 @@ export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, 
 
       {tooShort ? (
         <>
-          <AppText variant="caption" muted>輸入 2 個字以上開始搜尋，或按右邊掃描書背條碼</AppText>
+          <AppText variant="caption" muted>{tr('輸入 2 個字以上開始搜尋，或按右邊掃描書背條碼')}</AppText>
           {suggestions?.books.length ? (
             <>
               <AppText variant="label" style={{ marginTop: Spacing.sm }}>{suggestions.label}</AppText>
@@ -119,22 +120,22 @@ export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, 
         <ActivityIndicator style={{ marginVertical: Spacing.lg }} />
       ) : error ? (
         <View style={{ gap: Spacing.sm }}>
-          <AppText variant="caption" muted>{`搜尋沒有成功：${friendlyError(error.message)}`}</AppText>
-          <Button kind="secondary" label="再試一次" onPress={() => refetch()} />
+          <AppText variant="caption" muted>{tr('搜尋沒有成功：{p0}', { p0: friendlyError(error.message) })}</AppText>
+          <Button kind="secondary" label={tr('再試一次')} onPress={() => refetch()} />
         </View>
       ) : (
         <>
           <AppText variant="caption" muted accessibilityLiveRegion="polite">
             {data?.length
-              ? `找到 ${data.length} 本${pickedCount ? ` · ${mode === 'multi' ? '書架上已有' : '已在閱讀中'} ${pickedCount} 本` : ''}`
-              : '沒有找到符合的書'}
+              ? tr('找到 {length} 本{p1}', { length: data.length, p1: pickedCount ? tr(' · {p0} {pickedCount} 本', { p0: mode === 'multi' ? tr('書架上已有') : tr('已在閱讀中'), pickedCount }) : '' })
+              : tr('沒有找到符合的書')}
           </AppText>
           {data?.map(renderRow)}
         </>
       )}
 
       {!tooShort ? (
-        <Button kind="link" label={`找不到？手動新增「${q.trim()}」`} onPress={() => onManual(q.trim())} />
+        <Button kind="link" label={tr('找不到？手動新增「{p0}」', { p0: q.trim() })} onPress={() => onManual(q.trim())} />
       ) : null}
     </View>
   );
@@ -143,7 +144,7 @@ export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, 
 // ---------------------------------------------------------------------------
 // C4 手動新增書籍：只要書名＋作者
 // ---------------------------------------------------------------------------
-export function ManualBookForm({ initialTitle, storeColor, submitLabel = '加入書架', onCreated }: {
+export function ManualBookForm({ initialTitle, storeColor, submitLabel = tr('加入書架'), onCreated }: {
   initialTitle: string;
   storeColor: StoreColor;
   submitLabel?: string;
@@ -156,14 +157,14 @@ export function ManualBookForm({ initialTitle, storeColor, submitLabel = '加入
 
   return (
     <View style={{ gap: Spacing.lg }}>
-      <AppText muted>找不到這本書？填書名和作者就能加入書架。</AppText>
-      <TextField label="書名" value={title} onChangeText={setTitle} max={200} autoFocus />
-      <TextField label="作者" value={author} onChangeText={setAuthor} max={100} returnKeyType="done" />
+      <AppText muted>{tr('找不到這本書？填書名和作者就能加入書架。')}</AppText>
+      <TextField label={tr('書名')} value={title} onChangeText={setTitle} max={200} autoFocus />
+      <TextField label={tr('作者')} value={author} onChangeText={setAuthor} max={100} returnKeyType="done" />
       <View style={{ flexDirection: 'row', gap: Spacing.md, alignItems: 'center' }}>
-        <BookCover title={title || '書名'} color={storeColor} size="lg" />
+        <BookCover title={title || tr('書名')} color={storeColor} size="lg" />
         <View style={{ flex: 1 }}>
-          <AppText variant="label">自動產生的封面</AppText>
-          <AppText variant="caption" muted>用你的店面顏色＋書名</AppText>
+          <AppText variant="label">{tr('自動產生的封面')}</AppText>
+          <AppText variant="caption" muted>{tr('用你的店面顏色＋書名')}</AppText>
         </View>
       </View>
       <Button
@@ -173,7 +174,7 @@ export function ManualBookForm({ initialTitle, storeColor, submitLabel = '加入
         onPress={() =>
           create.mutate(
             { title, author },
-            { onSuccess: onCreated, onError: (e) => Alert.alert('沒有新增成功', friendlyError(e.message)) },
+            { onSuccess: onCreated, onError: (e) => Alert.alert(tr('沒有新增成功'), friendlyError(e.message)) },
           )
         }
       />
@@ -184,9 +185,9 @@ export function ManualBookForm({ initialTitle, storeColor, submitLabel = '加入
 // ---------------------------------------------------------------------------
 // C5／O7：推薦理由（選填，最多 120 字）
 // ---------------------------------------------------------------------------
-export const NOTE_PROMPTS = ['適合誰讀', '最難忘的一段', '跟上一本的關係', '讀完我做了什麼'];
+export const NOTE_PROMPTS = () => [tr('適合誰讀'), tr('最難忘的一段'), tr('跟上一本的關係'), tr('讀完我做了什麼')];
 
-export function NoteForm({ book, storeColor, caption, prompts = NOTE_PROMPTS, initial = '', skipLabel = '先略過', submitLabel = '加入書架', saving, onSkip, onSubmit }: {
+export function NoteForm({ book, storeColor, caption, prompts = NOTE_PROMPTS(), initial = '', skipLabel = tr('先略過'), submitLabel = tr('加入書架'), saving, onSkip, onSubmit }: {
   book: Book;
   storeColor: StoreColor;
   caption?: string;
@@ -212,19 +213,19 @@ export function NoteForm({ book, storeColor, caption, prompts = NOTE_PROMPTS, in
         </View>
       </View>
       <TextField
-        label="為什麼放進這個月？"
+        label={tr('為什麼放進這個月？')}
         optional
         multiline
         max={NOTE_MAX}
         value={note}
         onChangeText={setNote}
-        placeholder="一兩句話就好，讀者會在書架上看到"
+        placeholder={tr('一兩句話就好，讀者會在書架上看到')}
       />
       <View style={{ gap: Spacing.sm }}>
-        <AppText variant="caption" muted>沒靈感？從這裡開始</AppText>
+        <AppText variant="caption" muted>{tr('沒靈感？從這裡開始')}</AppText>
         <View style={chipRow}>
           {prompts.map((p) => (
-            <Chip key={p} label={p} onPress={() => setNote((n) => `${n}${n && !n.endsWith('\n') ? '\n' : ''}${p}：`.slice(0, NOTE_MAX))} />
+            <Chip key={p} label={p} onPress={() => setNote((n) => tr('{n}{p1}{p}：', { n, p1: n && !n.endsWith('\n') ? '\n' : '', p }).slice(0, NOTE_MAX))} />
           ))}
         </View>
       </View>
@@ -269,7 +270,7 @@ export function BookPicker({ visible, mode, storeColor, pickedIds, askNote, shel
       if (mode === 'single') close();
       else setStep({ kind: 'search' });
     } catch (e) {
-      Alert.alert('沒有加入成功', friendlyError((e as Error).message));
+      Alert.alert(tr('沒有加入成功'), friendlyError((e as Error).message));
     } finally {
       setBusyId(null);
     }
@@ -280,7 +281,7 @@ export function BookPicker({ visible, mode, storeColor, pickedIds, askNote, shel
     else void add(book, null);
   };
 
-  const title = step.kind === 'manual' ? '手動新增書籍' : step.kind === 'note' ? '推薦理由' : mode === 'multi' ? '加入書籍' : '選一本書';
+  const title = step.kind === 'manual' ? tr('手動新增書籍') : step.kind === 'note' ? tr('推薦理由') : mode === 'multi' ? tr('加入書籍') : tr('選一本書');
   const back = step.kind === 'search' ? null : () => setStep({ kind: 'search' });
 
   return (
@@ -290,9 +291,9 @@ export function BookPicker({ visible, mode, storeColor, pickedIds, askNote, shel
           <View style={[styles.bar, { borderBottomColor: c.divider }]}>
             <View style={styles.barSide}>
               {back ? (
-                <Pressable accessibilityRole="button" accessibilityLabel="回到搜尋" onPress={back} style={styles.barBtn}>
+                <Pressable accessibilityRole="button" accessibilityLabel={tr('回到搜尋')} onPress={back} style={styles.barBtn}>
                   <Feather name="chevron-left" size={22} color={c.text} />
-                  <AppText variant="caption">{step.kind === 'note' ? '搜尋結果' : '搜尋'}</AppText>
+                  <AppText variant="caption">{step.kind === 'note' ? tr('搜尋結果') : tr('搜尋')}</AppText>
                 </Pressable>
               ) : null}
             </View>
@@ -300,7 +301,7 @@ export function BookPicker({ visible, mode, storeColor, pickedIds, askNote, shel
             <View style={[styles.barSide, { alignItems: 'flex-end' }]}>
               {step.kind === 'search' ? (
                 <Pressable accessibilityRole="button" onPress={close} style={styles.barBtn}>
-                  <AppText style={{ color: c.primary, fontWeight: '700' }}>{mode === 'multi' ? '完成' : '取消'}</AppText>
+                  <AppText style={{ color: c.primary, fontWeight: '700' }}>{mode === 'multi' ? tr('完成') : tr('取消')}</AppText>
                 </Pressable>
               ) : null}
             </View>
@@ -322,7 +323,7 @@ export function BookPicker({ visible, mode, storeColor, pickedIds, askNote, shel
                 <ManualBookForm
                   initialTitle={step.query}
                   storeColor={storeColor}
-                  submitLabel={mode === 'multi' ? (askNote ? '下一步：推薦理由' : '加入書架') : '選這本'}
+                  submitLabel={mode === 'multi' ? (askNote ? tr('下一步：推薦理由') : tr('加入書架')) : tr('選這本')}
                   onCreated={pick}
                 />
               ) : (
@@ -330,7 +331,7 @@ export function BookPicker({ visible, mode, storeColor, pickedIds, askNote, shel
                   key={step.book.id}
                   book={step.book}
                   storeColor={storeColor}
-                  caption={`將成為書架上的第 ${shelfCount + 1} 本`}
+                  caption={tr('將成為書架上的第 {p0} 本', { p0: shelfCount + 1 })}
                   saving={busyId === step.book.id}
                   onSkip={() => void add(step.book, null)}
                   onSubmit={(note) => void add(step.book, note)}

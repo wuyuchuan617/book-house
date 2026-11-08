@@ -14,6 +14,7 @@ import { useFollowedStores, useSavedBooks, useToggleSave, wantSource, type Follo
 import { useMyStore } from '@/lib/queries';
 import { WantSheet } from '@/components/want-sheet';
 import { currentPeriod, monthOf } from '@/lib/period';
+import { tr } from '@/lib/i18n';
 
 type Tab = 'stores' | 'books';
 
@@ -34,8 +35,8 @@ export default function SavedScreen() {
     return (
       <Screen>
         <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-          <AppText variant="title" style={styles.title}>收藏</AppText>
-          <EmptyState title="登入後就能收藏" body="追蹤喜歡的店主，每月新策展上架時第一個知道。" actionLabel="登入" onAction={() => requireAuth(() => {})} />
+          <AppText variant="title" style={styles.title}>{tr('收藏')}</AppText>
+          <EmptyState title={tr('登入後就能收藏')} body={tr('追蹤喜歡的店主，每月新策展上架時第一個知道。')} actionLabel={tr('登入')} onAction={() => requireAuth(() => {})} />
         </SafeAreaView>
       </Screen>
     );
@@ -53,7 +54,7 @@ export default function SavedScreen() {
   return (
     <Screen>
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-        <AppText variant="title" style={styles.title}>收藏</AppText>
+        <AppText variant="title" style={styles.title}>{tr('收藏')}</AppText>
         <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
           {(['stores', 'books'] as Tab[]).map((t) => {
             const selected = tab === t;
@@ -66,7 +67,7 @@ export default function SavedScreen() {
                 onPress={() => setTab(t)}
                 style={[styles.segmentItem, selected && { backgroundColor: c.surface }]}>
                 <AppText variant="caption" style={{ fontWeight: '700', color: selected ? c.text : c.textSecondary }}>
-                  {`${t === 'stores' ? '追蹤的書店' : '想讀'} · ${count ?? 0}`}
+                  {`${t === 'stores' ? tr('追蹤的書店') : tr('想讀')} · ${count ?? 0}`}
                 </AppText>
               </Pressable>
             );
@@ -83,7 +84,7 @@ export default function SavedScreen() {
               contentContainerStyle={styles.list}
               refreshControl={<RefreshControl refreshing={stores.isRefetching} onRefresh={() => void stores.refetch()} />}
               ListEmptyComponent={
-                <EmptyState title="還沒有追蹤的書店" body={'追蹤喜歡的店主，\n每月新策展上架時第一個知道。'} actionLabel="去探索書店" onAction={() => router.navigate('/')} />
+                <EmptyState title={tr('還沒有追蹤的書店')} body={tr('追蹤喜歡的店主，\n每月新策展上架時第一個知道。')} actionLabel={tr('去探索書店')} onAction={() => router.navigate('/')} />
               }
               renderItem={({ item }) => <StoreRow store={item} />}
             />
@@ -96,14 +97,14 @@ export default function SavedScreen() {
             keyExtractor={(b) => b.book_id}
             contentContainerStyle={styles.list}
             refreshControl={<RefreshControl refreshing={books.isRefetching} onRefresh={() => void books.refetch()} />}
-            ListHeaderComponent={books.data?.length ? <AppText variant="caption" muted>{`${books.data.length} 本`}</AppText> : undefined}
+            ListHeaderComponent={books.data?.length ? <AppText variant="caption" muted>{tr('{length} 本', { length: books.data.length })}</AppText> : undefined}
             ListEmptyComponent={
-              <EmptyState title="還沒有想讀的書" body={'在書店頁按書旁邊的書籤，\n或在店主閱讀按「＋」加入想讀。'} actionLabel="去探索書店" onAction={() => router.navigate('/')} />
+              <EmptyState title={tr('還沒有想讀的書')} body={tr('在書店頁按書旁邊的書籤，\n或在店主閱讀按「＋」加入想讀。')} actionLabel={tr('去探索書店')} onAction={() => router.navigate('/')} />
             }
             renderItem={({ item }) => <BookRow item={item} onOpen={() => setOpenWant(item)} onUnsave={() => unsave(item)} />}
           />
         )}
-        <UndoToast message={undo ? `已從想讀移除「${undo.books.title}」` : null} onUndo={restore} onHide={hideToast} />
+        <UndoToast message={undo ? tr('已從想讀移除「{title}」', { title: undo.books.title }) : null} onUndo={restore} onHide={hideToast} />
         <WantSheet item={openWant} hasStore={!!mine} onClose={() => setOpenWant(null)} />
       </SafeAreaView>
     </Screen>
@@ -120,7 +121,7 @@ function StoreRow({ store }: { store: FollowedStore }) {
           <StoreAvatar name={store.name} color={store.color} size={44} />
           <View style={{ flex: 1 }}>
             <AppText variant="label" style={{ fontSize: 16 }}>{store.name}</AppText>
-            <AppText variant="caption" muted>{`${store.owner_name} · ${store.follower_count} 人追蹤`}</AppText>
+            <AppText variant="caption" muted>{tr('{owner_name} · {follower_count} 人追蹤', { owner_name: store.owner_name, follower_count: store.follower_count })}</AppText>
           </View>
         </Pressable>
         <FollowButton bookstoreId={store.id} storeName={store.name} />
@@ -129,15 +130,15 @@ function StoreRow({ store }: { store: FollowedStore }) {
         <View style={[styles.latest, { backgroundColor: isNew ? c.successSurface : c.background }]}>
           {isNew ? (
             <>
-              <AppText variant="caption" style={{ color: c.success, fontWeight: '700' }}>{`${monthOf(store.latest.period)} 月新策展`}</AppText>
-              <AppText variant="caption">{`「${store.latest.title}」已上架`}</AppText>
+              <AppText variant="caption" style={{ color: c.success, fontWeight: '700' }}>{tr('{p0} 月新策展', { p0: monthOf(store.latest.period) })}</AppText>
+              <AppText variant="caption">{tr('「{title}」已上架', { title: store.latest.title })}</AppText>
             </>
           ) : (
-            <AppText variant="caption" muted>{`最近策展：${store.latest.title} · ${store.latest.book_count} 本書`}</AppText>
+            <AppText variant="caption" muted>{tr('最近策展：{title} · {book_count} 本書', { title: store.latest.title, book_count: store.latest.book_count })}</AppText>
           )}
         </View>
       ) : (
-        <AppText variant="caption" muted>還沒有發布策展</AppText>
+        <AppText variant="caption" muted>{tr('還沒有發布策展')}</AppText>
       )}
     </Card>
   );
@@ -148,16 +149,16 @@ function BookRow({ item, onOpen, onUnsave }: { item: SavedBook; onOpen: () => vo
   const from = wantSource(item);
   return (
     <Card style={styles.row}>
-      <Pressable accessibilityRole="button" accessibilityHint="編輯為什麼想讀、在哪看到" onPress={onOpen} style={[styles.row, { flex: 1 }]}>
+      <Pressable accessibilityRole="button" accessibilityHint={tr('編輯為什麼想讀、在哪看到')} onPress={onOpen} style={[styles.row, { flex: 1 }]}>
         <BookCover title={item.books.title} url={item.books.cover_url} color={item.bookstores?.color ?? 'moss'} />
         <View style={{ flex: 1, gap: 2 }}>
           <AppText variant="label">{item.books.title}</AppText>
-          <AppText variant="caption" muted>{item.books.authors.join('、')}</AppText>
-          {from ? <AppText variant="caption" style={{ color: c.textTertiary }} numberOfLines={1}>{`在哪看到：${from}`}</AppText> : null}
-          {item.note ? <AppText variant="caption" numberOfLines={2}>{`「${item.note}」`}</AppText> : null}
+          <AppText variant="caption" muted>{item.books.authors.join(tr('、'))}</AppText>
+          {from ? <AppText variant="caption" style={{ color: c.textTertiary }} numberOfLines={1}>{tr('在哪看到：{from}', { from })}</AppText> : null}
+          {item.note ? <AppText variant="caption" numberOfLines={2}>{tr('「{note}」', { note: item.note })}</AppText> : null}
         </View>
       </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel={`從想讀移除「${item.books.title}」`} onPress={onUnsave} style={styles.unsave}>
+      <Pressable accessibilityRole="button" accessibilityLabel={tr('從想讀移除「{title}」', { title: item.books.title })} onPress={onUnsave} style={styles.unsave}>
         <Ionicons name="bookmark" size={20} color={c.primary} />
       </Pressable>
     </Card>

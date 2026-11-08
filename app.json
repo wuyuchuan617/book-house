@@ -79,6 +79,10 @@
       "url": "https://u.expo.dev/ba7482cb-dd1b-4394-a5f6-78279dc90078",
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
+    },
+    "locales": {
+      "zh-Hant": "./locales/zh-Hant.json",
+      "en": "./locales/en.json"
     }
   }
 }
