@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
 import { Chip } from '@/components/form';
+import { PlacesExplore } from '@/components/places-explore';
 import { FollowButton, StoreAvatar } from '@/components/social';
 import { AppText, Button, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing, StoreColors } from '@/constants/theme';
@@ -25,14 +26,14 @@ import { currentPeriod, monthOf, periodLabel, previousPeriod } from '@/lib/perio
 import { useMyStore, type ExploreItem } from '@/lib/queries';
 import { tagLabel, tr } from '@/lib/i18n';
 
-type Scope = 'all' | 'following';
+type Scope = 'all' | 'following' | 'places';
 type FeedCard = ExploreItem & { visited?: boolean; is_following?: boolean };
 
 const SORTS = (): [ExploreSort, string][] => [['recommend', tr('推薦')], ['latest', tr('最新')], ['popular', tr('熱門')]];
 
 /**
  * A2 探索 v1.1：全部／追蹤中、月份切換、推薦／最新／熱門、已逛過（標示、可只看沒逛過）、
- * 主題篩選、搜尋（所有月份）；本月不到 6 檔時用上個月補位（S3 無結果）
+ * 主題篩選、搜尋（所有月份）；本月不到 6 檔時用上個月補位（S3 無結果）；M10「書的地方」（L2）
  */
 export default function ExploreScreen() {
   const c = useTheme();
@@ -111,6 +112,30 @@ export default function ExploreScreen() {
     <EmptyState title={tr('{p0} 月還沒有策展', { p0: monthOf(period) })} body={tr('第一間書店開張後，策展就會出現在這裡。')} actionLabel={tr('開一間自己的書店')} onAction={() => router.navigate('/my-store')} />
   );
 
+  const segment = (
+    <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
+      {([['all', tr('全部')], ['following', tr('追蹤中')], ['places', tr('書的地方')]] as const).map(([s, label]) => (
+        <Pressable key={s} accessibilityRole="tab" accessibilityState={{ selected: scope === s }} onPress={() => setScope(s)} style={[styles.segmentItem, scope === s && { backgroundColor: c.surface }]}>
+          <AppText variant="caption" style={{ fontWeight: '700', color: scope === s ? c.text : c.textSecondary }}>{label}</AppText>
+        </Pressable>
+      ))}
+    </View>
+  );
+
+  if (scope === 'places') {
+    return (
+      <Screen>
+        <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+          <View style={styles.header}>
+            <AppText variant="title">{tr('探索')}</AppText>
+          </View>
+          {segment}
+          <PlacesExplore />
+        </SafeAreaView>
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
@@ -131,13 +156,7 @@ export default function ExploreScreen() {
           )}
         </View>
 
-        <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
-          {([['all', tr('全部')], ['following', tr('追蹤中')]] as const).map(([s, label]) => (
-            <Pressable key={s} accessibilityRole="tab" accessibilityState={{ selected: scope === s }} onPress={() => setScope(s)} style={[styles.segmentItem, scope === s && { backgroundColor: c.surface }]}>
-              <AppText variant="caption" style={{ fontWeight: '700', color: scope === s ? c.text : c.textSecondary }}>{label}</AppText>
-            </Pressable>
-          ))}
-        </View>
+        {segment}
 
         <View style={[styles.search, { backgroundColor: c.surface, borderColor: c.border }]}>
           <Feather name="search" size={18} color={c.textSecondary} />

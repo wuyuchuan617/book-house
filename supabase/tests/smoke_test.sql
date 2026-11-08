@@ -74,7 +74,7 @@ insert into public.readings (bookstore_id, book_id, is_public) select s.id, b.id
 insert into public.reading_notes (reading_id, body) select id, '讀到第 7 章' from public.readings;
 select pg_temp.expect_error($q$update public.readings set book_id = gen_random_uuid()$q$, 'reading book immutable');
 update public.readings set status = 'finished';
-do $$ begin assert (select finished_at from public.readings) = current_date; end $$;
+do $$ begin assert (select finished_at from public.readings) = (now() at time zone 'Asia/Taipei')::date; end $$;
 select pg_temp.expect_error($q$insert into public.follows (follower_id, bookstore_id) select auth.uid(), id from t_store$q$, 'self follow');
 
 -- 讀者 B

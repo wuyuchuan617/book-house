@@ -5,27 +5,30 @@ import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Vie
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
+import { PlaceRow } from '@/components/diary';
 import { FollowButton, StoreAvatar, UndoToast } from '@/components/social';
 import { AppText, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { useFollowedStores, useSavedBooks, useToggleSave, wantSource, type FollowedStore, type SavedBook } from '@/lib/browse';
+import { useSavedPlaces } from '@/lib/diary';
 import { useMyStore } from '@/lib/queries';
 import { SwipeRow, swipeA11y } from '@/components/swipe-row';
 import { WantSheet } from '@/components/want-sheet';
 import { currentPeriod, monthOf } from '@/lib/period';
 import { tr } from '@/lib/i18n';
 
-type Tab = 'stores' | 'books';
+type Tab = 'stores' | 'books' | 'places';
 
-/** 書櫃：B2 想讀（預設）、B1 追蹤的書店（原「收藏的書」，與店主閱讀的想讀是同一份）；S4 空狀態 */
+/** 書櫃：B2 想讀（預設）、B1 追蹤的書店、L3 收藏的地方（M10）；S4 空狀態 */
 export default function SavedScreen() {
   const c = useTheme();
   const { session, requireAuth } = useAuth();
   const [tab, setTab] = useState<Tab>('books');
   const stores = useFollowedStores();
   const books = useSavedBooks();
+  const places = useSavedPlaces();
   const toggleSave = useToggleSave();
   const [undo, setUndo] = useState<SavedBook | null>(null);
   const [openWant, setOpenWant] = useState<SavedBook | null>(null);
@@ -57,9 +60,9 @@ export default function SavedScreen() {
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         <AppText variant="title" style={styles.title}>{tr('書櫃')}</AppText>
         <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
-          {(['books', 'stores'] as Tab[]).map((t) => {
+          {(['books', 'stores', 'places'] as Tab[]).map((t) => {
             const selected = tab === t;
-            const count = t === 'stores' ? stores.data?.length : books.data?.length;
+            const count = t === 'stores' ? stores.data?.length : t === 'places' ? places.data?.length : books.data?.length;
             return (
               <Pressable
                 key={t}
@@ -68,14 +71,34 @@ export default function SavedScreen() {
                 onPress={() => setTab(t)}
                 style={[styles.segmentItem, selected && { backgroundColor: c.surface }]}>
                 <AppText variant="caption" style={{ fontWeight: '700', color: selected ? c.text : c.textSecondary }}>
-                  {`${t === 'stores' ? tr('追蹤的書店') : tr('想讀')} · ${count ?? 0}`}
+                  {`${t === 'stores' ? tr('追蹤的書店') : t === 'places' ? tr('地方') : tr('想讀')} · ${count ?? 0}`}
                 </AppText>
               </Pressable>
             );
           })}
         </View>
 
-        {tab === 'stores' ? (
+        {tab === 'places' ? (
+          places.isLoading ? (
+            <ActivityIndicator style={{ marginTop: 48 }} />
+          ) : (
+            <FlatList
+              data={places.data}
+              keyExtractor={(p) => p.id}
+              contentContainerStyle={styles.list}
+              refreshControl={<RefreshControl refreshing={places.isRefetching} onRefresh={() => void places.refetch()} />}
+              ListEmptyComponent={
+                <EmptyState title={tr('還沒有收藏的地方')} body={tr('在「探索 → 書的地方」找到喜歡的書店、圖書館，\n按「收藏」就會出現在這裡。')} actionLabel={tr('去看書的地方')} onAction={() => router.navigate('/')} />
+              }
+              renderItem={({ item }) => (
+                <PlaceRow
+                  place={item}
+                  meta={[item.my_checkins ? tr('你來過 {n} 次', { n: item.my_checkins }) : tr('還沒去過'), item.checkin_count ? tr('{n} 則打卡', { n: item.checkin_count }) : null].filter(Boolean).join(' · ')}
+                />
+              )}
+            />
+          )
+        ) : tab === 'stores' ? (
           stores.isLoading ? (
             <ActivityIndicator style={{ marginTop: 48 }} />
           ) : (

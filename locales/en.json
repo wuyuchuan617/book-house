@@ -1,6 +1,7 @@
 {
   "ios": {
-    "NSCameraUsageDescription": "Bookhaus uses the camera to scan a book’s barcode so you can find it right away.",
-    "NSPhotoLibraryUsageDescription": "Bookhaus needs access to your photos to change your store’s avatar and banner."
+    "NSCameraUsageDescription": "Bookhaus uses the camera to scan a book’s barcode, capture text from a page, or add photos to your notes and diary.",
+    "NSPhotoLibraryUsageDescription": "Bookhaus needs access to your photos to change your store’s avatar and banner, or to add pictures to your notes and diary.",
+    "NSLocationWhenInUseUsageDescription": "Bookhaus uses your approximate location to suggest nearby places when you check in and to sort Book places by distance. Your location is never stored."
   }
 }

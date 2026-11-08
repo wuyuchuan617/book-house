@@ -190,6 +190,18 @@ eas submit --platform ios
 - 審核備註：提供一組可登入的測試帳號（Google），說明檢舉／封鎖在書店頁 ⋯、刪除帳號在設定
 - 內容分級：使用者產生內容 → 需有檢舉、封鎖、條款（都已完成）
 
+## 閱讀日記、書的地方（M10）
+
+- 底部第 2 個分頁「日記」（只有自己看得到）：連續記錄、本週七格、今天的時間軸（自己記的筆記／打卡＋當天寫的心得、加入的想讀、開始讀、讀完）、月曆。只能記今天；過去的可以刪除、不能修改。
+- 打卡選地點：Edge Function `place-search` 代理 Google Places API (New)，只用 Essentials（Autocomplete＋必要時 Place Details 的 id/location/types/formattedAddress）。每人每天 50 次、全站每天 300 次，超過就改成直接輸入地點名稱（只有自己看得到）。
+  - `supabase functions deploy place-search`
+  - `supabase secrets set GOOGLE_PLACES_API_KEY=...`（Google Cloud 只開 Places API (New)，設每日配額）
+  - 沒設金鑰時 App 一樣能用，只是不能搜尋 Google 地點。
+- 公開場所（書店、圖書館、咖啡店…，不是住家地址）的打卡可以公開：立刻出現在地點頁，只顯示日期。公開的照片放在 diary bucket，靠 `public_checkins` 讓別人讀得到。
+- 書的地方：探索第 3 個分段（附近／最新打卡／最多收藏、類型篩選）；地點頁可收藏、「在 Google 地圖開啟」（Maps URLs，不計費）、在這裡打卡、檢舉打卡；書櫃第 3 個分頁「地方」。
+- 位置：expo-location，只在要用時問、只取大概位置（小數 3 位）、不儲存。原生套件，要重新打包；舊安裝檔就當作拿不到位置。
+- 地點座標 30 天後清掉（Google 條款），排程 `expire-place-coordinates` 每天 03:20。
+
 ## 心得改版（M11）
 
 - 店主閱讀點一本書 → 「這本書」頁（心得列表、依類型篩選、往左滑編輯／刪除）→ 底部「＋ 寫心得」另開一頁。

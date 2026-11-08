@@ -48,7 +48,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "允許書棲讀取照片，才能更換書店的頭貼與背景圖。",
+          "photosPermission": "允許書棲讀取照片，才能更換書店的頭貼與背景圖，或在心得、日記裡加入圖片。",
           "cameraPermission": false,
           "microphonePermission": false
         }
@@ -56,9 +56,19 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "允許書棲使用相機，掃描書背的條碼就能直接找到這本書。",
+          "cameraPermission": "允許書棲使用相機，掃描書背條碼找書、拍下書頁節錄文字，或在心得、日記裡加入照片。",
           "microphonePermission": false,
           "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "允許書棲取得你的大概位置，打卡時列出附近的地點、在「書的地方」依距離排序。位置不會被儲存。",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "motionUsagePermission": false,
+          "locationFullAccuracyPermission": false
         }
       ]
     ],
