@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Chip, chipRow, TextField } from '@/components/form';
 import { AppText, Button, Card, Screen } from '@/components/ui';
@@ -19,6 +19,7 @@ const FAQ = [
 ];
 
 type Kind = 'suggestion' | 'bug' | 'other';
+const CONTACT = process.env.EXPO_PUBLIC_CONTACT_EMAIL ?? '';
 
 /** M7 說明與意見回饋 */
 export default function HelpScreen() {
@@ -60,6 +61,14 @@ export default function HelpScreen() {
               </View>
             ))}
           </Card>
+
+          {CONTACT ? (
+            <Card style={{ gap: 4 }}>
+              <AppText variant="label">聯絡我們</AppText>
+              <AppText muted>遇到問題、想檢舉或刪除資料，都可以寫信給我們。</AppText>
+              <Button kind="link" label={CONTACT} style={{ alignSelf: 'flex-start', paddingHorizontal: 0 }} onPress={() => void Linking.openURL(`mailto:${CONTACT}`)} />
+            </Card>
+          ) : null}
 
           <AppText variant="label" style={{ marginTop: Spacing.md }}>意見回饋</AppText>
           <View style={chipRow} accessibilityRole="radiogroup">

@@ -68,7 +68,11 @@ export default function OpenStoreShelfScreen() {
           <View style={{ gap: Spacing.sm }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <AppText variant="label">{`書架 · ${items.length} 本`}</AppText>
-              {items.length ? <AppText variant="caption" style={{ color: c.success, fontWeight: '700' }}>✓ 可以發布了</AppText> : null}
+              {items.length ? (
+                <AppText variant="caption" style={{ color: c.success, fontWeight: '700' }} accessibilityLiveRegion="polite">
+                  {items.length >= 3 ? `✓ 很棒，${items.length} 本剛剛好` : `✓ 可以發布了 · 再 ${3 - items.length} 本更完整`}
+                </AppText>
+              ) : null}
             </View>
             {items.length ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.sm }}>

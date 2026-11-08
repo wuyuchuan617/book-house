@@ -37,7 +37,7 @@ function StoreEditForm({ store }: { store: MyStore }) {
   const upload = async (kind: ImageKind) => {
     setUploading(kind);
     try {
-      const path = await pickAndUpload(kind, store.id);
+      const path = await pickAndUpload(kind, store.id, kind === 'avatar' ? store.avatar_path : store.banner_path);
       if (path) {
         qc.invalidateQueries({ queryKey: ['my-store'] });
         qc.invalidateQueries({ queryKey: ['store'] });

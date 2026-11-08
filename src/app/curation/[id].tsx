@@ -122,7 +122,7 @@ export default function CurationEditorScreen() {
   const publishLabel = isNext ? `預約發布（${month}/1）` : '發布策展';
 
   const banner = (() => {
-    if (cur.status === 'published') return `已發布於 ${month} 月。儲存後會同步給 ${store.stats?.follower_count ?? 0} 位追蹤者。`;
+    if (cur.status === 'published') return `已發布於 ${month} 月。標題與說明按「儲存並更新」才會送出；書架的變更（加書、排序、理由）會立刻更新給讀者。`;
     if (cur.status === 'scheduled') return `已預約，${month}/1 自動上架。上架前都能修改。`;
     if (isPast) return `這是 ${month} 月的草稿，已經過了發布時間。可以從「⋯」複製成新的草稿接著用。`;
     if (otherLiveSameMonth) return `${month} 月已經有一檔發布中的策展。要發布這檔，請先取消發布那一檔。`;
@@ -130,12 +130,18 @@ export default function CurationEditorScreen() {
     return `這是 ${month} 月策展，發布後讀者馬上就看得到。`;
   })();
 
-  const move = (it: CurationItem, delta: -1 | 1) => {
+  const move = (it: CurationItem, delta: -1 | 1 | 'top') => {
     const ids = items.map((x) => x.id);
     const i = ids.indexOf(it.id);
-    const j = i + delta;
-    if (j < 0 || j >= ids.length) return;
-    [ids[i], ids[j]] = [ids[j], ids[i]];
+    if (delta === 'top') {
+      if (i <= 0) return;
+      ids.splice(i, 1);
+      ids.unshift(it.id);
+    } else {
+      const j = i + delta;
+      if (j < 0 || j >= ids.length) return;
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+    }
     reorder.mutate({ curationId: cur.id, itemIds: ids }, { onError: (e) => Alert.alert('排序沒有成功', friendlyError(e.message)) });
   };
 
@@ -272,8 +278,10 @@ export default function CurationEditorScreen() {
                 : missing.length
                   ? `還差 ${missing.length} 步：${missing.join('、')}`
                   : items.length < 3
-                    ? `可以${isNext ? '預約' : ''}發布了，建議放 3–7 本`
-                    : `準備好了，可以${isNext ? '預約' : ''}發布`}
+                    ? `可以${isNext ? '預約' : ''}發布了，再加 ${3 - items.length} 本會更完整`
+                    : items.length <= 7
+                      ? `很棒，${items.length} 本剛剛好，可以${isNext ? '預約' : ''}發布`
+                      : `準備好了，可以${isNext ? '預約' : ''}發布`}
             </AppText>
             <View style={styles.footerRow}>
               <Button kind="secondary" label="預覽" style={{ flex: 1 }} onPress={() => router.push({ pathname: '/curation/preview/[id]', params: { id: cur.id } })} />
@@ -318,6 +326,7 @@ export default function CurationEditorScreen() {
           itemMenu
             ? [
                 { label: itemMenu.note ? '編輯推薦理由' : '加上推薦理由', onPress: () => setNoteFor(itemMenu) },
+                { label: '移到最前面', disabled: items[0]?.id === itemMenu.id, onPress: () => move(itemMenu, 'top') },
                 { label: '往前移', disabled: items[0]?.id === itemMenu.id, onPress: () => move(itemMenu, -1) },
                 { label: '往後移', disabled: items[items.length - 1]?.id === itemMenu.id, onPress: () => move(itemMenu, 1) },
                 {

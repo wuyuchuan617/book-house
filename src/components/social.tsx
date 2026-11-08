@@ -10,6 +10,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { useFollowIds, useSaveIds, useToggleFollow, useToggleSave } from '@/lib/browse';
 import { storageUrl } from '@/lib/uploads';
+import { userMessage } from '@/lib/errors';
 
 /** 書店頭像：沒有上傳圖片時用店面顏色＋店名第一個字 */
 export function StoreAvatar({ name, color, size = 40, path }: { name: string; color: StoreColor; size?: number; path?: string | null }) {
@@ -34,7 +35,7 @@ export function FollowButton({ bookstoreId, storeName, onColor }: { bookstoreId:
 
   const press = () =>
     requireAuth(() => {
-      if (!following) return toggle.mutate({ bookstoreId, follow: true }, { onError: (e) => Alert.alert('沒有成功', e.message) });
+      if (!following) return toggle.mutate({ bookstoreId, follow: true }, { onError: (e) => Alert.alert('沒有成功', userMessage(e)) });
       Alert.alert(`取消追蹤「${storeName}」？`, '之後新策展上架時不會再通知你。', [
         { text: '繼續追蹤', style: 'cancel' },
         { text: '取消追蹤', style: 'destructive', onPress: () => toggle.mutate({ bookstoreId, follow: false }) },
@@ -78,7 +79,7 @@ export function SaveButton({ bookId, title, curationId, bookstoreId, withLabel }
   const saved = !!ids?.has(bookId);
   const press = () =>
     requireAuth(() =>
-      toggle.mutate({ bookId, save: !saved, curationId, bookstoreId }, { onError: (e) => Alert.alert('沒有成功', e.message) }),
+      toggle.mutate({ bookId, save: !saved, curationId, bookstoreId }, { onError: (e) => Alert.alert('沒有成功', userMessage(e)) }),
     );
 
   if (withLabel) {

@@ -52,6 +52,7 @@ export function Chip({ label, selected, onPress, disabled }: { label: string; se
       accessibilityState={{ selected: !!selected, disabled: !!disabled }}
       disabled={disabled}
       onPress={onPress}
+      hitSlop={{ top: 4, bottom: 4 }}
       style={({ pressed }) => [
         styles.chip,
         {

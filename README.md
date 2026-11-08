@@ -188,6 +188,24 @@ eas submit --platform ios
 - 審核備註：提供一組可登入的測試帳號（Google），說明檢舉／封鎖在書店頁 ⋯、刪除帳號在設定
 - 內容分級：使用者產生內容 → 需有檢舉、封鎖、條款（都已完成）
 
+## 上架前修正（審查文件 P0／P1）
+
+- **內容過濾**：`blocked_terms` 表是黑名單字詞（店名、介紹、策展標題與說明、推薦理由、心得、標籤、手動新增的書名都會檢查）。在 Table Editor 直接新增或刪除字詞即可。
+- **管理員**：把自己加進管理員，之後新檢舉、新回饋都會推播給你，設定頁會出現「審核後台」：
+  ```sql
+  insert into app_admins (user_id) select id from auth.users where email = '你的登入信箱';
+  ```
+  同一間書店被 3 位不同的人檢舉（未處理）會先自動暫停，等你在後台決定恢復或維持。
+- **國家圖書館書目**：在自己的電腦執行（service role key 不要放進 App 或 Git）：
+  ```bash
+  SUPABASE_URL=https://weadwadmdgddoiscpyyd.supabase.co SUPABASE_SERVICE_ROLE_KEY=<service role key> npm run books:import-ncl
+  ```
+  之後每月執行一次 `... npm run books:import-ncl -- --latest 1`。資料從 2025 年起（出版社申請 ISBN 時的書目），更早的書仍靠 Google Books、Open Library 與掃條碼。
+- **掃書背條碼**：選書時搜尋框右邊的掃描按鈕（需要相機權限，開發版要重新打包）。
+- **即時更新（EAS Update）**：修文案、小 bug 不用重新送審：`eas update --channel production --message "說明"`。改到原生設定（套件、權限）時仍要重新打包。
+- **指標**：`supabase/queries/metrics.sql` 有上線第一個月要看的 5 個查詢。
+- **聯絡信箱**：在 `.env` 與 EAS 各環境設定 `EXPO_PUBLIC_CONTACT_EMAIL`，說明頁、條款、隱私權政策都會顯示。
+
 ## 上架前檢查
 
 - Supabase › Authentication › URL Configuration：開發期間 Site URL 暫設為 Expo Go 的 `exp://<電腦IP>:8081/--/auth/callback`（換 Wi-Fi 要跟著改）。打包 development build／送審前改回 `bookhaus://auth/callback`。

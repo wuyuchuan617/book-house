@@ -52,6 +52,14 @@
           "cameraPermission": false,
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "允許書棲使用相機，掃描書背的條碼就能直接找到這本書。",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
       ]
     ],
     "experiments": {
@@ -63,6 +71,14 @@
         "projectId": "ba7482cb-dd1b-4394-a5f6-78279dc90078"
       }
     },
-    "owner": "yuchuan617"
+    "owner": "yuchuan617",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/ba7482cb-dd1b-4394-a5f6-78279dc90078",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }

@@ -5,11 +5,12 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 type Book = {
   id: string;
-  source: 'google_books' | 'open_library' | 'manual';
+  source: 'google_books' | 'open_library' | 'manual' | 'ncl';
   title: string;
   authors: string[];
   cover_url: string | null;
   published_year: number | null;
+  publisher: string | null;
 };
 
 type GoogleVolume = {
@@ -19,6 +20,7 @@ type GoogleVolume = {
     subtitle?: string;
     authors?: string[];
     publishedDate?: string;
+    publisher?: string;
     imageLinks?: { thumbnail?: string; smallThumbnail?: string };
     industryIdentifiers?: { type: string; identifier: string }[];
   };
@@ -49,6 +51,9 @@ Deno.serve(async (req) => {
   }
   if ([...q].length < 2) return json({ books: [] }); // S1：輸入 2 個字後才查詢
   q = q.slice(0, 60);
+  // 掃條碼或貼上的 ISBN（可含 -）：用 ISBN 精準查
+  const digits = q.replace(/[^0-9Xx]/g, '');
+  const isbn = /^97[89][0-9]{10}$/.test(digits) ? digits : null;
 
   const url = Deno.env.get('SUPABASE_URL')!;
   // 以使用者身分查本機書庫（手動新增的書只看得到自己的）
@@ -60,11 +65,11 @@ Deno.serve(async (req) => {
 
   const [local, google] = await Promise.all([
     userClient.rpc('search_local_books', { p_query: q, p_limit: LIMIT }),
-    searchGoogle(q),
+    searchGoogle(isbn ? `isbn:${isbn}` : q),
   ]);
   if (local.error) console.error('search_local_books', local.error.message);
   // Google 失敗（沒金鑰時常見 429 配額用完）或查無結果 → 改查 Open Library
-  const remote = google.length > 0 ? google : await searchOpenLibrary(q);
+  const remote = google.length > 0 ? google : await searchOpenLibrary(isbn ? `isbn:${isbn}` : q);
 
   let saved: Book[] = [];
   if (remote.length > 0) {
@@ -86,6 +91,7 @@ Deno.serve(async (req) => {
       authors: b.authors,
       cover_url: b.cover_url,
       published_year: b.published_year,
+      publisher: b.publisher ?? null,
     });
     if (books.length >= LIMIT) break;
   }
@@ -121,6 +127,7 @@ async function searchGoogle(q: string) {
           authors: info.authors?.length ? info.authors : ['佚名'],
           cover_url: cover ? cover.replace(/^http:/, 'https:') : null,
           published_year: Number.isFinite(year) ? String(year) : null,
+          publisher: info.publisher ?? null,
         };
       });
   } catch (e) {
@@ -136,13 +143,14 @@ type OpenLibraryDoc = {
   first_publish_year?: number;
   isbn?: string[];
   cover_i?: number;
+  publisher?: string[];
 };
 
 async function searchOpenLibrary(q: string) {
   const params = new URLSearchParams({
     q,
     limit: String(LIMIT),
-    fields: 'key,title,author_name,first_publish_year,isbn,cover_i',
+    fields: 'key,title,author_name,first_publish_year,isbn,cover_i,publisher',
   });
   try {
     const res = await fetch(`https://openlibrary.org/search.json?${params}`, {
@@ -164,6 +172,7 @@ async function searchOpenLibrary(q: string) {
         authors: d.author_name?.length ? d.author_name.slice(0, 5) : ['佚名'],
         cover_url: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : null,
         published_year: d.first_publish_year ? String(d.first_publish_year) : null,
+        publisher: d.publisher?.[0] ?? null,
       }));
   } catch (e) {
     console.error('open library', e);

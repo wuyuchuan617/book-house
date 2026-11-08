@@ -10,8 +10,8 @@ import { FollowButton, StoreAvatar } from '@/components/social';
 import { AppText, Button, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing, StoreColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useExploreFeed, useSystemTags } from '@/lib/browse';
-import { currentPeriod, monthOf } from '@/lib/period';
+import { EXPLORE_MIN, pickFeatured, useExploreFeed, usePreviousMonthFeed, useSystemTags } from '@/lib/browse';
+import { currentPeriod, monthOf, previousPeriod } from '@/lib/period';
 import { useMyStore, type ExploreItem } from '@/lib/queries';
 
 /** A2 探索：本月已發布的策展；主題篩選、搜尋（策展、書店、書名、作者）；S3 無結果 */
@@ -32,7 +32,13 @@ export default function ExploreScreen() {
   const month = monthOf(currentPeriod());
   const tagName = tags?.find((t) => t.slug === tag)?.name;
   const suggest = tags?.find((t) => t.slug !== tag);
-  const [first, ...rest] = data ?? [];
+  const fill = !query && (data?.length ?? 0) < EXPLORE_MIN && !isPending;
+  const { data: previous } = usePreviousMonthFeed({ tag, enabled: fill });
+  const prevItems = fill ? (previous ?? []) : [];
+  const current = data ?? [];
+  const first = query ? current[0] : pickFeatured(current) ?? prevItems[0];
+  const rest = (query ? current : [...current, ...prevItems]).filter((i) => i.curation_id !== first?.curation_id);
+  const prevStart = rest.findIndex((i) => i.period !== currentPeriod());
 
   const empty = query ? (
     <View style={{ paddingTop: 48, alignItems: 'center', gap: Spacing.sm }}>
@@ -97,11 +103,18 @@ export default function ExploreScreen() {
               first ? (
                 <View style={{ gap: Spacing.md }}>
                   <FeaturedCard item={first} ownStoreId={mine?.store.id} />
-                  {rest.length ? <AppText variant="label" style={{ marginTop: Spacing.md }}>{query || tag ? '其他符合的策展' : '更多本月策展'}</AppText> : null}
+                  {rest.length && prevStart !== 0 ? <AppText variant="label" style={{ marginTop: Spacing.md }}>{query || tag ? '其他符合的策展' : '更多本月策展'}</AppText> : null}
                 </View>
               ) : undefined
             }
-            renderItem={({ item }) => <CompactCard item={item} />}
+            renderItem={({ item, index }) => (
+              <>
+                {!query && index === prevStart ? (
+                  <AppText variant="label" style={{ marginTop: Spacing.md }}>{`${monthOf(previousPeriod())} 月的策展`}</AppText>
+                ) : null}
+                <CompactCard item={item} />
+              </>
+            )}
             ListEmptyComponent={first ? undefined : empty}
           />
         )}

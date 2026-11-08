@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
 import { track } from '@/lib/analytics';
+import { userMessage } from '@/lib/errors';
 import { useAuth } from '@/lib/auth';
 import { unwrap } from '@/lib/queries';
 import { supabase } from '@/lib/supabase';
@@ -9,11 +10,12 @@ export type CurationStatus = 'draft' | 'scheduled' | 'published';
 
 export type Book = {
   id: string;
-  source: 'google_books' | 'open_library' | 'manual';
+  source: 'google_books' | 'open_library' | 'manual' | 'ncl';
   title: string;
   authors: string[];
   cover_url: string | null;
   published_year: number | null;
+  publisher?: string | null;
 };
 
 export type CurationItem = { id: string; note: string | null; position: number; books: Book };
@@ -51,7 +53,7 @@ export const TITLE_MAX = 24;
 export const DESCRIPTION_MAX = 500;
 export const NOTE_MAX = 120;
 
-const BOOK_COLS = 'id, source, title, authors, cover_url, published_year';
+const BOOK_COLS = 'id, source, title, authors, cover_url, published_year, publisher';
 
 /** 策展有任何變動後要更新的畫面 */
 function invalidateCuration(qc: QueryClient, id?: string) {
@@ -325,6 +327,5 @@ export function friendlyError(message: string) {
   if (message.includes('at most 20 books')) return '一檔策展最多放 20 本書。';
   if (message.includes('only this month or next month')) return '只能發布本月或預約下個月的策展。';
   if (message.includes('tag name must be')) return '標籤名稱 1–12 個字。';
-  if (message.includes('Failed to send') || message.includes('network')) return '連線不太穩，請稍後再試。';
-  return message;
+  return userMessage(message);
 }

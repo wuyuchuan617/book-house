@@ -8,7 +8,9 @@ import { friendlyError, useCreateCustomTag, useTags } from '@/lib/curations';
 
 const MAX_TAGS = 3;
 
-/** C1 主題標籤：系統標籤＋自訂，最多 3 個 */
+/** C1 主題標籤：最多 3 個。第一版只開放固定標籤（PRD；自訂標籤會公開，需審核機制，V2 再開） */
+const ALLOW_CUSTOM = false;
+
 export function TagPicker({ selected, onChange }: { selected: string[]; onChange: (ids: string[]) => void }) {
   const { data: tags } = useTags(selected);
   const createTag = useCreateCustomTag();
@@ -48,7 +50,7 @@ export function TagPicker({ selected, onChange }: { selected: string[]; onChange
             onPress={() => toggle(t.id)}
           />
         ))}
-        {!adding ? <Chip label="＋ 自訂標籤" disabled={full} onPress={() => setAdding(true)} /> : null}
+        {ALLOW_CUSTOM && !adding ? <Chip label="＋ 自訂標籤" disabled={full} onPress={() => setAdding(true)} /> : null}
       </View>
       {adding ? (
         <View style={{ gap: Spacing.sm }}>

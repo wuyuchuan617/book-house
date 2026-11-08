@@ -6,9 +6,10 @@ import { useAuth } from '@/lib/auth';
 import type { Book } from '@/lib/curations';
 import { track } from '@/lib/analytics';
 import { unwrap, type ExploreItem, type PublicStore } from '@/lib/queries';
+import { previousPeriod } from '@/lib/period';
 import { supabase } from '@/lib/supabase';
 
-const BOOK_COLS = 'id, source, title, authors, cover_url, published_year';
+const BOOK_COLS = 'id, source, title, authors, cover_url, published_year, publisher';
 
 // ---------------------------------------------------------------------------
 // A2 探索
@@ -27,6 +28,25 @@ export function useExploreFeed({ tag, query }: { tag?: string; query?: string })
       return unwrap<ExploreItem[]>(await req);
     },
   });
+}
+
+/** A2 冷啟動：本月策展不到 6 檔時，用上個月的策展補位（月初、店主還少的時候） */
+export const EXPLORE_MIN = 6;
+export function usePreviousMonthFeed({ tag, enabled }: { tag?: string; enabled: boolean }) {
+  return useQuery({
+    queryKey: ['explore', 'previous', tag ?? 'all'],
+    enabled,
+    queryFn: async () => {
+      let req = supabase.from('published_feed').select('*').eq('period', previousPeriod()).order('published_at', { ascending: false }).limit(20);
+      if (tag) req = req.contains('tag_slugs', [tag]);
+      return unwrap<ExploreItem[]>(await req);
+    },
+  });
+}
+
+/** 精選：本月至少 3 本書、有寫說明的策展裡最新的一檔；都沒有就用最新的 */
+export function pickFeatured(items: ExploreItem[]) {
+  return items.find((i) => i.book_count >= 3 && !!i.description?.trim()) ?? items[0];
 }
 
 export function useSystemTags() {

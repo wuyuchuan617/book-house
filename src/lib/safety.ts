@@ -2,6 +2,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
 import { track } from '@/lib/analytics';
+import { userMessage } from '@/lib/errors';
 import { useAuth } from '@/lib/auth';
 import { unwrap } from '@/lib/queries';
 import { supabase } from '@/lib/supabase';
@@ -80,5 +81,5 @@ export function safetyError(message: string) {
   if (message.includes('already reported')) return '你在 24 小時內已經檢舉過這間書店，我們正在審核。';
   if (message.includes('cannot block yourself')) return '不能封鎖自己。';
   if (message.includes('not found')) return '找不到這間書店，它可能已經關閉。';
-  return message;
+  return userMessage(message);
 }

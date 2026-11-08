@@ -7,6 +7,7 @@ import { MinTouch, Radius, Spacing, StoreColors, type StoreColor } from '@/const
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { useCreateBookstore, useMyStore } from '@/lib/queries';
+import { userMessage } from '@/lib/errors';
 
 /** O2 開店步驟 1：基本資料。按「開店」即建立書店，接著 O3 第一檔策展 */
 export default function OpenStoreScreen() {
@@ -30,7 +31,7 @@ export default function OpenStoreScreen() {
       { name: name.trim(), ownerName: ownerName.trim(), color },
       {
         onSuccess: () => router.replace('/open-store/curation'),
-        onError: (e) => Alert.alert('開店沒有成功', e.message),
+        onError: (e) => Alert.alert('開店沒有成功', userMessage(e)),
       },
     );
 

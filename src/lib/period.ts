@@ -20,6 +20,13 @@ export function nextPeriod() {
   return `${y}-${pad(m + 1)}-01`;
 }
 
+export function previousPeriod() {
+  const d = taipeiNow();
+  const y = d.getUTCMonth() === 0 ? d.getUTCFullYear() - 1 : d.getUTCFullYear();
+  const m = d.getUTCMonth() === 0 ? 12 : d.getUTCMonth();
+  return `${y}-${pad(m)}-01`;
+}
+
 export const monthOf = (period: string) => Number(period.slice(5, 7));
 
 /** 「2026 年 12 月」 */
