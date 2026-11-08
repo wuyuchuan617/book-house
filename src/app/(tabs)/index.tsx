@@ -1,6 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,18 +10,41 @@ import { FollowButton, StoreAvatar } from '@/components/social';
 import { AppText, Button, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing, StoreColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { EXPLORE_MIN, pickFeatured, useExploreFeed, usePreviousMonthFeed, useSystemTags } from '@/lib/browse';
-import { currentPeriod, monthOf, previousPeriod } from '@/lib/period';
+import { useAuth } from '@/lib/auth';
+import {
+  EXPLORE_MIN,
+  pickFeatured,
+  useExploreFeed,
+  useExploreList,
+  useExploreMonths,
+  usePreviousMonthFeed,
+  useSystemTags,
+  type ExploreSort,
+} from '@/lib/browse';
+import { currentPeriod, monthOf, periodLabel, previousPeriod } from '@/lib/period';
 import { useMyStore, type ExploreItem } from '@/lib/queries';
 
-/** A2 探索：本月已發布的策展；主題篩選、搜尋（策展、書店、書名、作者）；S3 無結果 */
+type Scope = 'all' | 'following';
+type FeedCard = ExploreItem & { visited?: boolean; is_following?: boolean };
+
+const SORTS: [ExploreSort, string][] = [['recommend', '推薦'], ['latest', '最新'], ['popular', '熱門']];
+
+/**
+ * A2 探索 v1.1：全部／追蹤中、月份切換、推薦／最新／熱門、已逛過（標示、可只看沒逛過）、
+ * 主題篩選、搜尋（所有月份）；本月不到 6 檔時用上個月補位（S3 無結果）
+ */
 export default function ExploreScreen() {
   const c = useTheme();
+  const { session, requireAuth } = useAuth();
+  const [scope, setScope] = useState<Scope>('all');
+  const [period, setPeriod] = useState(currentPeriod());
+  const [sort, setSort] = useState<ExploreSort>('recommend');
+  const [unvisitedOnly, setUnvisitedOnly] = useState(false);
   const [tag, setTag] = useState<string | undefined>();
   const [input, setInput] = useState('');
   const [query, setQuery] = useState('');
   const { data: tags } = useSystemTags();
-  const { data, isPending, fetchStatus, error, refetch, isRefetching } = useExploreFeed({ tag, query });
+  const { data: months } = useExploreMonths();
   const { data: mine } = useMyStore();
 
   useEffect(() => {
@@ -29,16 +52,43 @@ export default function ExploreScreen() {
     return () => clearTimeout(t);
   }, [input]);
 
-  const month = monthOf(currentPeriod());
+  const following = scope === 'following';
+  const list = useExploreList({ period: following ? null : period, sort, tag, following, unvisitedOnly });
+  const search = useExploreFeed({ tag, query });
+  const isCurrent = period === currentPeriod();
+  const fill = !query && !following && isCurrent && !unvisitedOnly && !list.isPending && (list.data?.length ?? 0) < EXPLORE_MIN;
+  const { data: previous } = usePreviousMonthFeed({ tag, enabled: fill });
+
+  const { first, rest, prevStart } = useMemo(() => {
+    if (query) {
+      const r = (search.data ?? []) as FeedCard[];
+      return { first: undefined, rest: r, prevStart: -1 };
+    }
+    const cur = (list.data ?? []) as FeedCard[];
+    const prev = fill ? ((previous ?? []) as FeedCard[]).filter((p) => !cur.some((x) => x.curation_id === p.curation_id)) : [];
+    const showFeatured = !following && sort === 'recommend' && isCurrent;
+    const f = showFeatured ? (pickFeatured(cur.filter((x) => !x.visited)) ?? pickFeatured(cur) ?? prev[0]) : undefined;
+    const all = [...cur, ...prev].filter((x) => x.curation_id !== f?.curation_id);
+    return { first: f, rest: all, prevStart: all.findIndex((x) => prev.includes(x)) };
+  }, [query, search.data, list.data, previous, fill, following, sort, isCurrent]);
+
+  const loading = query ? search.isPending : list.isPending && list.fetchStatus !== 'idle';
+  const paused = (query ? search.fetchStatus : list.fetchStatus) === 'paused';
+  const refetch = () => void (query ? search.refetch() : list.refetch());
+
+  // 月份切換：只能切到有策展的月份（本月一定可選）
+  const periods = useMemo(() => {
+    const ps = new Set((months ?? []).map((m) => m.period));
+    ps.add(currentPeriod());
+    return [...ps].sort().reverse();
+  }, [months]);
+  const idx = periods.indexOf(period);
+  const older = idx >= 0 && idx < periods.length - 1 ? periods[idx + 1] : null;
+  const newer = idx > 0 ? periods[idx - 1] : null;
+
   const tagName = tags?.find((t) => t.slug === tag)?.name;
   const suggest = tags?.find((t) => t.slug !== tag);
-  const fill = !query && (data?.length ?? 0) < EXPLORE_MIN && !isPending;
-  const { data: previous } = usePreviousMonthFeed({ tag, enabled: fill });
-  const prevItems = fill ? (previous ?? []) : [];
-  const current = data ?? [];
-  const first = query ? current[0] : pickFeatured(current) ?? prevItems[0];
-  const rest = (query ? current : [...current, ...prevItems]).filter((i) => i.curation_id !== first?.curation_id);
-  const prevStart = rest.findIndex((i) => i.period !== currentPeriod());
+  const count = query ? (search.data?.length ?? 0) : (list.data?.length ?? 0);
 
   const empty = query ? (
     <View style={{ paddingTop: 48, alignItems: 'center', gap: Spacing.sm }}>
@@ -47,10 +97,16 @@ export default function ExploreScreen() {
       {suggest ? <Button label={`看看${suggest.name}主題`} style={{ alignSelf: 'stretch', marginTop: Spacing.lg }} onPress={() => { setInput(''); setQuery(''); setTag(suggest.slug); }} /> : null}
       <Button kind="link" label="清除搜尋" onPress={() => { setInput(''); setQuery(''); }} />
     </View>
+  ) : following && !session ? (
+    <EmptyState title="登入後看追蹤中的書店" body="追蹤喜歡的店主，新策展上架時會出現在這裡。" actionLabel="登入" onAction={() => requireAuth(() => {})} />
+  ) : following ? (
+    <EmptyState title={unvisitedOnly ? '追蹤的書店都逛過了' : '還沒有追蹤的書店'} body={unvisitedOnly ? '有新策展上架時會出現在這裡。' : '在書店頁按「追蹤」，他們的策展會集中在這裡。'} actionLabel="看全部策展" onAction={() => setScope('all')} />
+  ) : unvisitedOnly ? (
+    <EmptyState title="這個月的策展都逛過了" body="看看其他月份，或關掉「只看沒逛過」。" actionLabel="顯示全部" onAction={() => setUnvisitedOnly(false)} />
   ) : tag ? (
-    <EmptyState title={`本月還沒有「${tagName ?? ''}」的策展`} body="換個主題看看，或回到全部。" actionLabel="看全部策展" onAction={() => setTag(undefined)} />
+    <EmptyState title={`${monthOf(period)} 月還沒有「${tagName ?? ''}」的策展`} body="換個主題看看，或回到全部。" actionLabel="看全部策展" onAction={() => setTag(undefined)} />
   ) : (
-    <EmptyState title="這個月還沒有策展" body="第一間書店開張後，策展就會出現在這裡。" actionLabel="開一間自己的書店" onAction={() => router.navigate('/my-store')} />
+    <EmptyState title={`${monthOf(period)} 月還沒有策展`} body="第一間書店開張後，策展就會出現在這裡。" actionLabel="開一間自己的書店" onAction={() => router.navigate('/my-store')} />
   );
 
   return (
@@ -58,8 +114,29 @@ export default function ExploreScreen() {
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         <View style={styles.header}>
           <AppText variant="title">探索</AppText>
-          <AppText variant="caption" muted>{`${month} 月 · ${query || tag ? `${data?.length ?? 0} 檔符合` : `${data?.length ?? 0} 檔新策展`}`}</AppText>
+          {!following && !query ? (
+            <View style={styles.month}>
+              <Pressable accessibilityRole="button" accessibilityLabel="上一個月" disabled={!older} onPress={() => older && setPeriod(older)} style={[styles.arrow, { opacity: older ? 1 : 0.3 }]}>
+                <Feather name="chevron-left" size={20} color={c.text} />
+              </Pressable>
+              <AppText variant="label" accessibilityLiveRegion="polite">{isCurrent ? `${monthOf(period)} 月 · 本月` : periodLabel(period)}</AppText>
+              <Pressable accessibilityRole="button" accessibilityLabel="下一個月" disabled={!newer} onPress={() => newer && setPeriod(newer)} style={[styles.arrow, { opacity: newer ? 1 : 0.3 }]}>
+                <Feather name="chevron-right" size={20} color={c.text} />
+              </Pressable>
+            </View>
+          ) : (
+            <AppText variant="caption" muted>{query ? `${count} 檔符合（所有月份）` : `${count} 檔`}</AppText>
+          )}
         </View>
+
+        <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
+          {([['all', '全部'], ['following', '追蹤中']] as const).map(([s, label]) => (
+            <Pressable key={s} accessibilityRole="tab" accessibilityState={{ selected: scope === s }} onPress={() => setScope(s)} style={[styles.segmentItem, scope === s && { backgroundColor: c.surface }]}>
+              <AppText variant="caption" style={{ fontWeight: '700', color: scope === s ? c.text : c.textSecondary }}>{label}</AppText>
+            </Pressable>
+          ))}
+        </View>
+
         <View style={[styles.search, { backgroundColor: c.surface, borderColor: c.border }]}>
           <Feather name="search" size={18} color={c.textSecondary} />
           <TextInput
@@ -78,19 +155,36 @@ export default function ExploreScreen() {
             </Pressable>
           ) : null}
         </View>
+
         <View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tags} accessibilityRole="tablist">
-            <Chip label="全部" selected={!tag} onPress={() => setTag(undefined)} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tags}>
+            <Chip label="全部主題" selected={!tag} onPress={() => setTag(undefined)} />
             {tags?.map((t) => <Chip key={t.slug} label={t.name} selected={tag === t.slug} onPress={() => setTag(tag === t.slug ? undefined : t.slug)} />)}
           </ScrollView>
         </View>
 
-        {isPending && fetchStatus === 'paused' ? (
-          <EmptyState title="目前沒有網路連線" body="連上網路後會自動重新載入。" actionLabel="重試" onAction={() => refetch()} />
-        ) : isPending ? (
+        {!query ? (
+          <View style={styles.sortRow}>
+            <View style={{ flexDirection: 'row', gap: Spacing.md }} accessibilityRole="radiogroup">
+              {SORTS.map(([s, label]) => (
+                <Pressable key={s} accessibilityRole="radio" accessibilityState={{ selected: sort === s }} onPress={() => setSort(s)} hitSlop={8} style={styles.sortItem}>
+                  <AppText variant="caption" style={{ fontWeight: sort === s ? '700' : '500', color: sort === s ? c.primary : c.textSecondary }}>{label}</AppText>
+                </Pressable>
+              ))}
+            </View>
+            <Pressable accessibilityRole="switch" accessibilityState={{ checked: unvisitedOnly }} onPress={() => setUnvisitedOnly(!unvisitedOnly)} hitSlop={8} style={styles.sortItem}>
+              <Feather name={unvisitedOnly ? 'check-square' : 'square'} size={16} color={unvisitedOnly ? c.primary : c.textSecondary} />
+              <AppText variant="caption" style={{ color: unvisitedOnly ? c.primary : c.textSecondary, fontWeight: '600' }}>只看沒逛過</AppText>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {loading ? (
           <ActivityIndicator style={{ marginTop: 48 }} />
-        ) : error ? (
-          <EmptyState title="目前沒有網路連線" body="連上網路後再試一次。" actionLabel="重試" onAction={() => refetch()} />
+        ) : paused ? (
+          <EmptyState title="目前沒有網路連線" body="連上網路後會自動重新載入。" actionLabel="重試" onAction={refetch} />
+        ) : (query ? search.error : list.error) ? (
+          <EmptyState title="沒有載入成功" body="檢查網路後再試一次。" actionLabel="重試" onAction={refetch} />
         ) : (
           <FlatList
             data={rest}
@@ -98,21 +192,19 @@ export default function ExploreScreen() {
             contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: Spacing.xxl, gap: Spacing.md, flexGrow: 1 }}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
-            refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
+            refreshControl={<RefreshControl refreshing={list.isRefetching || search.isRefetching} onRefresh={refetch} />}
             ListHeaderComponent={
               first ? (
                 <View style={{ gap: Spacing.md }}>
                   <FeaturedCard item={first} ownStoreId={mine?.store.id} />
-                  {rest.length && prevStart !== 0 ? <AppText variant="label" style={{ marginTop: Spacing.md }}>{query || tag ? '其他符合的策展' : '更多本月策展'}</AppText> : null}
+                  {rest.length && prevStart !== 0 ? <AppText variant="label" style={{ marginTop: Spacing.md }}>{`更多 ${monthOf(period)} 月策展`}</AppText> : null}
                 </View>
               ) : undefined
             }
             renderItem={({ item, index }) => (
               <>
-                {!query && index === prevStart ? (
-                  <AppText variant="label" style={{ marginTop: Spacing.md }}>{`${monthOf(previousPeriod())} 月的策展`}</AppText>
-                ) : null}
-                <CompactCard item={item} />
+                {index === prevStart ? <AppText variant="label" style={{ marginTop: Spacing.md }}>{`${monthOf(previousPeriod())} 月的策展`}</AppText> : null}
+                <CompactCard item={item} showMonth={!!query || following} />
               </>
             )}
             ListEmptyComponent={first ? undefined : empty}
@@ -125,11 +217,20 @@ export default function ExploreScreen() {
 
 const openStore = (slug: string) => router.push({ pathname: '/store/[slug]', params: { slug } });
 
-function FeaturedCard({ item, ownStoreId }: { item: ExploreItem; ownStoreId?: string }) {
+function VisitedBadge() {
+  const c = useTheme();
+  return (
+    <View style={[styles.badge, { backgroundColor: c.surfaceMuted }]}>
+      <AppText variant="caption" style={{ color: c.textSecondary, fontWeight: '600' }}>已逛過</AppText>
+    </View>
+  );
+}
+
+function FeaturedCard({ item, ownStoreId }: { item: FeedCard; ownStoreId?: string }) {
   const color = StoreColors[item.color]?.hex ?? StoreColors.moss.hex;
   return (
     <Card style={{ padding: 0, overflow: 'hidden' }}>
-      <Pressable accessibilityRole="link" accessibilityLabel={`${item.title}，${item.store_name}的策展，${item.book_count} 本書`} onPress={() => openStore(item.slug)}>
+      <Pressable accessibilityRole="link" accessibilityLabel={`${item.title}，${item.store_name}的策展，${item.book_count} 本書${item.visited ? '，已逛過' : ''}`} onPress={() => openStore(item.slug)}>
         <View style={[styles.band, { backgroundColor: color }]}>
           <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
             {item.cover_titles.slice(0, 3).map((t, i) => (
@@ -141,7 +242,10 @@ function FeaturedCard({ item, ownStoreId }: { item: ExploreItem; ownStoreId?: st
           <AppText variant="caption" style={styles.bandText}>{`${item.book_count} 本書`}</AppText>
         </View>
         <View style={{ padding: Spacing.lg, paddingBottom: 0, gap: Spacing.xs }}>
-          <AppText variant="heading">{item.title}</AppText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+            <AppText variant="heading" style={{ flex: 1 }}>{item.title}</AppText>
+            {item.visited ? <VisitedBadge /> : null}
+          </View>
           {item.description ? <AppText muted numberOfLines={3}>{item.description}</AppText> : null}
         </View>
       </Pressable>
@@ -159,15 +263,26 @@ function FeaturedCard({ item, ownStoreId }: { item: ExploreItem; ownStoreId?: st
   );
 }
 
-function CompactCard({ item }: { item: ExploreItem }) {
+function CompactCard({ item, showMonth }: { item: FeedCard; showMonth?: boolean }) {
+  const c = useTheme();
   return (
-    <Pressable accessibilityRole="link" onPress={() => openStore(item.slug)} style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}>
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={`${item.title}，${item.store_name}${item.visited ? '，已逛過' : ''}`}
+      onPress={() => openStore(item.slug)}
+      style={({ pressed }) => ({ opacity: pressed ? 0.8 : item.visited ? 0.72 : 1 })}>
       <Card style={{ flexDirection: 'row', gap: Spacing.md, alignItems: 'center' }}>
         <BookCover title={item.cover_titles[0] ?? item.title} url={item.cover_urls[0]} color={item.color} size="md" />
         <View style={{ flex: 1, gap: 2 }}>
-          <AppText variant="label" style={{ fontSize: 16 }}>{item.title}</AppText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+            <AppText variant="label" style={{ fontSize: 16, flexShrink: 1 }}>{item.title}</AppText>
+            {item.visited ? <VisitedBadge /> : null}
+          </View>
           {item.description ? <AppText variant="caption" muted numberOfLines={1}>{item.description}</AppText> : null}
-          <AppText variant="caption" muted>{`${item.store_name} · ${item.book_count} 本書 · ${item.follower_count} 人追蹤`}</AppText>
+          <AppText variant="caption" muted>
+            {[showMonth ? `${monthOf(item.period)} 月` : null, item.store_name, `${item.book_count} 本書`].filter(Boolean).join(' · ')}
+            {item.is_following ? <AppText variant="caption" style={{ color: c.primary }}>{' · 追蹤中'}</AppText> : null}
+          </AppText>
         </View>
       </Card>
     </Pressable>
@@ -175,13 +290,20 @@ function CompactCard({ item }: { item: ExploreItem }) {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  header: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  month: { flexDirection: 'row', alignItems: 'center' },
+  arrow: { width: MinTouch - 4, height: MinTouch, alignItems: 'center', justifyContent: 'center' },
+  segment: { flexDirection: 'row', marginHorizontal: Spacing.xl, marginTop: Spacing.sm, borderRadius: Radius.md, padding: 3 },
+  segmentItem: { flex: 1, minHeight: MinTouch - 4, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },
   search: { marginHorizontal: Spacing.xl, marginTop: Spacing.md, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderWidth: 1, borderRadius: Radius.md, paddingLeft: 14, minHeight: 48 },
   searchInput: { flex: 1, fontSize: 16, minHeight: 48, outlineWidth: 0 },
   clear: { width: MinTouch, height: MinTouch, alignItems: 'center', justifyContent: 'center' },
-  tags: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, gap: Spacing.sm },
+  tags: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, gap: Spacing.sm },
+  sortRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
+  sortItem: { minHeight: 32, flexDirection: 'row', alignItems: 'center', gap: 4 },
   band: { minHeight: 150, padding: Spacing.lg, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   bandText: { color: '#FFFFFF', fontWeight: '700' },
   coverFrame: { borderRadius: 4, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.55)' },
   storeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.lg },
+  badge: { borderRadius: Radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
 });

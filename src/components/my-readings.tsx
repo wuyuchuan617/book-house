@@ -12,8 +12,10 @@ import { MinTouch, Radius, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { timeAgo } from '@/lib/period';
 import { useDeleteReading, type MyReading } from '@/lib/readings';
+import { wantSource, type SavedBook } from '@/lib/browse';
+import { WantSheet } from '@/components/want-sheet';
 
-type Filter = 'all' | 'reading' | 'finished';
+type Filter = 'want' | 'reading' | 'finished';
 const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
 
 /**
@@ -60,25 +62,28 @@ export function ReadingRemovalToast({ removal }: { removal: ReturnType<typeof us
   );
 }
 
-/** R1 店主閱讀列表＋S6 空狀態 */
-export function ReadingSection({ readings, color, loading, removal }: {
+/** R1 店主閱讀：想讀 → 在讀 → 讀完（想讀與「收藏 › 想讀」是同一份）＋S6 空狀態 */
+export function ReadingSection({ readings, wants, color, loading, removal }: {
   readings: MyReading[] | undefined;
+  wants: SavedBook[] | undefined;
   color: StoreColor;
   loading: boolean;
   removal: ReturnType<typeof useReadingRemoval>;
 }) {
   const c = useTheme();
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<Filter>('reading');
+  const [openWant, setOpenWant] = useState<SavedBook | null>(null);
   const [menuFor, setMenuFor] = useState<MyReading | null>(null);
   const { pending, remove } = removal;
 
   if (loading || !readings) return <ActivityIndicator style={{ marginTop: 24 }} />;
   const visible = readings.filter((r) => r.id !== pending?.id);
-  const counts = { all: visible.length, reading: visible.filter((r) => r.status === 'reading').length, finished: visible.filter((r) => r.status === 'finished').length };
-  const shown = filter === 'all' ? visible : visible.filter((r) => r.status === filter);
-  const add = () => router.push('/reading/new');
+  const wantList = wants ?? [];
+  const counts = { want: wantList.length, reading: visible.filter((r) => r.status === 'reading').length, finished: visible.filter((r) => r.status === 'finished').length };
+  const shown = filter === 'want' ? [] : visible.filter((r) => r.status === filter);
+  const add = () => router.push({ pathname: '/reading/new', params: filter === 'want' ? { status: 'want' } : {} });
 
-  if (visible.length === 0) {
+  if (visible.length === 0 && wantList.length === 0) {
     return (
       <Card style={{ alignItems: 'center', paddingVertical: 28, gap: Spacing.sm }}>
           <AppText variant="heading">記下你正在讀的書</AppText>
@@ -92,7 +97,7 @@ export function ReadingSection({ readings, color, loading, removal }: {
     <View style={{ gap: Spacing.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={chipRow}>
-          <Chip label={`全部 ${counts.all}`} selected={filter === 'all'} onPress={() => setFilter('all')} />
+          <Chip label={`想讀 ${counts.want}`} selected={filter === 'want'} onPress={() => setFilter('want')} />
           <Chip label={`在讀 ${counts.reading}`} selected={filter === 'reading'} onPress={() => setFilter('reading')} />
           <Chip label={`讀完 ${counts.finished}`} selected={filter === 'finished'} onPress={() => setFilter('finished')} />
         </View>
@@ -102,6 +107,29 @@ export function ReadingSection({ readings, color, loading, removal }: {
         </Pressable>
       </View>
 
+      {filter === 'want'
+        ? wantList.map((w) => {
+            const from = wantSource(w);
+            return (
+              <Card key={w.book_id} style={{ padding: 0 }}>
+                <Pressable accessibilityRole="button" accessibilityHint="編輯理由、開始讀" onPress={() => setOpenWant(w)} style={styles.main}>
+                  <BookCover title={w.books.title} url={w.books.cover_url} color={color} />
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <View style={[styles.pill, { backgroundColor: c.surfaceMuted, alignSelf: 'flex-start' }]}>
+                      <AppText variant="caption" style={{ fontWeight: '700', color: c.textSecondary }}>想讀</AppText>
+                    </View>
+                    <AppText variant="label" style={{ fontSize: 16 }}>{w.books.title}</AppText>
+                    {from ? <AppText variant="caption" muted numberOfLines={1}>{`在哪看到：${from}`}</AppText> : null}
+                    <AppText variant="caption" muted numberOfLines={2}>{w.note ? `「${w.note}」` : '還沒寫為什麼想讀'}</AppText>
+                  </View>
+                  <AppText variant="caption" style={{ color: c.primary, fontWeight: '700', alignSelf: 'center' }}>開始讀</AppText>
+                </Pressable>
+              </Card>
+            );
+          })
+        : null}
+      {filter === 'want' && wantList.length === 0 ? <AppText muted style={{ textAlign: 'center', marginTop: Spacing.lg }}>{'還沒有想讀的書。\n在策展裡按書籤，或按「新增」加一本。'}</AppText> : null}
+      <WantSheet item={openWant} hasStore onClose={() => setOpenWant(null)} />
       {shown.map((r) => {
         const latest = r.reading_notes[0];
         return (
@@ -139,7 +167,7 @@ export function ReadingSection({ readings, color, loading, removal }: {
           </Card>
         );
       })}
-      {shown.length === 0 ? <AppText muted style={{ textAlign: 'center', marginTop: Spacing.lg }}>{filter === 'reading' ? '目前沒有在讀的書' : '還沒有讀完的書'}</AppText> : null}
+      {filter !== 'want' && shown.length === 0 ? <AppText muted style={{ textAlign: 'center', marginTop: Spacing.lg }}>{filter === 'reading' ? '目前沒有在讀的書' : '還沒有讀完的書'}</AppText> : null}
 
       {menuFor ? (
         <ReadingActions reading={menuFor} visible onClose={() => setMenuFor(null)} onRemove={() => remove(menuFor)} />

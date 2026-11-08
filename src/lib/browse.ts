@@ -5,7 +5,7 @@ import type { StoreColor } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import type { Book } from '@/lib/curations';
 import { track } from '@/lib/analytics';
-import { unwrap, type ExploreItem, type PublicStore } from '@/lib/queries';
+import { getVisitorKey, unwrap, type ExploreItem, type PublicStore } from '@/lib/queries';
 import { previousPeriod } from '@/lib/period';
 import { supabase } from '@/lib/supabase';
 
@@ -164,7 +164,17 @@ export type SavedBook = {
   books: Book;
   curations: { title: string | null } | null;
   bookstores: { name: string; slug: string; color: StoreColor } | null;
+  note: string | null;
+  source_text: string | null;
 };
+
+/** 想讀清單上顯示的「在哪看到」：從策展收藏的自動帶入書店與策展 */
+export function wantSource(b: SavedBook) {
+  if (b.source_text) return b.source_text;
+  if (b.bookstores) return `${b.bookstores.name}${b.curations?.title ? ` · ${b.curations.title}` : b.from_curation_id ? '' : ' · 店主正在讀'}`;
+  if (b.from_bookstore_id || b.from_curation_id) return '來源書店目前看不到';
+  return null;
+}
 
 export function useSaveIds() {
   const { session } = useAuth();
@@ -185,24 +195,24 @@ export function useSavedBooks() {
       unwrap<SavedBook[]>(
         await supabase
           .from('book_saves')
-          .select(`book_id, created_at, from_curation_id, from_bookstore_id, books(${BOOK_COLS}), curations(title), bookstores(name, slug, color)`)
+          .select(`book_id, created_at, from_curation_id, from_bookstore_id, note, source_text, books(${BOOK_COLS}), curations(title), bookstores(name, slug, color)`)
           .order('created_at', { ascending: false }),
       ),
   });
 }
 
-export type SaveInput = { bookId: string; save: boolean; curationId?: string | null; bookstoreId?: string | null };
+export type SaveInput = { bookId: string; save: boolean; curationId?: string | null; bookstoreId?: string | null; note?: string | null; sourceText?: string | null };
 
 export function useToggleSave() {
   const qc = useQueryClient();
   const { session } = useAuth();
   return useMutation({
-    mutationFn: async ({ bookId, save, curationId, bookstoreId }: SaveInput) => {
+    mutationFn: async ({ bookId, save, curationId, bookstoreId, note, sourceText }: SaveInput) => {
       const uid = session?.user.id;
       if (!uid) throw new Error('sign in required');
       const res = save
         ? await supabase.from('book_saves').upsert(
-            { user_id: uid, book_id: bookId, from_curation_id: curationId ?? null, from_bookstore_id: bookstoreId ?? null },
+            { user_id: uid, book_id: bookId, from_curation_id: curationId ?? null, from_bookstore_id: bookstoreId ?? null, note: note ?? null, source_text: sourceText ?? null },
             { ignoreDuplicates: true },
           )
         : await supabase.from('book_saves').delete().eq('user_id', uid).eq('book_id', bookId);
@@ -306,5 +316,72 @@ export function useBook(id: string | undefined) {
       ]);
       return { book: unwrap<Book | null>(book), appearances: unwrap<Appearance[]>(apps) };
     },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// 想讀：理由、在哪看到、開始讀
+// ---------------------------------------------------------------------------
+export function useUpsertWant() {
+  const qc = useQueryClient();
+  const { session } = useAuth();
+  return useMutation({
+    mutationFn: async ({ bookId, note, sourceText }: { bookId: string; note?: string | null; sourceText?: string | null }) => {
+      const res = await supabase.from('book_saves').upsert(
+        { user_id: session!.user.id, book_id: bookId, note: note?.trim() || null, source_text: sourceText?.trim() || null },
+        { onConflict: 'user_id,book_id' },
+      );
+      if (res.error) throw new Error(res.error.message);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['save-ids'] });
+      qc.invalidateQueries({ queryKey: ['saves'] });
+    },
+  });
+}
+
+export function useStartReading() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (bookId: string) =>
+      unwrap<{ id: string }>(await supabase.rpc('start_reading_from_save', { p_book_id: bookId })),
+    onSuccess: () => {
+      for (const k of ['save-ids', 'saves', 'my-readings', 'readings']) qc.invalidateQueries({ queryKey: [k] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// A2 v1.1：推薦／最新／熱門、追蹤中、月份、已逛過
+// ---------------------------------------------------------------------------
+export type ExploreSort = 'recommend' | 'latest' | 'popular';
+export type ExploreRow = ExploreItem & { visited: boolean; is_following: boolean; score: number };
+
+export function useExploreList(opts: { period: string | null; sort: ExploreSort; tag?: string; following: boolean; unvisitedOnly: boolean }) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ['explore', 'list', opts, session?.user.id],
+    enabled: !opts.following || !!session,
+    queryFn: async () => {
+      const visitorKey = await getVisitorKey();
+      return unwrap<ExploreRow[]>(
+        await supabase.rpc('explore_list', {
+          p_period: opts.period,
+          p_sort: opts.sort,
+          p_tag: opts.tag ?? null,
+          p_following: opts.following,
+          p_visitor_key: visitorKey,
+          p_unvisited_only: opts.unvisitedOnly,
+        }),
+      );
+    },
+  });
+}
+
+export function useExploreMonths() {
+  return useQuery({
+    queryKey: ['explore', 'months'],
+    staleTime: 10 * 60_000,
+    queryFn: async () => unwrap<{ period: string; curation_count: number }[]>(await supabase.rpc('explore_months')),
   });
 }

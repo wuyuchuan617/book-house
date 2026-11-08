@@ -9,13 +9,13 @@ import { useMyStore } from '@/lib/queries';
 import { useUpdateStore } from '@/lib/readings';
 import { useBlockedAccounts } from '@/lib/safety';
 import { useIsAdmin } from '@/lib/admin';
+import { setAppearance, useAppearancePref } from '@/lib/appearance';
 import { useAuth } from '@/lib/auth';
 import { track } from '@/lib/analytics';
 import { supabase } from '@/lib/supabase';
-import { shareStoreMessage, storeLinkLabel, WEB_URL } from '@/lib/links';
+import { shareStoreMessage, storeLinkLabel } from '@/lib/links';
 import { useNotificationPrefs, useUpdatePrefs, type NotificationPrefs } from '@/lib/notification-prefs';
 import { Chip } from '@/components/form';
-import * as WebBrowser from 'expo-web-browser';
 import { userMessage } from '@/lib/errors';
 
 /** M3 設定：書店、通知（含 M5 每月策展提醒）、已封鎖的帳號、說明與意見回饋、條款。TODO(V2)：外觀、暫停營業 */
@@ -27,6 +27,7 @@ export default function SettingsScreen() {
   const store = mine?.store;
   const { data: blocked } = useBlockedAccounts();
   const { data: isAdmin } = useIsAdmin();
+  const appearance = useAppearancePref();
   const { data: prefs } = useNotificationPrefs();
   const updatePrefs = useUpdatePrefs();
   const setPref = (patch: Partial<NotificationPrefs>) => updatePrefs.mutate(patch, { onError: (e) => Alert.alert('沒有成功', userMessage(e)) });
@@ -105,7 +106,17 @@ export default function SettingsScreen() {
             <AppText variant="caption" muted>通知需要允許書棲傳送通知；Expo Go 測試版收不到推播。</AppText>
           </>
         ) : null}
-        {isAdmin ? <Button kind="secondary" label="審核後台" onPress={() => router.push('/admin')} /> : null}
+        {isAdmin === true ? <Button kind="secondary" label="審核後台" onPress={() => router.push('/admin')} /> : null}
+        <AppText variant="label">外觀</AppText>
+        <Card style={{ paddingVertical: Spacing.md }}>
+          <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="radiogroup">
+            {([['system', '跟隨系統'], ['light', '淺色'], ['dark', '深色']] as const).map(([v, label]) => (
+              <Pressable key={v} accessibilityRole="radio" accessibilityState={{ selected: appearance === v }} onPress={() => setAppearance(v)} style={[styles.segmentItem, appearance === v && { backgroundColor: c.surface }]}>
+                <AppText variant="caption" style={{ fontWeight: '700', color: appearance === v ? c.text : c.textSecondary }}>{label}</AppText>
+              </Pressable>
+            ))}
+          </View>
+        </Card>
         <AppText variant="label">帳號與其他</AppText>
         <Card style={{ paddingVertical: 0 }}>
           <Pressable accessibilityRole="button" onPress={() => router.push('/blocked')} style={[styles.row, { borderBottomColor: c.divider }]}>
@@ -115,10 +126,10 @@ export default function SettingsScreen() {
           <Pressable accessibilityRole="button" onPress={() => router.push('/help')} style={[styles.row, { borderBottomColor: c.divider }]}>
             <AppText style={{ flex: 1 }}>說明與意見回饋</AppText>
           </Pressable>
-          <Pressable accessibilityRole="link" onPress={() => void WebBrowser.openBrowserAsync(`${WEB_URL}/terms`)} style={[styles.row, { borderBottomColor: c.divider }]}>
+          <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'terms' } })} style={[styles.row, { borderBottomColor: c.divider }]}>
             <AppText style={{ flex: 1 }}>服務條款</AppText>
           </Pressable>
-          <Pressable accessibilityRole="link" onPress={() => void WebBrowser.openBrowserAsync(`${WEB_URL}/privacy`)} style={[styles.row, { borderBottomWidth: 0 }]}>
+          <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'privacy' } })} style={[styles.row, { borderBottomWidth: 0 }]}>
             <AppText style={{ flex: 1 }}>隱私權政策</AppText>
           </Pressable>
         </Card>
@@ -150,4 +161,6 @@ function PrefRow({ label, sub, value, onChange, last }: { label: string; sub?: s
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, minHeight: MinTouch + 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  segment: { flexDirection: 'row', borderRadius: 12, padding: 3 },
+  segmentItem: { flex: 1, minHeight: MinTouch - 4, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
 });

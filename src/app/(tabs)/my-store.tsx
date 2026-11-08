@@ -12,6 +12,7 @@ import { CurationSection } from '@/components/my-curations';
 import { ReadingRemovalToast, ReadingSection, useReadingRemoval } from '@/components/my-readings';
 import { useMyCurations } from '@/lib/curations';
 import { useMyReadings } from '@/lib/readings';
+import { useSavedBooks } from '@/lib/browse';
 import { useMyStore } from '@/lib/queries';
 import { storeLinkLabel } from '@/lib/links';
 
@@ -24,7 +25,8 @@ export default function MyStoreScreen() {
   const readings = useMyReadings();
   const removal = useReadingRemoval();
   const [tab, setTab] = useState<'curation' | 'reading'>('curation');
-  const readingCount = (readings.data ?? []).filter((r) => r.id !== removal.pending?.id).length;
+  const { data: wants } = useSavedBooks();
+  const readingCount = (readings.data ?? []).filter((r) => r.id !== removal.pending?.id).length + (wants?.length ?? 0);
 
   return (
     <Screen>
@@ -77,7 +79,7 @@ export default function MyStoreScreen() {
             {tab === 'curation' ? (
               <CurationSection />
             ) : (
-              <ReadingSection readings={readings.data} loading={readings.isLoading} color={data.store.color} removal={removal} />
+              <ReadingSection readings={readings.data} wants={wants} loading={readings.isLoading} color={data.store.color} removal={removal} />
             )}
           </ScrollView>
         )}

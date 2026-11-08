@@ -10,12 +10,14 @@ import { AppText, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
-import { useFollowedStores, useSavedBooks, useToggleSave, type FollowedStore, type SavedBook } from '@/lib/browse';
+import { useFollowedStores, useSavedBooks, useToggleSave, wantSource, type FollowedStore, type SavedBook } from '@/lib/browse';
+import { useMyStore } from '@/lib/queries';
+import { WantSheet } from '@/components/want-sheet';
 import { currentPeriod, monthOf } from '@/lib/period';
 
 type Tab = 'stores' | 'books';
 
-/** B1 追蹤的書店、B2 收藏的書；S4 空狀態 */
+/** B1 追蹤的書店、B2 想讀（原「收藏的書」，與店主閱讀的想讀是同一份）；S4 空狀態 */
 export default function SavedScreen() {
   const c = useTheme();
   const { session, requireAuth } = useAuth();
@@ -24,6 +26,8 @@ export default function SavedScreen() {
   const books = useSavedBooks();
   const toggleSave = useToggleSave();
   const [undo, setUndo] = useState<SavedBook | null>(null);
+  const [openWant, setOpenWant] = useState<SavedBook | null>(null);
+  const { data: mine } = useMyStore();
   const hideToast = useCallback(() => setUndo(null), []);
 
   if (!session) {
@@ -42,7 +46,7 @@ export default function SavedScreen() {
     setUndo(b);
   };
   const restore = () => {
-    if (undo) toggleSave.mutate({ bookId: undo.book_id, save: true, curationId: undo.from_curation_id, bookstoreId: undo.from_bookstore_id });
+    if (undo) toggleSave.mutate({ bookId: undo.book_id, save: true, curationId: undo.from_curation_id, bookstoreId: undo.from_bookstore_id, note: undo.note, sourceText: undo.source_text });
     setUndo(null);
   };
 
@@ -62,7 +66,7 @@ export default function SavedScreen() {
                 onPress={() => setTab(t)}
                 style={[styles.segmentItem, selected && { backgroundColor: c.surface }]}>
                 <AppText variant="caption" style={{ fontWeight: '700', color: selected ? c.text : c.textSecondary }}>
-                  {`${t === 'stores' ? '追蹤的書店' : '收藏的書'} · ${count ?? 0}`}
+                  {`${t === 'stores' ? '追蹤的書店' : '想讀'} · ${count ?? 0}`}
                 </AppText>
               </Pressable>
             );
@@ -94,12 +98,13 @@ export default function SavedScreen() {
             refreshControl={<RefreshControl refreshing={books.isRefetching} onRefresh={() => void books.refetch()} />}
             ListHeaderComponent={books.data?.length ? <AppText variant="caption" muted>{`${books.data.length} 本`}</AppText> : undefined}
             ListEmptyComponent={
-              <EmptyState title="還沒有收藏的書" body={'在書店頁按書旁邊的書籤，\n想讀的書就會存在這裡。'} actionLabel="去探索書店" onAction={() => router.navigate('/')} />
+              <EmptyState title="還沒有想讀的書" body={'在書店頁按書旁邊的書籤，\n或在店主閱讀按「＋」加入想讀。'} actionLabel="去探索書店" onAction={() => router.navigate('/')} />
             }
-            renderItem={({ item }) => <BookRow item={item} onUnsave={() => unsave(item)} />}
+            renderItem={({ item }) => <BookRow item={item} onOpen={() => setOpenWant(item)} onUnsave={() => unsave(item)} />}
           />
         )}
-        <UndoToast message={undo ? `已取消收藏「${undo.books.title}」` : null} onUndo={restore} onHide={hideToast} />
+        <UndoToast message={undo ? `已從想讀移除「${undo.books.title}」` : null} onUndo={restore} onHide={hideToast} />
+        <WantSheet item={openWant} hasStore={!!mine} onClose={() => setOpenWant(null)} />
       </SafeAreaView>
     </Screen>
   );
@@ -138,22 +143,21 @@ function StoreRow({ store }: { store: FollowedStore }) {
   );
 }
 
-function BookRow({ item, onUnsave }: { item: SavedBook; onUnsave: () => void }) {
+function BookRow({ item, onOpen, onUnsave }: { item: SavedBook; onOpen: () => void; onUnsave: () => void }) {
   const c = useTheme();
-  const from = item.bookstores
-    ? `${item.bookstores.name} · ${item.curations?.title ?? (item.from_curation_id ? '策展' : '店主正在讀')}`
-    : '來源書店目前看不到';
+  const from = wantSource(item);
   return (
     <Card style={styles.row}>
-      <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/book/[id]', params: { id: item.book_id } })} style={[styles.row, { flex: 1 }]}>
+      <Pressable accessibilityRole="button" accessibilityHint="編輯為什麼想讀、在哪看到" onPress={onOpen} style={[styles.row, { flex: 1 }]}>
         <BookCover title={item.books.title} url={item.books.cover_url} color={item.bookstores?.color ?? 'moss'} />
         <View style={{ flex: 1, gap: 2 }}>
           <AppText variant="label">{item.books.title}</AppText>
           <AppText variant="caption" muted>{item.books.authors.join('、')}</AppText>
-          <AppText variant="caption" style={{ color: c.textTertiary }} numberOfLines={1}>{from}</AppText>
+          {from ? <AppText variant="caption" style={{ color: c.textTertiary }} numberOfLines={1}>{`在哪看到：${from}`}</AppText> : null}
+          {item.note ? <AppText variant="caption" numberOfLines={2}>{`「${item.note}」`}</AppText> : null}
         </View>
       </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel={`取消收藏「${item.books.title}」`} onPress={onUnsave} style={styles.unsave}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`從想讀移除「${item.books.title}」`} onPress={onUnsave} style={styles.unsave}>
         <Ionicons name="bookmark" size={20} color={c.primary} />
       </Pressable>
     </Card>
