@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressa
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
+import { IsbnScanner } from '@/components/isbn-scanner';
 import { Chip, chipRow, TextField } from '@/components/form';
 import { AppText, Button, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing, type StoreColor } from '@/constants/theme';
@@ -20,8 +21,8 @@ function useDebounced<T>(value: T, ms = 350) {
   return v;
 }
 
-const bookMeta = (b: Pick<Book, 'authors' | 'published_year'>) =>
-  [b.authors.join('、'), b.published_year].filter(Boolean).join(' · ');
+const bookMeta = (b: Pick<Book, 'authors' | 'published_year' | 'publisher'>) =>
+  [b.authors.join('、'), b.publisher, b.published_year].filter(Boolean).join(' · ');
 
 // ---------------------------------------------------------------------------
 // 搜尋面板：O4 直接嵌在頁面裡，C3 放在 BookPicker 彈出面板裡
@@ -40,6 +41,7 @@ export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, 
 }) {
   const c = useTheme();
   const [query, setQuery] = useState('');
+  const [scanning, setScanning] = useState(false);
   const q = useDebounced(query);
   const { data, isFetching, error, refetch } = useBookSearch(q);
   const tooShort = [...q.trim()].length < 2;
@@ -95,11 +97,17 @@ export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, 
             <Feather name="x-circle" size={18} color={c.textTertiary} />
           </Pressable>
         ) : null}
+        {Platform.OS !== 'web' ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="掃描書背條碼" onPress={() => setScanning(true)} style={[styles.clear, { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: c.border }]}>
+            <Feather name="maximize" size={18} color={c.primary} />
+          </Pressable>
+        ) : null}
       </View>
+      <IsbnScanner visible={scanning} onClose={() => setScanning(false)} onScanned={setQuery} />
 
       {tooShort ? (
         <>
-          <AppText variant="caption" muted>輸入 2 個字以上開始搜尋</AppText>
+          <AppText variant="caption" muted>輸入 2 個字以上開始搜尋，或按右邊掃描書背條碼</AppText>
           {suggestions?.books.length ? (
             <>
               <AppText variant="label" style={{ marginTop: Spacing.sm }}>{suggestions.label}</AppText>

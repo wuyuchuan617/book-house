@@ -96,6 +96,9 @@ export default function OpenStoreDoneScreen() {
           <View style={{ padding: Spacing.lg, gap: 4 }}>
             <AppText variant="label">{store.store.name}</AppText>
             <AppText variant="caption" muted>{published ? `${month} 月策展` : `${month} 月策展 · 尚未發布 · 讀者暫時看不到`}</AppText>
+            {published && store.store.slug.startsWith('store-') ? (
+              <Button kind="link" label="幫書店取一個好記的網址" style={{ alignSelf: 'flex-start', paddingHorizontal: 0, minHeight: MinTouch }} onPress={() => router.push('/store-edit')} />
+            ) : null}
             {published ? (
               <View style={styles.linkRow}>
                 <AppText variant="caption" style={{ flex: 1 }} selectable>{link}</AppText>

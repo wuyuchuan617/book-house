@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useMyStore } from '@/lib/queries';
 import { useDeleteStore, useStoreDeleteImpact } from '@/lib/readings';
 import { storeLinkLabel } from '@/lib/links';
+import { userMessage } from '@/lib/errors';
 
 /** M9 刪除書店：輸入店名確認。帳號還在，之後可以重新開店 */
 export default function StoreDeleteScreen() {
@@ -49,7 +50,7 @@ export default function StoreDeleteScreen() {
                 Alert.alert('書店已刪除', '你的帳號還在，之後隨時可以重新開店。');
                 router.navigate('/my-store');
               },
-              onError: (e) => Alert.alert('沒有刪除成功', e.message),
+              onError: (e) => Alert.alert('沒有刪除成功', userMessage(e)),
             })
           }
         />

@@ -8,6 +8,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useMyStore } from '@/lib/queries';
 import { useUpdateStore } from '@/lib/readings';
 import { useBlockedAccounts } from '@/lib/safety';
+import { useIsAdmin } from '@/lib/admin';
 import { useAuth } from '@/lib/auth';
 import { track } from '@/lib/analytics';
 import { supabase } from '@/lib/supabase';
@@ -15,6 +16,7 @@ import { shareStoreMessage, storeLinkLabel, WEB_URL } from '@/lib/links';
 import { useNotificationPrefs, useUpdatePrefs, type NotificationPrefs } from '@/lib/notification-prefs';
 import { Chip } from '@/components/form';
 import * as WebBrowser from 'expo-web-browser';
+import { userMessage } from '@/lib/errors';
 
 /** M3 設定：書店、通知（含 M5 每月策展提醒）、已封鎖的帳號、說明與意見回饋、條款。TODO(V2)：外觀、暫停營業 */
 export default function SettingsScreen() {
@@ -24,9 +26,10 @@ export default function SettingsScreen() {
   const updateStore = useUpdateStore();
   const store = mine?.store;
   const { data: blocked } = useBlockedAccounts();
+  const { data: isAdmin } = useIsAdmin();
   const { data: prefs } = useNotificationPrefs();
   const updatePrefs = useUpdatePrefs();
-  const setPref = (patch: Partial<NotificationPrefs>) => updatePrefs.mutate(patch, { onError: (e) => Alert.alert('沒有成功', e.message) });
+  const setPref = (patch: Partial<NotificationPrefs>) => updatePrefs.mutate(patch, { onError: (e) => Alert.alert('沒有成功', userMessage(e)) });
 
   const requestDeletion = () =>
     Alert.alert('刪除你的書棲帳號？', '送出後 30 天內重新登入可以取消；30 天後永久刪除書店與所有內容。', [
@@ -37,7 +40,7 @@ export default function SettingsScreen() {
         onPress: async () => {
           const { error } = await supabase.rpc('request_account_deletion', { p_reason: null });
           if (!error) track('account_delete_requested', { has_reason: false });
-          if (error) return Alert.alert('沒有成功', error.message);
+          if (error) return Alert.alert('沒有成功', userMessage(error));
           await signOut();
           router.navigate('/');
         },
@@ -63,7 +66,7 @@ export default function SettingsScreen() {
                 <Switch
                   accessibilityLabel="店主閱讀預設公開"
                   value={store.reading_public_default}
-                  onValueChange={(v) => updateStore.mutate({ reading_public_default: v }, { onError: (e) => Alert.alert('沒有成功', e.message) })}
+                  onValueChange={(v) => updateStore.mutate({ reading_public_default: v }, { onError: (e) => Alert.alert('沒有成功', userMessage(e)) })}
                 />
               </View>
               <Pressable
@@ -102,6 +105,7 @@ export default function SettingsScreen() {
             <AppText variant="caption" muted>通知需要允許書棲傳送通知；Expo Go 測試版收不到推播。</AppText>
           </>
         ) : null}
+        {isAdmin ? <Button kind="secondary" label="審核後台" onPress={() => router.push('/admin')} /> : null}
         <AppText variant="label">帳號與其他</AppText>
         <Card style={{ paddingVertical: 0 }}>
           <Pressable accessibilityRole="button" onPress={() => router.push('/blocked')} style={[styles.row, { borderBottomColor: c.divider }]}>

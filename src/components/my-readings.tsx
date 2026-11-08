@@ -120,7 +120,12 @@ export function ReadingSection({ readings, color, loading, removal }: {
                         {r.status === 'reading' ? '在讀' : `讀完${r.finished_at ? ` · ${md(r.finished_at)}` : ''}`}
                       </AppText>
                     </View>
-                    {!r.is_public ? <Feather name="lock" size={13} color={c.textTertiary} accessible={false} /> : null}
+                    {!r.is_public ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                        <Feather name="lock" size={12} color={c.textSecondary} accessible={false} />
+                        <AppText variant="caption" muted>只有自己</AppText>
+                      </View>
+                    ) : null}
                     <AppText variant="caption" muted>{timeAgo(r.updated_at)}</AppText>
                   </View>
                   <AppText variant="label" style={{ fontSize: 16 }}>{r.books.title}</AppText>

@@ -64,6 +64,7 @@ function RootStack() {
         <Stack.Screen name="report/[id]" options={{ title: '檢舉書店', presentation: 'modal' }} />
         <Stack.Screen name="blocked" options={{ title: '已封鎖的帳號' }} />
         <Stack.Screen name="help" options={{ title: '說明與意見回饋' }} />
+        <Stack.Screen name="admin" options={{ title: '審核後台' }} />
         <Stack.Screen name="settings" options={{ title: '設定' }} />
       </Stack>
       <LoginGate />

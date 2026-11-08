@@ -15,7 +15,7 @@ export function storageUrl(kind: ImageKind, path: string | null | undefined) {
 export class UploadError extends Error {}
 
 /** 回傳新的路徑；使用者取消時回傳 null */
-export async function pickAndUpload(kind: ImageKind, storeId: string): Promise<string | null> {
+export async function pickAndUpload(kind: ImageKind, storeId: string, previousPath?: string | null): Promise<string | null> {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) throw new UploadError('需要讀取照片的權限，才能更換圖片。可以到手機設定開啟。');
   const res = await ImagePicker.launchImageLibraryAsync({
@@ -37,5 +37,7 @@ export async function pickAndUpload(kind: ImageKind, storeId: string): Promise<s
   const col = kind === 'avatar' ? 'avatar_path' : 'banner_path';
   const upd = await supabase.from('bookstores').update({ [col]: path }).eq('id', storeId);
   if (upd.error) throw new UploadError(upd.error.message);
+  // 換圖成功後刪掉舊檔，避免儲存空間一直增加（失敗不影響）
+  if (previousPath && previousPath !== path) await supabase.storage.from(BUCKET[kind]).remove([previousPath]).catch(() => {});
   return path;
 }
