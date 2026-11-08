@@ -94,7 +94,9 @@ function RootStack() {
         <Stack.Screen name="reading/[id]" options={{ title: '' }} />
         <Stack.Screen name="book/[id]" options={{ title: '' }} />
         <Stack.Screen name="reading/new" options={{ title: tr('記錄一本書') }} />
-        <Stack.Screen name="reading/manage/[id]" options={{ title: tr('店主閱讀') }} />
+        <Stack.Screen name="reading/manage/[id]" options={{ title: tr('這本書') }} />
+        <Stack.Screen name="reading/compose" options={{ title: tr('寫心得') }} />
+        <Stack.Screen name="reading/note/[id]" options={{ title: tr('心得') }} />
         <Stack.Screen name="store-edit" options={{ title: tr('編輯書店資料') }} />
         <Stack.Screen name="store-delete" options={{ title: tr('刪除書店') }} />
         <Stack.Screen name="report/[id]" options={{ title: tr('檢舉書店'), presentation: 'modal' }} />

@@ -2,6 +2,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { BookCover } from '@/components/book-cover';
+import { KindChip, NoteBody, NotePhotos } from '@/components/note-card';
 import { SaveButton, StoreAvatar } from '@/components/social';
 import { AppText, Card, EmptyState, Screen } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
@@ -53,8 +54,15 @@ export default function ReadingNotesScreen() {
                 {i < notes.length - 1 ? <View style={[styles.line, { backgroundColor: c.divider }]} /> : null}
               </View>
               <View style={{ flex: 1, paddingBottom: Spacing.lg }}>
-                <AppText variant="caption" muted>{i === 0 ? timeAgo(n.created_at) : md(n.created_at)}</AppText>
-                <AppText style={{ marginTop: 4, lineHeight: 23 }}>{n.body}</AppText>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+                  <KindChip kind={n.kind} />
+                  <AppText variant="caption" muted>{i === 0 ? timeAgo(n.created_at) : md(n.created_at)}</AppText>
+                </View>
+                {n.title ? <AppText variant="label" style={{ marginTop: 6 }}>{n.title}</AppText> : null}
+                <View style={{ marginTop: 6, gap: 8 }}>
+                  <NoteBody note={n} />
+                  <NotePhotos paths={n.photo_paths} size={96} />
+                </View>
               </View>
             </View>
           ))}

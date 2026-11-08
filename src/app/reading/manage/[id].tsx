@@ -1,65 +1,70 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
-import { TextField, Toggle } from '@/components/form';
+import { Chip, Toggle } from '@/components/form';
+import { kindLabel, NOTE_KINDS, NoteCard } from '@/components/note-card';
 import { ReadingActions } from '@/components/reading-actions';
-import { ActionSheet } from '@/components/sheet';
-import { AppText, Button, Card, EmptyState, Screen } from '@/components/ui';
+import { SwipeRow, swipeA11y } from '@/components/swipe-row';
+import { AppText, Button, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { timeAgo } from '@/lib/period';
-import { useMyStore } from '@/lib/queries';
-import {
-  NOTE_BODY_MAX,
-  readingError,
-  useAddNote,
-  useDeleteNote,
-  useDeleteReading,
-  useMyReading,
-  useUpdateNote,
-  useUpdateReading,
-  type MyReading,
-} from '@/lib/readings';
+import type { NoteKind, ReadingNote } from '@/lib/browse';
 import { tr } from '@/lib/i18n';
+import { useMyStore } from '@/lib/queries';
+import { readingError, useDeleteNote, useDeleteReading, useMyReading, useUpdateReading } from '@/lib/readings';
 
 const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
-type Note = MyReading['reading_notes'][number];
 
-/** R5 店主閱讀・編輯：狀態、公開、心得時間軸（新增／編輯／刪除） */
-export default function ManageReadingScreen() {
+/**
+ * R5 這本書（店主）：書的資訊、狀態、公開；下面是心得列表（可依類型篩選）。
+ * 寫心得另開一頁（R8），點一則心得看詳情（R10），往左滑編輯／刪除。
+ */
+export default function ReadingBookScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const c = useTheme();
   const { data: r, isLoading } = useMyReading(id);
   const { data: store } = useMyStore();
   const update = useUpdateReading();
-  const addNote = useAddNote();
-  const updateNote = useUpdateNote();
   const deleteNote = useDeleteNote();
   const delReading = useDeleteReading();
-  const [draft, setDraft] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
-  const [noteMenu, setNoteMenu] = useState<Note | null>(null);
-  const [editing, setEditing] = useState<{ note: Note; body: string } | null>(null);
+  const [filter, setFilter] = useState<NoteKind | 'all'>('all');
+
+  const notes = useMemo(() => r?.reading_notes ?? [], [r]);
+  const counts = useMemo(() => {
+    const m: Record<NoteKind, number> = { quote: 0, reflection: 0, thought: 0 };
+    notes.forEach((n) => (m[n.kind] += 1));
+    return m;
+  }, [notes]);
 
   if (isLoading) return <ActivityIndicator style={{ marginTop: 48 }} />;
   if (!r || !store) return <EmptyState title={tr('找不到這筆閱讀紀錄')} body={tr('它可能已經被移除了。')} />;
   const fail = (e: Error) => Alert.alert(tr('沒有成功'), readingError(e.message));
+  const shown = filter === 'all' ? notes : notes.filter((n) => n.kind === filter);
 
   const removeReading = () =>
-    Alert.alert(tr('從店主閱讀移除「{title}」？', { title: r.books.title }), tr('{length} 則心得會一起刪除，無法復原。', { length: r.reading_notes.length }), [
+    Alert.alert(tr('從店主閱讀移除「{title}」？', { title: r.books.title }), tr('{length} 則心得會一起刪除，無法復原。', { length: notes.length }), [
       { text: tr('取消'), style: 'cancel' },
       { text: tr('移除'), style: 'destructive', onPress: () => delReading.mutate(r.id, { onSuccess: () => router.back(), onError: fail }) },
     ]);
+
+  const confirmDelete = (n: ReadingNote) =>
+    Alert.alert(tr('刪除這則心得？'), tr('刪除後無法復原。'), [
+      { text: tr('取消'), style: 'cancel' },
+      { text: tr('刪除'), style: 'destructive', onPress: () => deleteNote.mutate({ id: n.id, photoPaths: n.photo_paths }, { onError: fail }) },
+    ]);
+
+  const compose = (noteId?: string) => router.push({ pathname: '/reading/compose', params: noteId ? { readingId: r.id, noteId } : { readingId: r.id } });
 
   return (
     <Screen>
       <Stack.Screen
         options={{
-          title: tr('店主閱讀'),
+          title: tr('這本書'),
           headerRight: () => (
             <Pressable accessibilityRole="button" accessibilityLabel={tr('更多操作')} onPress={() => setMenuOpen(true)} style={styles.headerBtn}>
               <Feather name="more-horizontal" size={22} color={c.text} />
@@ -67,116 +72,79 @@ export default function ManageReadingScreen() {
           ),
         }}
       />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={90}>
-        <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg }} keyboardShouldPersistTaps="handled">
-          <AppText variant="caption" muted>
-            {r.status === 'reading' ? tr('在讀 · 從 {p0} 開始', { p0: md(r.started_at) }) : tr('讀完{p0}', { p0: r.finished_at ? ` · ${md(r.finished_at)}` : '' })}
-          </AppText>
-          <View style={{ flexDirection: 'row', gap: Spacing.lg }}>
-            <BookCover title={r.books.title} url={r.books.cover_url} color={store.store.color} size="lg" />
-            <View style={{ flex: 1, justifyContent: 'center', gap: 4 }}>
-              <AppText variant="heading">{r.books.title}</AppText>
-              <AppText muted>{r.books.authors.join(tr('、'))}</AppText>
-            </View>
+      <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.md, paddingBottom: 32 }}>
+        <View style={[styles.book, { backgroundColor: c.surface }]}>
+          <BookCover title={r.books.title} url={r.books.cover_url} color={store.store.color} size="lg" />
+          <View style={{ flex: 1, gap: 4 }}>
+            <AppText variant="heading">{r.books.title}</AppText>
+            <AppText variant="caption" muted>{r.books.authors.join(tr('、'))}</AppText>
+            <AppText variant="caption" style={{ color: c.success, fontWeight: '700', marginTop: 4 }}>
+              {r.status === 'reading' ? tr('在讀 · 從 {p0} 開始', { p0: md(r.started_at) }) : tr('讀完{p0}', { p0: r.finished_at ? ` · ${md(r.finished_at)}` : '' })}
+            </AppText>
+            <AppText variant="caption" muted>
+              {tr('{n} 則 · 摘句 {q} · 心得 {r} · 想法 {t}', { n: notes.length, q: counts.quote, r: counts.reflection, t: counts.thought })}
+            </AppText>
           </View>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
           <Button
-            kind={r.status === 'reading' ? 'primary' : 'secondary'}
+            kind="secondary"
+            style={{ flex: 1 }}
             label={r.status === 'reading' ? tr('標記為讀完') : tr('改回正在讀')}
             loading={update.isPending}
             onPress={() => update.mutate({ id: r.id, status: r.status === 'reading' ? 'finished' : 'reading' }, { onError: fail })}
           />
+        </View>
+        <View style={[styles.switchRow, { backgroundColor: c.surface }]}>
+          <View style={{ flex: 1 }}>
+            <AppText variant="label">{tr('公開在書店頁')}</AppText>
+            <AppText variant="caption" muted>{r.is_public ? tr('讀者看得到這本書與所有心得、圖片') : tr('只有自己看得到')}</AppText>
+          </View>
+          <Toggle accessibilityLabel={tr('公開在書店頁')} value={r.is_public} onValueChange={(v) => update.mutate({ id: r.id, is_public: v }, { onError: fail })} />
+        </View>
 
-          <View style={[styles.switchRow, { backgroundColor: c.surface }]}>
-            <View style={{ flex: 1 }}>
-              <AppText variant="label">{tr('公開在書店頁')}</AppText>
-              <AppText variant="caption" muted>{r.is_public ? tr('讀者可以在「店主閱讀」看到') : tr('只有自己看得到')}</AppText>
+        {notes.length ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.sm }}>
+            <Chip label={tr('全部 {n}', { n: notes.length })} selected={filter === 'all'} onPress={() => setFilter('all')} />
+            {NOTE_KINDS.map((k) => (counts[k] ? <Chip key={k} label={`${kindLabel(k)} ${counts[k]}`} selected={filter === k} onPress={() => setFilter(k)} /> : null))}
+          </View>
+        ) : null}
+
+        {shown.map((n, i) => {
+          const actions = [
+            { label: tr('編輯'), icon: 'edit-2' as const, onPress: () => compose(n.id) },
+            { label: tr('刪除'), icon: 'trash-2' as const, destructive: true, onPress: () => confirmDelete(n) },
+          ];
+          return (
+            <View key={n.id} style={{ borderRadius: Radius.lg, overflow: 'hidden' }} {...swipeA11y(actions)}>
+              <SwipeRow actions={actions}>
+                <NoteCard note={n} latest={i === 0 && filter === 'all'} onPress={() => router.push({ pathname: '/reading/note/[id]', params: { id: n.id, readingId: r.id } })} />
+              </SwipeRow>
             </View>
-            <Toggle accessibilityLabel={tr('公開在書店頁')} value={r.is_public} onValueChange={(v) => update.mutate({ id: r.id, is_public: v }, { onError: fail })} />
+          );
+        })}
+        {!notes.length ? (
+          <View style={[styles.empty, { borderColor: c.border }]}>
+            <AppText variant="label">{tr('還沒有心得')}</AppText>
+            <AppText variant="caption" muted style={{ textAlign: 'center' }}>{tr('抄一句喜歡的句子、寫下想法，或掃描書頁把文字節錄下來。')}</AppText>
           </View>
+        ) : null}
+      </ScrollView>
 
-          <AppText variant="label">{tr('心得 · {length} 則', { length: r.reading_notes.length })}</AppText>
-          <View style={{ gap: Spacing.sm }}>
-            <TextField label={tr('新增心得')} multiline max={NOTE_BODY_MAX} value={draft} onChangeText={setDraft} placeholder={tr('讀到哪、想到什麼？')} />
-            <Button
-              label={tr('新增')}
-              disabled={!draft.trim()}
-              loading={addNote.isPending}
-              onPress={() => addNote.mutate({ readingId: r.id, body: draft }, { onSuccess: () => setDraft(''), onError: fail })}
-            />
-          </View>
-
-          {r.reading_notes.length ? (
-            <Card style={{ gap: Spacing.lg }}>
-              {r.reading_notes.map((n, i) => (
-                <Pressable key={n.id} accessibilityRole="button" accessibilityHint={tr('編輯或刪除這則心得')} onPress={() => setNoteMenu(n)} style={{ flexDirection: 'row', gap: Spacing.md }}>
-                  <View style={[styles.dot, { backgroundColor: i === 0 ? c.primary : c.border }]} />
-                  <View style={{ flex: 1 }}>
-                    <AppText variant="caption" muted>{i === 0 ? timeAgo(n.created_at) : md(n.created_at)}</AppText>
-                    <AppText style={{ marginTop: 2, lineHeight: 23 }}>{n.body}</AppText>
-                  </View>
-                  <Feather name="more-vertical" size={16} color={c.textTertiary} />
-                </Pressable>
-              ))}
-            </Card>
-          ) : (
-            <AppText variant="caption" muted>{tr('還沒有心得。一則一則慢慢累積，讀者會看到你的閱讀時間軸。')}</AppText>
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+      <SafeAreaView edges={['bottom']} style={[styles.footer, { backgroundColor: c.surface, borderTopColor: c.border }]}>
+        <Button label={tr('＋ 寫心得')} onPress={() => compose()} />
+      </SafeAreaView>
 
       <ReadingActions reading={r} visible={menuOpen} onClose={() => setMenuOpen(false)} onRemove={removeReading} inDetail />
-      <ActionSheet
-        visible={!!noteMenu}
-        title={tr('這則心得')}
-        subtitle={noteMenu ? noteMenu.body.slice(0, 30) : undefined}
-        onClose={() => setNoteMenu(null)}
-        actions={
-          noteMenu
-            ? [
-                { label: tr('編輯'), onPress: () => setEditing({ note: noteMenu, body: noteMenu.body }) },
-                {
-                  label: tr('刪除'),
-                  destructive: true,
-                  onPress: () =>
-                    Alert.alert(tr('刪除這則心得？'), tr('刪除後無法復原。'), [
-                      { text: tr('取消'), style: 'cancel' },
-                      { text: tr('刪除'), style: 'destructive', onPress: () => deleteNote.mutate(noteMenu.id, { onError: fail }) },
-                    ]),
-                },
-              ]
-            : []
-        }
-      />
-      <Modal visible={!!editing} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setEditing(null)}>
-        <Screen>
-          <SafeAreaView style={{ flex: 1 }}>
-            <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg }} keyboardShouldPersistTaps="handled">
-              <AppText variant="heading">{tr('編輯心得')}</AppText>
-              {editing ? (
-                <>
-                  <TextField label={tr('心得')} multiline max={NOTE_BODY_MAX} value={editing.body} onChangeText={(body) => setEditing({ ...editing, body })} autoFocus />
-                  <View style={{ flexDirection: 'row', gap: Spacing.md }}>
-                    <Button kind="secondary" label={tr('取消')} style={{ flex: 1 }} onPress={() => setEditing(null)} />
-                    <Button
-                      label={tr('儲存')}
-                      style={{ flex: 2 }}
-                      disabled={!editing.body.trim()}
-                      loading={updateNote.isPending}
-                      onPress={() => updateNote.mutate({ id: editing.note.id, body: editing.body }, { onSuccess: () => setEditing(null), onError: fail })}
-                    />
-                  </View>
-                </>
-              ) : null}
-            </ScrollView>
-          </SafeAreaView>
-        </Screen>
-      </Modal>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   headerBtn: { width: MinTouch, height: MinTouch, alignItems: 'center', justifyContent: 'center' },
+  book: { flexDirection: 'row', gap: Spacing.lg, borderRadius: Radius.lg, padding: Spacing.lg },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.lg, padding: Spacing.lg },
-  dot: { width: 10, height: 10, borderRadius: 5, marginTop: 5 },
+  empty: { borderWidth: 1.5, borderStyle: 'dashed', borderRadius: Radius.lg, alignItems: 'center', padding: Spacing.xl, gap: 6 },
+  footer: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.sm },
 });

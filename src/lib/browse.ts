@@ -243,7 +243,17 @@ export function useToggleSave() {
 // ---------------------------------------------------------------------------
 // A4／A5 店主閱讀（讀者唯讀；私人紀錄由 RLS 擋掉）
 // ---------------------------------------------------------------------------
-export type ReadingNote = { id: string; body: string; created_at: string };
+export type NoteKind = 'quote' | 'reflection' | 'thought';
+export type ReadingNote = {
+  id: string;
+  body: string;
+  created_at: string;
+  kind: NoteKind;
+  title: string | null;
+  page_ref: string | null;
+  photo_paths: string[];
+};
+export const NOTE_COLS = 'id, body, created_at, kind, title, page_ref, photo_paths';
 export type PublicReading = {
   id: string;
   bookstore_id: string;
@@ -255,7 +265,7 @@ export type PublicReading = {
   reading_notes: ReadingNote[];
 };
 
-const READING_COLS = `id, bookstore_id, status, started_at, finished_at, updated_at, books(${BOOK_COLS}), reading_notes(id, body, created_at)`;
+const READING_COLS = `id, bookstore_id, status, started_at, finished_at, updated_at, books(${BOOK_COLS}), reading_notes(${NOTE_COLS})`;
 
 const sortNotes = (r: PublicReading): PublicReading => ({
   ...r,

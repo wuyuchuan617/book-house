@@ -22,7 +22,16 @@ export type EventName =
   | 'reading_note_added'
   | 'share_link_copied'
   | 'report_submitted'
-  | 'account_delete_requested';
+  | 'account_delete_requested'
+  | 'page_scanned'
+  | 'diary_entry_created'
+  | 'diary_opened'
+  | 'place_saved'
+  | 'place_opened'
+  | 'place_maps_opened'
+  | 'weekly_review_opened'
+  | 'weekly_reflection_saved'
+  | 'weekly_review_shared';
 
 type Props = Record<string, string | number | boolean | null | undefined>;
 

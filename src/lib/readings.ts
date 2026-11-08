@@ -5,7 +5,7 @@ import type { StoreColor } from '@/constants/theme';
 import { track } from '@/lib/analytics';
 import { userMessage } from '@/lib/errors';
 import { useAuth } from '@/lib/auth';
-import type { PublicReading } from '@/lib/browse';
+import { NOTE_COLS, type NoteKind, type PublicReading } from '@/lib/browse';
 import type { Book } from '@/lib/curations';
 import { unwrap, useMyStore } from '@/lib/queries';
 import { supabase } from '@/lib/supabase';
@@ -16,7 +16,7 @@ const BOOK_COLS = 'id, source, title, authors, cover_url, published_year, publis
 export type MyReading = PublicReading & { is_public: boolean; created_at: string };
 export type ReadingStatus = 'reading' | 'finished';
 
-const MY_READING_COLS = `id, bookstore_id, status, is_public, started_at, finished_at, created_at, updated_at, books(${BOOK_COLS}), reading_notes(id, body, created_at)`;
+const MY_READING_COLS = `id, bookstore_id, status, is_public, started_at, finished_at, created_at, updated_at, books(${BOOK_COLS}), reading_notes(${NOTE_COLS}, from_scan, updated_at)`;
 
 const sortNotes = <T extends PublicReading>(r: T): T => ({
   ...r,
@@ -127,40 +127,114 @@ export function useDeleteReading() {
 }
 
 export const NOTE_BODY_MAX = 1000;
+export const NOTE_TITLE_MAX = 40;
+export const NOTE_PAGE_MAX = 20;
+export const NOTE_PHOTO_MAX = 3;
+/** 公開的摘句建議只節錄一小段 */
+export const QUOTE_SOFT_MAX = 300;
+const NOTE_BUCKET = 'note-images';
 
-export function useAddNote() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ readingId, body }: { readingId: string; body: string }) => {
-      const res = await supabase.from('reading_notes').insert({ reading_id: readingId, body: body.trim() });
-      if (res.error) throw new Error(res.error.message);
-    },
-    onSuccess: (_d, v) => {
-      track('reading_note_added', { length: v.body.trim().length });
-      invalidateReadings(qc);
-    },
-  });
+/** 心得的圖片：已上傳的路徑，或剛選的本機檔案 */
+export type NotePhoto = { path: string } | { uri: string; mimeType?: string | null };
+
+export type NoteInput = {
+  kind: NoteKind;
+  title?: string | null;
+  body: string;
+  pageRef?: string | null;
+  photos: NotePhoto[];
+  fromScan?: boolean;
+};
+
+async function uploadNotePhotos(storeId: string, noteId: string, photos: NotePhoto[]) {
+  const paths: string[] = [];
+  for (const [i, p] of photos.entries()) {
+    if ('path' in p) {
+      paths.push(p.path);
+      continue;
+    }
+    const type = p.mimeType && ['image/jpeg', 'image/png', 'image/webp'].includes(p.mimeType) ? p.mimeType : 'image/jpeg';
+    const body = await (await fetch(p.uri)).arrayBuffer();
+    if (body.byteLength > 5 * 1024 * 1024) throw new Error(tr('圖片超過 5MB，請選一張小一點的。'));
+    const path = `${storeId}/${noteId}/${Date.now()}-${i}.${type.split('/')[1].replace('jpeg', 'jpg')}`;
+    const { error } = await supabase.storage.from(NOTE_BUCKET).upload(path, body, { contentType: type, upsert: false });
+    if (error) throw new Error(tr('上傳沒有成功：{message}', { message: error.message }));
+    paths.push(path);
+  }
+  return paths;
 }
 
-export function useUpdateNote() {
+const clean = (v: string | null | undefined) => (v ?? '').trim() || null;
+
+export function useSaveNote() {
   const qc = useQueryClient();
+  const { data: store } = useMyStore();
   return useMutation({
-    mutationFn: async ({ id, body }: { id: string; body: string }) => {
-      const res = await supabase.from('reading_notes').update({ body: body.trim() }).eq('id', id);
-      if (res.error) throw new Error(res.error.message);
+    mutationFn: async ({ readingId, noteId, input, previousPaths = [] }: { readingId: string; noteId?: string; input: NoteInput; previousPaths?: string[] }) => {
+      const storeId = store?.store.id;
+      if (!storeId) throw new Error('open a bookstore first');
+      const fields = {
+        kind: input.kind,
+        title: clean(input.title),
+        body: input.body.trim(),
+        page_ref: input.kind === 'quote' ? clean(input.pageRef) : null,
+        ...(noteId ? {} : { from_scan: !!input.fromScan }),
+      };
+      let id = noteId;
+      if (id) {
+        const res = await supabase.from('reading_notes').update(fields).eq('id', id);
+        if (res.error) throw new Error(res.error.message);
+      } else {
+        id = unwrap<{ id: string }>(await supabase.from('reading_notes').insert({ reading_id: readingId, ...fields }).select('id').single()).id;
+      }
+      const paths = await uploadNotePhotos(storeId, id, input.photos);
+      const removed = previousPaths.filter((p) => !paths.includes(p));
+      if (paths.join('|') !== previousPaths.join('|')) {
+        const res = await supabase.from('reading_notes').update({ photo_paths: paths }).eq('id', id);
+        if (res.error) throw new Error(res.error.message);
+      }
+      if (removed.length) await supabase.storage.from(NOTE_BUCKET).remove(removed).then(() => {}, () => {});
+      return { id, isNew: !noteId };
     },
-    onSuccess: () => invalidateReadings(qc),
+    onSuccess: (r, v) => {
+      if (r.isNew) {
+        track('reading_note_added', {
+          length: v.input.body.trim().length,
+          kind: v.input.kind,
+          has_title: !!clean(v.input.title),
+          photo_count: v.input.photos.length,
+          from_scan: !!v.input.fromScan,
+        });
+      }
+      invalidateReadings(qc);
+    },
   });
 }
 
 export function useDeleteNote() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, photoPaths = [] }: { id: string; photoPaths?: string[] }) => {
       const res = await supabase.from('reading_notes').delete().eq('id', id);
       if (res.error) throw new Error(res.error.message);
+      if (photoPaths.length) await supabase.storage.from(NOTE_BUCKET).remove(photoPaths).then(() => {}, () => {});
     },
     onSuccess: () => invalidateReadings(qc),
+  });
+}
+
+/** 心得圖片（非公開 bucket）→ 1 小時有效的網址；看不到的會是 null */
+export function useNoteImageUrls(paths: string[] | undefined) {
+  const key = (paths ?? []).join('|');
+  return useQuery({
+    queryKey: ['note-images', key],
+    enabled: !!key,
+    staleTime: 50 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.storage.from(NOTE_BUCKET).createSignedUrls(key.split('|'), 3600);
+      if (error) throw new Error(error.message);
+      return (data ?? []).map((d) => d.signedUrl ?? null);
+    },
   });
 }
 

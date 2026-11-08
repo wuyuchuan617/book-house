@@ -9,7 +9,7 @@ $PSQL -d postgres -c "drop database if exists $DB" -c "create database $DB"
 $PSQL -d "$DB" -f tests/local_stub.sql
 for f in migrations/*.sql; do $PSQL -d "$DB" -f "$f"; done
 $PSQL -d "$DB" -f seed.sql
-for t in tests/smoke_test.sql tests/smoke_m2.sql tests/smoke_m3.sql tests/smoke_m4.sql tests/smoke_m5.sql tests/smoke_m6.sql tests/smoke_m7.sql tests/smoke_m8.sql tests/smoke_m9.sql tests/smoke_m10.sql; do
+for t in tests/smoke_test.sql tests/smoke_m2.sql tests/smoke_m3.sql tests/smoke_m4.sql tests/smoke_m5.sql tests/smoke_m6.sql tests/smoke_m7.sql tests/smoke_m8.sql tests/smoke_m9.sql tests/smoke_m10.sql tests/smoke_m11.sql; do
   out=$($PSQL -d "$DB" -At -f "$t" 2>&1) || { echo "$out"; exit 1; }
   echo "$out" | grep -E "ok \(expected|PASSED"
 done
