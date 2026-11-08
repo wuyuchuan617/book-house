@@ -12,17 +12,18 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { useFollowedStores, useSavedBooks, useToggleSave, wantSource, type FollowedStore, type SavedBook } from '@/lib/browse';
 import { useMyStore } from '@/lib/queries';
+import { SwipeRow, swipeA11y } from '@/components/swipe-row';
 import { WantSheet } from '@/components/want-sheet';
 import { currentPeriod, monthOf } from '@/lib/period';
 import { tr } from '@/lib/i18n';
 
 type Tab = 'stores' | 'books';
 
-/** B1 追蹤的書店、B2 想讀（原「收藏的書」，與店主閱讀的想讀是同一份）；S4 空狀態 */
+/** 書櫃：B2 想讀（預設）、B1 追蹤的書店（原「收藏的書」，與店主閱讀的想讀是同一份）；S4 空狀態 */
 export default function SavedScreen() {
   const c = useTheme();
   const { session, requireAuth } = useAuth();
-  const [tab, setTab] = useState<Tab>('stores');
+  const [tab, setTab] = useState<Tab>('books');
   const stores = useFollowedStores();
   const books = useSavedBooks();
   const toggleSave = useToggleSave();
@@ -35,8 +36,8 @@ export default function SavedScreen() {
     return (
       <Screen>
         <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-          <AppText variant="title" style={styles.title}>{tr('收藏')}</AppText>
-          <EmptyState title={tr('登入後就能收藏')} body={tr('追蹤喜歡的店主，每月新策展上架時第一個知道。')} actionLabel={tr('登入')} onAction={() => requireAuth(() => {})} />
+          <AppText variant="title" style={styles.title}>{tr('書櫃')}</AppText>
+          <EmptyState title={tr('登入後就能使用書櫃')} body={tr('把想讀的書收進書櫃，追蹤喜歡的店主。')} actionLabel={tr('登入')} onAction={() => requireAuth(() => {})} />
         </SafeAreaView>
       </Screen>
     );
@@ -54,9 +55,9 @@ export default function SavedScreen() {
   return (
     <Screen>
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-        <AppText variant="title" style={styles.title}>{tr('收藏')}</AppText>
+        <AppText variant="title" style={styles.title}>{tr('書櫃')}</AppText>
         <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
-          {(['stores', 'books'] as Tab[]).map((t) => {
+          {(['books', 'stores'] as Tab[]).map((t) => {
             const selected = tab === t;
             const count = t === 'stores' ? stores.data?.length : books.data?.length;
             return (
@@ -147,9 +148,15 @@ function StoreRow({ store }: { store: FollowedStore }) {
 function BookRow({ item, onOpen, onUnsave }: { item: SavedBook; onOpen: () => void; onUnsave: () => void }) {
   const c = useTheme();
   const from = wantSource(item);
+  const actions = [
+    { label: tr('編輯'), icon: 'edit-2' as const, onPress: onOpen },
+    { label: tr('移除'), icon: 'trash-2' as const, destructive: true, onPress: onUnsave },
+  ];
   return (
-    <Card style={styles.row}>
-      <Pressable accessibilityRole="button" accessibilityHint={tr('編輯為什麼想讀、在哪看到')} onPress={onOpen} style={[styles.row, { flex: 1 }]}>
+    <Card style={{ padding: 0, overflow: 'hidden' }}>
+      <SwipeRow actions={actions}>
+      <View style={[styles.row, { padding: Spacing.lg }]}>
+      <Pressable accessibilityRole="button" accessibilityHint={tr('編輯為什麼想讀、在哪看到')} {...swipeA11y(actions)} onPress={onOpen} style={[styles.row, { flex: 1 }]}>
         <BookCover title={item.books.title} url={item.books.cover_url} color={item.bookstores?.color ?? 'moss'} />
         <View style={{ flex: 1, gap: 2 }}>
           <AppText variant="label">{item.books.title}</AppText>
@@ -161,6 +168,8 @@ function BookRow({ item, onOpen, onUnsave }: { item: SavedBook; onOpen: () => vo
       <Pressable accessibilityRole="button" accessibilityLabel={tr('從想讀移除「{title}」', { title: item.books.title })} onPress={onUnsave} style={styles.unsave}>
         <Ionicons name="bookmark" size={20} color={c.primary} />
       </Pressable>
+      </View>
+      </SwipeRow>
     </Card>
   );
 }

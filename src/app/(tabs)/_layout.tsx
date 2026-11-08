@@ -4,7 +4,7 @@ import { Tabs } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { tr } from '@/lib/i18n';
 
-/** 底部 3 個分頁：探索、收藏、我的書店（PRD 第 4 節） */
+/** 底部 3 個分頁：探索、書櫃（想讀＋追蹤的書店）、我的書店（PRD 第 4 節） */
 export default function TabLayout() {
   const c = useTheme();
   return (
@@ -22,7 +22,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="saved"
-        options={{ title: tr('收藏'), tabBarIcon: ({ color, size }) => <Feather name="bookmark" color={color as string} size={size} /> }}
+        options={{ title: tr('書櫃'), tabBarIcon: ({ color, size }) => <Feather name="book-open" color={color as string} size={size} /> }}
       />
       <Tabs.Screen
         name="my-store"

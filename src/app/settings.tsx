@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import { Alert, Pressable, ScrollView, Share, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppText, Button, Card, Screen } from '@/components/ui';
 import { MinTouch, Spacing } from '@/constants/theme';
@@ -13,9 +13,9 @@ import { setAppearance, useAppearancePref } from '@/lib/appearance';
 import { useAuth } from '@/lib/auth';
 import { track } from '@/lib/analytics';
 import { supabase } from '@/lib/supabase';
-import { shareStoreMessage, storeLinkLabel } from '@/lib/links';
+import { shareStore, storeLinkLabel } from '@/lib/links';
 import { useNotificationPrefs, useUpdatePrefs, type NotificationPrefs } from '@/lib/notification-prefs';
-import { Chip } from '@/components/form';
+import { Chip, Toggle } from '@/components/form';
 import { userMessage } from '@/lib/errors';
 import { currentLang, setLanguage, tr, useLanguagePref, type LangPref } from '@/lib/i18n';
 
@@ -72,7 +72,7 @@ export default function SettingsScreen() {
                   <AppText>{tr('店主閱讀預設公開')}</AppText>
                   <AppText variant="caption" muted>{tr('新記錄的書會顯示在書店頁，每本都能再改')}</AppText>
                 </View>
-                <Switch
+                <Toggle
                   accessibilityLabel={tr('店主閱讀預設公開')}
                   value={store.reading_public_default}
                   onValueChange={(v) => updateStore.mutate({ reading_public_default: v }, { onError: (e) => Alert.alert(tr('沒有成功'), userMessage(e)) })}
@@ -80,7 +80,7 @@ export default function SettingsScreen() {
               </View>
               <Pressable
                 accessibilityRole="button"
-                onPress={() => { track('share_link_copied', { channel: 'system' }); void Share.share({ message: shareStoreMessage(store.name, store.slug) }); }}
+                onPress={() => shareStore(store.name, store.slug)}
                 style={[styles.row, { borderBottomWidth: 0 }]}>
                 <AppText style={{ flex: 1 }}>{tr('分享書店連結')}</AppText>
                 <AppText muted>{storeLinkLabel(store.slug)}</AppText>
@@ -173,13 +173,13 @@ function PrefRow({ label, sub, value, onChange, last }: { label: string; sub?: s
         <AppText>{label}</AppText>
         {sub ? <AppText variant="caption" muted>{sub}</AppText> : null}
       </View>
-      <Switch accessibilityLabel={label} value={value} onValueChange={onChange} />
+      <Toggle accessibilityLabel={label} value={value} onValueChange={onChange} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, minHeight: MinTouch + 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, minHeight: MinTouch + 12, paddingVertical: Spacing.md, borderBottomWidth: StyleSheet.hairlineWidth },
   segment: { flexDirection: 'row', borderRadius: 12, padding: 3 },
   segmentItem: { flex: 1, minHeight: MinTouch - 4, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
 });

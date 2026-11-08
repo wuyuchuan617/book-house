@@ -42,7 +42,7 @@ export default function OpenStoreShelfScreen() {
   };
 
   const finish = () =>
-    publish.mutate(cur.id, {
+    publish.mutate({ id: cur.id }, {
       onSuccess: () => router.replace({ pathname: '/open-store/done', params: { id: cur.id } }),
       onError: (e) => Alert.alert(tr('沒有發布成功'), friendlyError(e.message)),
     });

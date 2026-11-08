@@ -46,6 +46,10 @@ export type MyCurationRow = {
   book_count: number;
   save_count: number;
   noted_count: number;
+  /** 拜訪次數（同一人一天算一次） */
+  visit_count: number;
+  /** 預約中：上架時間 */
+  scheduled_for: string | null;
 };
 
 export type Tag = { id: string; slug: string; name: string; kind: 'system' | 'custom'; sort: number };
@@ -86,6 +90,26 @@ export function useCuration(id: string | undefined) {
           .eq('id', id!)
           .maybeSingle(),
       ),
+  });
+}
+
+/** 「新增策展」的預設月份：最後一檔的下一個月（伺服器算） */
+export function useSuggestedPeriod() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ['my-curations', 'suggest', session?.user.id],
+    enabled: !!session,
+    queryFn: async () => unwrap<string>(await supabase.rpc('suggest_new_period')),
+  });
+}
+
+/** 單一策展的拜訪、讀者數、收藏數（只有店主拿得到） */
+export function useCurationStats(id: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ['curation-stats', id],
+    enabled: !!id && enabled,
+    queryFn: async () =>
+      unwrap<{ visit_count: number; visitor_count: number; save_count: number }[]>(await supabase.rpc('curation_stats', { p_curation_id: id! }))[0] ?? null,
   });
 }
 
@@ -271,11 +295,14 @@ export function useReorderItems() {
   });
 }
 
+/** 發布或預約：publishOn = 'YYYY-MM-DD'（台北時間早上 9 點上架；今天就立刻上架） */
 export function usePublishCuration() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) =>
-      unwrap<{ id: string; status: CurationStatus; period: string }>(await supabase.rpc('publish_curation', { p_curation_id: id })),
+    mutationFn: async ({ id, publishOn }: { id: string; publishOn?: string }) =>
+      unwrap<{ id: string; status: CurationStatus; period: string; scheduled_for: string | null }>(
+        await supabase.rpc('publish_curation', { p_curation_id: id, p_publish_on: publishOn ?? null }),
+      ),
     onSuccess: (c) => {
       track('curation_published', { month: c.period?.slice(0, 7), scheduled: c.status === 'scheduled' });
       invalidateCuration(qc, c.id);
@@ -326,7 +353,9 @@ export function friendlyError(message: string) {
   if (message.includes('needs at least 1 book')) return tr('發布中的策展至少要留 1 本書。想清空書架請先取消發布。');
   if (message.includes('at most 3 tags')) return tr('主題標籤最多 3 個。');
   if (message.includes('at most 20 books')) return tr('一檔策展最多放 20 本書。');
-  if (message.includes('only this month or next month')) return tr('只能發布本月或預約下個月的策展。');
+  if (message.includes('only this month or next month') || message.includes('next 3 months')) return tr('策展只能排在本月起 4 個月內。');
+  if (message.includes('publish date must be in')) return tr('上架日期要在這檔策展的月份裡。');
+  if (message.includes('publish date is in the past')) return tr('上架日期不能早於今天。');
   if (message.includes('tag name must be')) return tr('標籤名稱 1–12 個字。');
   return userMessage(message);
 }

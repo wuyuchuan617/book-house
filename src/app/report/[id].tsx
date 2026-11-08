@@ -1,9 +1,9 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { TextField } from '@/components/form';
+import { TextField, Toggle } from '@/components/form';
 import { AppText, Button, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -71,7 +71,7 @@ export default function ReportStoreScreen() {
           ) : (
             <View style={[styles.switchRow, { backgroundColor: c.surface }]}>
               <AppText style={{ flex: 1 }}>{tr('同時封鎖這位店主')}</AppText>
-              <Switch accessibilityLabel={tr('同時封鎖這位店主')} value={alsoBlock} onValueChange={setAlsoBlock} />
+              <Toggle accessibilityLabel={tr('同時封鎖這位店主')} value={alsoBlock} onValueChange={setAlsoBlock} />
             </View>
           )}
           <Button kind="danger" label={tr('送出檢舉')} disabled={!reason} loading={report.isPending} onPress={submit} />

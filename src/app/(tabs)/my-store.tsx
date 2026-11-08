@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Image } from 'expo-image';
+
+import { StoreAvatar } from '@/components/social';
 import { AppText, Button, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing, StoreColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -14,10 +17,11 @@ import { useMyCurations } from '@/lib/curations';
 import { useMyReadings } from '@/lib/readings';
 import { useSavedBooks } from '@/lib/browse';
 import { useMyStore } from '@/lib/queries';
-import { storeLinkLabel } from '@/lib/links';
+import { shareStore, storeLinkLabel } from '@/lib/links';
+import { storageUrl } from '@/lib/uploads';
 import { tr } from '@/lib/i18n';
 
-/** 未開店 → O1 入口；已開店 → M1 我的書店（策展列表）。TODO(M4)：店主閱讀分頁 R1–R7、M2 編輯書店 */
+/** 未開店 → O1 入口；已開店 → M1 我的書店（策展列表）。書店卡片：背景圖、頭貼、編輯／讀者視角／分享 */
 export default function MyStoreScreen() {
   const c = useTheme();
   const { session, requireAuth } = useAuth();
@@ -27,6 +31,7 @@ export default function MyStoreScreen() {
   const removal = useReadingRemoval();
   const [tab, setTab] = useState<'curation' | 'reading'>('curation');
   const { data: wants } = useSavedBooks();
+  const banner = storageUrl('banner', data?.store.banner_path);
   const readingCount = (readings.data ?? []).filter((r) => r.id !== removal.pending?.id).length + (wants?.length ?? 0);
 
   return (
@@ -50,14 +55,21 @@ export default function MyStoreScreen() {
         ) : (
           <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.md }}>
             <Card style={{ padding: 0, overflow: 'hidden' }}>
-              <View style={{ height: 64, backgroundColor: StoreColors[data.store.color].hex }} />
-              <View style={{ padding: Spacing.lg }}>
-                <AppText variant="heading">{data.store.name}</AppText>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <AppText variant="caption" muted style={{ flex: 1 }}>{storeLinkLabel(data.store.slug)}</AppText>
-                  <Button kind="secondary" label={tr('編輯書店')} style={{ minHeight: MinTouch - 4 }} onPress={() => router.push('/store-edit')} />
+              <View style={[styles.banner, { backgroundColor: StoreColors[data.store.color].hex }]}>
+                {banner ? <Image source={{ uri: banner }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityIgnoresInvertColors /> : null}
+              </View>
+              <View style={{ paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg }}>
+                <View style={[styles.avatarRing, { backgroundColor: c.surface }]}>
+                  <StoreAvatar name={data.store.name} color={data.store.color} size={64} path={data.store.avatar_path} />
                 </View>
-                <Button kind="link" label={tr('讀者視角')} style={{ minHeight: MinTouch, alignSelf: 'flex-start', paddingHorizontal: 0 }} onPress={() => router.push({ pathname: '/store/[slug]', params: { slug: data.store.slug } })} />
+                <AppText variant="heading" style={{ marginTop: Spacing.sm }}>{data.store.name}</AppText>
+                {data.store.tagline ? <AppText variant="caption" muted style={{ marginTop: 2 }}>{data.store.tagline}</AppText> : null}
+                <AppText variant="caption" muted style={{ marginTop: 2 }}>{storeLinkLabel(data.store.slug)}</AppText>
+                <View style={styles.actions}>
+                  <ActionButton icon="edit-2" label={tr('編輯')} onPress={() => router.push('/store-edit')} />
+                  <ActionButton icon="eye" label={tr('讀者視角')} onPress={() => router.push({ pathname: '/store/[slug]', params: { slug: data.store.slug } })} />
+                  <ActionButton icon="share" label={tr('分享')} onPress={() => shareStore(data.store.name, data.store.slug)} />
+                </View>
                 <View style={[styles.stats, { borderTopColor: c.divider }]}>
                   <Stat label={tr('追蹤')} value={data.stats?.follower_count ?? 0} />
                   <Stat label={tr('本月拜訪')} value={data.stats?.visits_this_month ?? 0} />
@@ -115,6 +127,21 @@ function OpenStoreIntro() {
   );
 }
 
+/** 書店卡片上的三個動作：編輯、讀者視角、分享（同樣大小，一眼看得到） */
+function ActionButton({ icon, label, onPress }: { icon: React.ComponentProps<typeof Feather>['name']; label: string; onPress: () => void }) {
+  const c = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => [styles.action, { borderColor: c.border, backgroundColor: c.surface, opacity: pressed ? 0.8 : 1 }]}>
+      <Feather name={icon} size={18} color={c.text} />
+      <AppText variant="caption" style={{ fontWeight: '700' }} numberOfLines={1} adjustsFontSizeToFit>{label}</AppText>
+    </Pressable>
+  );
+}
+
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <View style={{ flex: 1, alignItems: 'center' }}>
@@ -127,6 +154,10 @@ function Stat({ label, value }: { label: string; value: number }) {
 const styles = StyleSheet.create({
   header: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   icon: { width: MinTouch, height: MinTouch, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill },
+  banner: { height: 96 },
+  avatarRing: { marginTop: -32, alignSelf: 'flex-start', padding: 3, borderRadius: 22 },
+  actions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md },
+  action: { flex: 1, minHeight: 60, borderRadius: Radius.md, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 4, paddingVertical: Spacing.sm },
   stats: { flexDirection: 'row', marginTop: Spacing.md, paddingTop: Spacing.md, borderTopWidth: 1 },
   segment: { flexDirection: 'row', borderRadius: Radius.md, padding: 3, marginTop: Spacing.sm },
   segmentItem: { flex: 1, minHeight: MinTouch - 4, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },

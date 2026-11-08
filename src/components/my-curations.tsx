@@ -7,24 +7,24 @@ import { CurationActions } from '@/components/curation-actions';
 import { AppText, Button, Card } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { friendlyError, useCreateCuration, useMyCurations, type MyCurationRow } from '@/lib/curations';
-import { currentPeriod, monthOf, nextPeriod, timeAgo } from '@/lib/period';
+import { friendlyError, useCreateCuration, useMyCurations, useSuggestedPeriod, type MyCurationRow } from '@/lib/curations';
+import { currentPeriod, lastOpenPeriod, monthOf, taipeiDate, timeAgo } from '@/lib/period';
 import { tr } from '@/lib/i18n';
 
 /** M1 我的書店・策展列表；沒有策展時是 S5 空狀態 */
 export function CurationSection() {
   const c = useTheme();
   const { data, isLoading } = useMyCurations();
+  const { data: suggested } = useSuggestedPeriod();
   const create = useCreateCuration();
   const [menuFor, setMenuFor] = useState<MyCurationRow | null>(null);
 
   if (isLoading || !data) return <ActivityIndicator style={{ marginTop: 24 }} />;
 
   const cur = currentPeriod();
-  const next = nextPeriod();
-  const live = (p: string) => data.some((r) => r.period === p && r.status !== 'draft');
-  // 本月還沒發布 → 新增本月；本月已發布 → 新增下個月；兩個月都有 → 不顯示
-  const target = !live(cur) ? cur : !live(next) ? next : null;
+  // 新增策展接在最後一個月之後（例：已有 12 月草稿 → 新增明年 1 月）；最多排到本月起 4 個月內
+  const nextUp = suggested ?? cur;
+  const target = nextUp <= lastOpenPeriod() ? nextUp : null;
 
   const open = (id: string) => router.push({ pathname: '/curation/[id]', params: { id } });
   const startNew = () =>
@@ -59,7 +59,9 @@ export function CurationSection() {
           {create.isPending ? <ActivityIndicator /> : <Feather name="plus" size={18} color={c.primary} />}
           <AppText variant="label" style={{ color: c.primary, fontSize: 15 }}>{tr('新增 {p0} 月策展', { p0: monthOf(target) })}</AppText>
         </Pressable>
-      ) : null}
+      ) : (
+        <AppText variant="caption" muted style={{ textAlign: 'center' }}>{tr('已經排到 {p0} 月了，最多可以先排 3 個月。', { p0: monthOf(lastOpenPeriod()) })}</AppText>
+      )}
       {upcoming.map((r) => <Row key={r.id} row={r} onOpen={() => open(r.id)} onMenu={() => setMenuFor(r)} />)}
       {past.length ? (
         <>
@@ -81,7 +83,7 @@ function Row({ row, onOpen, onMenu }: { row: MyCurationRow; onOpen: () => void; 
     row.status === 'published'
       ? { label: tr('已發布'), bg: c.successSurface, fg: c.success }
       : row.status === 'scheduled'
-        ? { label: tr('{p0}/1 上架', { p0: monthOf(row.period) }), bg: c.surfaceMuted, fg: c.text }
+        ? { label: tr('{md} 上架', { md: row.scheduled_for ? taipeiDate(row.scheduled_for).md : `${monthOf(row.period)}/1` }), bg: c.surfaceMuted, fg: c.text }
         : { label: tr('草稿'), bg: c.surfaceMuted, fg: c.textSecondary };
 
   const todo: string[] = [];
@@ -92,7 +94,8 @@ function Row({ row, onOpen, onMenu }: { row: MyCurationRow; onOpen: () => void; 
   }
   const meta = [
     tr('{book_count} 本書', { book_count: row.book_count }),
-    row.status === 'published' && row.save_count ? tr('被收藏 {save_count} 次', { save_count: row.save_count }) : null,
+    row.status === 'published' ? tr('拜訪 {visit_count}', { visit_count: row.visit_count ?? 0 }) : null,
+    row.status === 'published' ? tr('收藏 {save_count}', { save_count: row.save_count }) : null,
     row.status === 'draft' ? tr('{p0}編輯', { p0: timeAgo(row.updated_at) }) : null,
     ...todo,
   ].filter(Boolean).join(' · ');

@@ -1,11 +1,11 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
-import { TextField } from '@/components/form';
+import { TextField, Toggle } from '@/components/form';
 import { ReadingActions } from '@/components/reading-actions';
 import { ActionSheet } from '@/components/sheet';
 import { AppText, Button, Card, EmptyState, Screen } from '@/components/ui';
@@ -91,7 +91,7 @@ export default function ManageReadingScreen() {
               <AppText variant="label">{tr('公開在書店頁')}</AppText>
               <AppText variant="caption" muted>{r.is_public ? tr('讀者可以在「店主閱讀」看到') : tr('只有自己看得到')}</AppText>
             </View>
-            <Switch accessibilityLabel={tr('公開在書店頁')} value={r.is_public} onValueChange={(v) => update.mutate({ id: r.id, is_public: v }, { onError: fail })} />
+            <Toggle accessibilityLabel={tr('公開在書店頁')} value={r.is_public} onValueChange={(v) => update.mutate({ id: r.id, is_public: v }, { onError: fail })} />
           </View>
 
           <AppText variant="label">{tr('心得 · {length} 則', { length: r.reading_notes.length })}</AppText>

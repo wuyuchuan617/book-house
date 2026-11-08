@@ -2,7 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useState } from 'react';
+import { Platform, Pressable } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { LoginGate } from '@/components/login-gate';
 import { OfflineBanner } from '@/components/offline-banner';
@@ -18,6 +21,14 @@ SplashScreen.preventAutoHideAsync();
 const prefsLoaded = Promise.all([loadAppearance(), loadLanguage()]);
 
 const WELCOME_SEEN = 'bookhaus.welcome-seen';
+
+function BackButton({ color }: { color: string }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={tr('返回')} hitSlop={8} onPress={() => router.back()} style={{ width: 36, height: 44, justifyContent: 'center' }}>
+      <Ionicons name="chevron-back" size={28} color={color} />
+    </Pressable>
+  );
+}
 
 function RootStack() {
   const { isLoading, session } = useAuth();
@@ -56,7 +67,20 @@ function RootStack() {
         ...base,
         colors: { ...base.colors, background: c.background, card: c.surface, text: c.text, primary: c.primary, border: c.border },
       }}>
-      <Stack key={lang} screenOptions={{ headerBackTitle: tr('返回'), headerTintColor: c.text, headerStyle: { backgroundColor: c.background } }}>
+      <Stack
+        key={lang}
+        screenOptions={({ navigation }) => ({
+          headerBackButtonDisplayMode: 'minimal',
+          headerTintColor: c.text,
+          headerStyle: { backgroundColor: c.background },
+          headerShadowVisible: false,
+          // 返回：只有箭頭、沒有外框（iOS 26 預設會包一顆玻璃膠囊）
+          ...(navigation.canGoBack()
+            ? Platform.OS === 'ios'
+              ? { unstable_headerLeftItems: () => [{ type: 'custom' as const, element: <BackButton color={c.text} />, hidesSharedBackground: true }] }
+              : { headerLeft: () => <BackButton color={c.text} /> }
+            : null),
+        })}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="sign-in" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
         <Stack.Screen name="open-store/index" options={{ title: tr('開一間書店') }} />
@@ -94,10 +118,12 @@ export default function RootLayout() {
   }, []);
   if (!ready) return null; // 啟動畫面還在
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <RootStack />
-      </AuthProvider>
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <RootStack />
+        </AuthProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }

@@ -48,3 +48,25 @@ export function timeAgo(iso: string) {
   if (s < 86400) return tr('{p0} 小時前', { p0: Math.floor(s / 3600) });
   return tr('{p0} 天前', { p0: Math.floor(s / 86400) });
 }
+
+/** 'YYYY-MM-DD'（台北今天） */
+export function taipeiToday() {
+  const d = taipeiNow();
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+}
+
+/** period 加 n 個月 */
+export function addMonths(period: string, n: number) {
+  const y = Number(period.slice(0, 4));
+  const m = Number(period.slice(5, 7)) - 1 + n;
+  return `${y + Math.floor(m / 12)}-${pad(((m % 12) + 12) % 12 + 1)}-01`;
+}
+
+/** 可以排策展的最後一個月（本月起 4 個月內） */
+export const lastOpenPeriod = () => addMonths(currentPeriod(), 3);
+
+/** 預約時間（timestamptz）→ 台北的 'M/D' 與 'YYYY-MM-DD' */
+export function taipeiDate(iso: string) {
+  const d = new Date(new Date(iso).getTime() + TAIPEI_OFFSET_MS);
+  return { md: `${d.getUTCMonth() + 1}/${d.getUTCDate()}`, ymd: `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}` };
+}

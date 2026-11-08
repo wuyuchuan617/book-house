@@ -11,10 +11,11 @@ import {
   useDeleteCuration,
   useDeleteImpact,
   useDuplicateCuration,
+  useSuggestedPeriod,
   useUnpublishCuration,
   type CurationStatus,
 } from '@/lib/curations';
-import { currentPeriod, monthOf, nextPeriod } from '@/lib/period';
+import { currentPeriod, lastOpenPeriod, monthOf } from '@/lib/period';
 import { tr } from '@/lib/i18n';
 
 export type CurationSummary = {
@@ -46,8 +47,9 @@ export function CurationActions({ curation, visible, onClose, inEditor, onDelete
   const month = monthOf(curation.period);
   const name = curation.title || tr('{month} 月策展', { month });
 
-  // 複製到「下個月」；本身就是下個月的檔就不提供
-  const target = curation.period === nextPeriod() ? null : nextPeriod();
+  // 複製到「新增策展」的那個月（最後一檔的下一個月）；超過 4 個月內就不提供
+  const { data: suggested } = useSuggestedPeriod();
+  const target = suggested && suggested <= lastOpenPeriod() ? suggested : null;
 
   const doUnpublish = () =>
     unpublish.mutate(curation.id, { onError: (e) => Alert.alert(tr('沒有成功'), friendlyError(e.message)) });

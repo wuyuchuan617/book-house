@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { BookCover } from '@/components/book-cover';
 import { Chip, chipRow } from '@/components/form';
@@ -12,7 +12,8 @@ import { MinTouch, Radius, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { timeAgo } from '@/lib/period';
 import { useDeleteReading, type MyReading } from '@/lib/readings';
-import { wantSource, type SavedBook } from '@/lib/browse';
+import { useToggleSave, wantSource, type SavedBook } from '@/lib/browse';
+import { SwipeRow, swipeA11y } from '@/components/swipe-row';
 import { WantSheet } from '@/components/want-sheet';
 import { tr } from '@/lib/i18n';
 
@@ -76,6 +77,12 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
   const [openWant, setOpenWant] = useState<SavedBook | null>(null);
   const [menuFor, setMenuFor] = useState<MyReading | null>(null);
   const { pending, remove } = removal;
+  const toggleSave = useToggleSave();
+  const confirmUnsave = (w: SavedBook) =>
+    Alert.alert(tr('從想讀移除「{title}」？', { title: w.books.title }), undefined, [
+      { text: tr('取消'), style: 'cancel' },
+      { text: tr('移除'), style: 'destructive', onPress: () => toggleSave.mutate({ bookId: w.book_id, save: false }) },
+    ]);
 
   if (loading || !readings) return <ActivityIndicator style={{ marginTop: 24 }} />;
   const visible = readings.filter((r) => r.id !== pending?.id);
@@ -111,9 +118,14 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
       {filter === 'want'
         ? wantList.map((w) => {
             const from = wantSource(w);
+            const actions = [
+              { label: tr('編輯'), icon: 'edit-2' as const, onPress: () => setOpenWant(w) },
+              { label: tr('移除'), icon: 'trash-2' as const, destructive: true, onPress: () => confirmUnsave(w) },
+            ];
             return (
-              <Card key={w.book_id} style={{ padding: 0 }}>
-                <Pressable accessibilityRole="button" accessibilityHint={tr('編輯理由、開始讀')} onPress={() => setOpenWant(w)} style={styles.main}>
+              <Card key={w.book_id} style={{ padding: 0, overflow: 'hidden' }}>
+                <SwipeRow actions={actions}>
+                <Pressable accessibilityRole="button" accessibilityHint={tr('編輯理由、開始讀')} {...swipeA11y(actions)} onPress={() => setOpenWant(w)} style={styles.main}>
                   <BookCover title={w.books.title} url={w.books.cover_url} color={color} />
                   <View style={{ flex: 1, gap: 3 }}>
                     <View style={[styles.pill, { backgroundColor: c.surfaceMuted, alignSelf: 'flex-start' }]}>
@@ -125,6 +137,7 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
                   </View>
                   <AppText variant="caption" style={{ color: c.primary, fontWeight: '700', alignSelf: 'center' }}>{tr('開始讀')}</AppText>
                 </Pressable>
+                </SwipeRow>
               </Card>
             );
           })
@@ -133,10 +146,16 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
       <WantSheet item={openWant} hasStore onClose={() => setOpenWant(null)} />
       {shown.map((r) => {
         const latest = r.reading_notes[0];
+        const actions = [
+          { label: tr('編輯'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/reading/manage/[id]', params: { id: r.id } }) },
+          { label: tr('移除'), icon: 'trash-2' as const, destructive: true, onPress: () => remove(r) },
+        ];
         return (
-          <Card key={r.id} style={{ padding: 0 }}>
+          <Card key={r.id} style={{ padding: 0, overflow: 'hidden' }}>
+            <SwipeRow actions={actions}>
             <View style={{ flexDirection: 'row' }}>
               <Pressable
+                {...swipeA11y(actions)}
                 accessibilityRole="button"
                 accessibilityLabel={tr('{title}，{p1}{p2}', { title: r.books.title, p1: r.status === 'reading' ? tr('在讀') : tr('讀完'), p2: r.is_public ? '' : tr('，只有自己看得到') })}
                 onPress={() => router.push({ pathname: '/reading/manage/[id]', params: { id: r.id } })}
@@ -165,6 +184,7 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
                 <Feather name="more-horizontal" size={20} color={c.textSecondary} />
               </Pressable>
             </View>
+            </SwipeRow>
           </Card>
         );
       })}

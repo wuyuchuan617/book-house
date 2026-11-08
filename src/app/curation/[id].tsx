@@ -8,7 +8,9 @@ import { BookCover } from '@/components/book-cover';
 import { BookPicker, NoteForm } from '@/components/book-picker';
 import { CurationActions } from '@/components/curation-actions';
 import { TextField } from '@/components/form';
-import { ActionSheet } from '@/components/sheet';
+import { PublishDateSheet } from '@/components/publish-date-sheet';
+import { SortableList } from '@/components/sortable-list';
+import { SwipeRow, swipeA11y } from '@/components/swipe-row';
 import { TagPicker } from '@/components/tag-picker';
 import { AppText, Button, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
@@ -20,6 +22,7 @@ import {
   TITLE_MAX,
   useAddItem,
   useCuration,
+  useCurationStats,
   useMyCurations,
   usePublishCuration,
   useRemoveItem,
@@ -30,14 +33,15 @@ import {
   useUpdateItemNote,
   type CurationItem,
 } from '@/lib/curations';
-import { currentPeriod, monthOf, nextPeriod, periodLabel, periodRelative, timeAgo } from '@/lib/period';
+import { currentPeriod, monthOf, periodLabel, periodRelative, taipeiDate, timeAgo } from '@/lib/period';
 import { useMyStore } from '@/lib/queries';
 import { tr } from '@/lib/i18n';
 
 /**
  * C1／C2 新增策展、C6 編輯策展。
- * 草稿與預約中：自動存檔。已發布：改動先留在本機，按「儲存並更新」才送出。
- * 書架（加書、移除、排序、推薦理由）一律立即生效。
+ * 草稿與預約中：自動存檔，右上「儲存」可以馬上存。已發布：改動先留在本機，按「儲存」才送出。
+ * 書架（加書、移除、排序、推薦理由）一律立即生效：點書直接寫推薦理由、往左滑編輯／移除、按住 ≡ 拖拉排序。
+ * 發布時選上架日期（本月起 4 個月內，當月任一天）。
  */
 export default function CurationEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -60,7 +64,7 @@ export default function CurationEditorScreen() {
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
-  const [itemMenu, setItemMenu] = useState<CurationItem | null>(null);
+  const [dateOpen, setDateOpen] = useState(false);
   const [noteFor, setNoteFor] = useState<CurationItem | null>(null);
   const [justAdded, setJustAdded] = useState<string | null>(null);
   const loadedFor = useRef<string | null>(null);
@@ -101,6 +105,7 @@ export default function CurationEditorScreen() {
     ]);
   });
 
+  const { data: stats } = useCurationStats(cur?.id, cur?.status === 'published');
   const items = useMemo(() => (cur ? sortedItems(cur) : []), [cur]);
   const pickedIds = useMemo(() => new Set(items.map((it) => it.books.id)), [items]);
   const tagIds = cur?.curation_tags.map((t) => t.tag_id) ?? [];
@@ -110,25 +115,24 @@ export default function CurationEditorScreen() {
 
   const color = store.store.color;
   const month = monthOf(cur.period);
-  const isCurrent = cur.period === currentPeriod();
-  const isNext = cur.period === nextPeriod();
-  const isPast = !isCurrent && !isNext;
-  const currentLive = mine?.some((m) => m.period === currentPeriod() && m.status !== 'draft' && m.id !== cur.id);
+  const isFuture = cur.period > currentPeriod();
+  const isPast = cur.period < currentPeriod();
+  const scheduledMd = cur.scheduled_for ? taipeiDate(cur.scheduled_for).md : `${month}/1`;
   const otherLiveSameMonth = mine?.some((m) => m.period === cur.period && m.status !== 'draft' && m.id !== cur.id);
 
   const missing: string[] = [];
   if (!title.trim()) missing.push(tr('取一個策展標題'));
   if (items.length === 0) missing.push(tr('放上至少 1 本書'));
   const canPublish = cur.status === 'draft' && missing.length === 0 && !isPast && !otherLiveSameMonth;
-  const publishLabel = isNext ? tr('預約發布（{month}/1）', { month }) : tr('發布策展');
+  const publishLabel = isFuture ? tr('選擇上架日期') : tr('發布策展');
 
   const banner = (() => {
     if (cur.status === 'published') return tr('已發布於 {month} 月。標題與說明按「儲存並更新」才會送出；書架的變更（加書、排序、理由）會立刻更新給讀者。', { month });
-    if (cur.status === 'scheduled') return tr('已預約，{month}/1 自動上架。上架前都能修改。', { month });
+    if (cur.status === 'scheduled') return tr('已預約，{md} 早上 9 點上架。上架前都能修改，也能改日期。', { md: scheduledMd });
     if (isPast) return tr('這是 {month} 月的草稿，已經過了發布時間。可以從「⋯」複製成新的草稿接著用。', { month });
     if (otherLiveSameMonth) return tr('{month} 月已經有一檔發布中的策展。要發布這檔，請先取消發布那一檔。', { month });
-    if (isNext) return tr('{p0}這檔會在 {month}/1 自動上架，上架前都能修改。', { p0: currentLive ? tr('{p0} 月已發布。', { p0: monthOf(currentPeriod()) }) : '', month });
-    return tr('這是 {month} 月策展，發布後讀者馬上就看得到。', { month });
+    if (isFuture) return tr('這是 {month} 月策展。發布時選一天上架（台北時間早上 9 點），上架前都能修改。', { month });
+    return tr('這是 {month} 月策展。可以今天就上架，或選這個月的其他日子。', { month });
   })();
 
   const move = (it: CurationItem, delta: -1 | 1 | 'top') => {
@@ -149,15 +153,16 @@ export default function CurationEditorScreen() {
   const remove = (it: CurationItem) =>
     removeItem.mutate({ curationId: cur.id, itemId: it.id }, { onError: (e) => Alert.alert(tr('沒有移除成功'), friendlyError(e.message)) });
 
-  const onPublish = async () => {
+  const onPublish = async (publishOn: string) => {
     try {
       if (dirty) await update.mutateAsync({ id: cur.id, title, description });
-      const res = await publish.mutateAsync(cur.id);
+      const res = await publish.mutateAsync({ id: cur.id, publishOn });
+      setDateOpen(false);
       Alert.alert(
-        res.status === 'scheduled' ? tr('已預約 {month}/1 上架', { month }) : tr('策展發布了'),
+        res.status === 'scheduled' ? tr('已預約 {md} 上架', { md: res.scheduled_for ? taipeiDate(res.scheduled_for).md : '' }) : tr('策展發布了'),
         res.status === 'scheduled' ? tr('上架前都還能修改。') : tr('讀者現在可以在探索頁看到這檔策展。'),
       );
-      router.back();
+      if (cur.status === 'draft') router.back();
     } catch (e) {
       Alert.alert(tr('沒有發布成功'), friendlyError((e as Error).message));
     }
@@ -183,9 +188,20 @@ export default function CurationEditorScreen() {
         options={{
           title: cur.status === 'draft' ? tr('新增策展') : tr('編輯策展'),
           headerRight: () => (
-            <Pressable accessibilityRole="button" accessibilityLabel={tr('更多操作')} onPress={() => setActionsOpen(true)} style={styles.headerBtn}>
-              <Feather name="more-horizontal" size={22} color={c.text} />
-            </Pressable>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={tr('儲存')}
+                accessibilityState={{ disabled: !dirty || !title.trim() && !!isPublished }}
+                disabled={!dirty || (isPublished && !title.trim())}
+                onPress={onSave}
+                style={styles.headerSave}>
+                <AppText style={{ fontWeight: '700', color: dirty ? c.primary : c.textTertiary }}>{update.isPending ? tr('儲存中…') : tr('儲存')}</AppText>
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel={tr('更多操作')} onPress={() => setActionsOpen(true)} style={styles.headerBtn}>
+                <Feather name="more-horizontal" size={22} color={c.text} />
+              </Pressable>
+            </View>
           ),
         }}
       />
@@ -194,8 +210,15 @@ export default function CurationEditorScreen() {
           <AppText variant="caption" muted accessibilityLiveRegion="polite">
             {isPublished
               ? dirty ? tr('● 有未儲存的變更') : tr('已發布 · 讀者看得到')
-              : update.isPending ? tr('儲存中…') : savedAt ? tr('已自動存成草稿 · {p0}', { p0: timeAgo(savedAt) }) : tr('會自動存成草稿')}
+              : update.isPending ? tr('儲存中…') : dirty ? tr('● 有未儲存的變更') : savedAt ? tr('已儲存 · {p0}', { p0: timeAgo(savedAt) }) : tr('會自動存成草稿')}
           </AppText>
+          {isPublished ? (
+            <View style={[styles.statsRow, { backgroundColor: c.surface, borderColor: c.border }]}>
+              <StatCell label={tr('拜訪')} value={stats?.visit_count} />
+              <StatCell label={tr('讀者')} value={stats?.visitor_count} />
+              <StatCell label={tr('收藏')} value={stats?.save_count} />
+            </View>
+          ) : null}
 
           <View style={{ gap: 6 }}>
             <AppText variant="label">{tr('策展月份')}</AppText>
@@ -226,7 +249,7 @@ export default function CurationEditorScreen() {
           <View style={{ gap: Spacing.sm }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <AppText variant="label">{items.length ? tr('書架 · {length} 本', { length: items.length }) : tr('書架')}</AppText>
-              <AppText variant="caption" muted>{items.length > 1 ? tr('點書可以排序、改理由') : tr('建議 3–7 本')}</AppText>
+              <AppText variant="caption" muted>{items.length > 1 ? tr('按住 ≡ 拖拉排序 · 往左滑編輯') : tr('建議 3–7 本')}</AppText>
             </View>
             {items.length === 0 ? (
               <Pressable accessibilityRole="button" onPress={() => setPickerOpen(true)} style={[styles.empty, { borderColor: c.border }]}>
@@ -235,33 +258,51 @@ export default function CurationEditorScreen() {
                 <AppText variant="caption" muted>{tr('搜尋書名或作者')}</AppText>
               </Pressable>
             ) : (
-              <Card style={{ paddingVertical: Spacing.xs }}>
-                {items.map((it, i) => (
-                  <Pressable
-                    key={it.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={tr('第 {p0} 本：{title}', { p0: i + 1, title: it.books.title })}
-                    accessibilityHint={tr('開啟排序、推薦理由與移除選項')}
-                    onPress={() => setItemMenu(it)}
-                    style={[styles.item, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.divider }]}>
-                    <BookCover title={it.books.title} url={it.books.cover_url} color={color} size="sm" />
-                    <View style={{ flex: 1 }}>
-                      <AppText variant="label" numberOfLines={2}>{it.books.title}</AppText>
-                      {it.note ? (
-                        <AppText variant="caption" muted numberOfLines={2}>{tr('理由：{note}', { note: it.note })}</AppText>
-                      ) : (
-                        <AppText variant="caption" style={{ color: c.primary }}>{tr('＋ 加上推薦理由')}</AppText>
-                      )}
-                    </View>
-                    {justAdded === it.books.id ? (
-                      <View style={[styles.badge, { backgroundColor: c.successSurface }]}>
-                        <AppText variant="caption" style={{ color: c.success, fontWeight: '700' }}>{tr('剛加入')}</AppText>
-                      </View>
-                    ) : (
-                      <Feather name="more-vertical" size={18} color={c.textTertiary} />
-                    )}
-                  </Pressable>
-                ))}
+              <Card style={{ padding: 0, overflow: 'hidden' }}>
+                <SortableList
+                  items={items}
+                  keyOf={(it) => it.id}
+                  rowHeight={ROW_H}
+                  onReorder={(ids) => reorder.mutate({ curationId: cur.id, itemIds: ids }, { onError: (e) => Alert.alert(tr('排序沒有成功'), friendlyError(e.message)) })}
+                  renderRow={(it, i) => {
+                    const lockLast = isPublished && items.length === 1;
+                    const actions = [
+                      { label: tr('推薦理由'), icon: 'edit-2' as const, onPress: () => setNoteFor(it) },
+                      ...(lockLast ? [] : [{ label: tr('移除'), icon: 'trash-2' as const, destructive: true, onPress: () => remove(it) }]),
+                    ];
+                    const a11y = [
+                      ...actions,
+                      ...(i > 0 ? [{ label: tr('往前移'), onPress: () => move(it, -1) }] : []),
+                      ...(i < items.length - 1 ? [{ label: tr('往後移'), onPress: () => move(it, 1) }] : []),
+                    ];
+                    return (
+                      <SwipeRow actions={actions}>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={tr('第 {p0} 本：{title}', { p0: i + 1, title: it.books.title })}
+                          accessibilityHint={tr('點兩下寫推薦理由；其他動作在動作選單裡')}
+                          {...swipeA11y(a11y)}
+                          onPress={() => setNoteFor(it)}
+                          style={[styles.item, { height: ROW_H }, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.divider }]}>
+                          <BookCover title={it.books.title} url={it.books.cover_url} color={color} size="sm" />
+                          <View style={{ flex: 1 }}>
+                            <AppText variant="label" numberOfLines={1}>{it.books.title}</AppText>
+                            {it.note ? (
+                              <AppText variant="caption" muted numberOfLines={2}>{tr('理由：{note}', { note: it.note })}</AppText>
+                            ) : (
+                              <AppText variant="caption" style={{ color: c.primary }}>{tr('＋ 加上推薦理由')}</AppText>
+                            )}
+                          </View>
+                          {justAdded === it.books.id ? (
+                            <View style={[styles.badge, { backgroundColor: c.successSurface }]}>
+                              <AppText variant="caption" style={{ color: c.success, fontWeight: '700' }}>{tr('剛加入')}</AppText>
+                            </View>
+                          ) : null}
+                        </Pressable>
+                      </SwipeRow>
+                    );
+                  }}
+                />
               </Card>
             )}
             {items.length > 0 ? <Button kind="secondary" label={tr('再加一本書')} onPress={() => setPickerOpen(true)} /> : null}
@@ -279,14 +320,14 @@ export default function CurationEditorScreen() {
                 : missing.length
                   ? tr('還差 {length} 步：{p1}', { length: missing.length, p1: missing.join(tr('、')) })
                   : items.length < 3
-                    ? tr('可以{p0}發布了，再加 {p1} 本會更完整', { p0: isNext ? tr('預約') : '', p1: 3 - items.length })
+                    ? tr('可以{p0}發布了，再加 {p1} 本會更完整', { p0: isFuture ? tr('預約') : '', p1: 3 - items.length })
                     : items.length <= 7
-                      ? tr('很棒，{length} 本剛剛好，可以{p1}發布', { length: items.length, p1: isNext ? tr('預約') : '' })
-                      : tr('準備好了，可以{p0}發布', { p0: isNext ? tr('預約') : '' })}
+                      ? tr('很棒，{length} 本剛剛好，可以{p1}發布', { length: items.length, p1: isFuture ? tr('預約') : '' })
+                      : tr('準備好了，可以{p0}發布', { p0: isFuture ? tr('預約') : '' })}
             </AppText>
             <View style={styles.footerRow}>
               <Button kind="secondary" label={tr('預覽')} style={{ flex: 1 }} onPress={() => router.push({ pathname: '/curation/preview/[id]', params: { id: cur.id } })} />
-              <Button label={publishLabel} style={{ flex: 2 }} disabled={!canPublish} loading={publish.isPending} onPress={onPublish} />
+              <Button label={publishLabel} style={{ flex: 2 }} disabled={!canPublish} loading={publish.isPending} onPress={() => setDateOpen(true)} />
             </View>
           </>
         ) : isPublished && dirty ? (
@@ -295,10 +336,14 @@ export default function CurationEditorScreen() {
             <Button label={tr('儲存並更新')} style={{ flex: 2 }} disabled={!title.trim()} loading={update.isPending} onPress={onSave} />
           </View>
         ) : cur.status === 'scheduled' ? (
-          <View style={styles.footerRow}>
-            <Button kind="secondary" label={tr('預覽')} style={{ flex: 1 }} onPress={() => router.push({ pathname: '/curation/preview/[id]', params: { id: cur.id } })} />
-            <Button kind="secondary" label={tr('取消預約')} style={{ flex: 1 }} loading={unpublish.isPending} onPress={() => unpublish.mutate(cur.id)} />
-          </View>
+          <>
+            <AppText variant="caption" muted style={{ textAlign: 'center' }}>{tr('預約 {md} 早上 9 點上架', { md: scheduledMd })}</AppText>
+            <View style={styles.footerRow}>
+              <Button kind="secondary" label={tr('預覽')} style={{ flex: 1 }} onPress={() => router.push({ pathname: '/curation/preview/[id]', params: { id: cur.id } })} />
+              <Button kind="secondary" label={tr('改日期')} style={{ flex: 1 }} onPress={() => setDateOpen(true)} />
+              <Button kind="secondary" label={tr('取消預約')} style={{ flex: 1 }} loading={unpublish.isPending} onPress={() => unpublish.mutate(cur.id)} />
+            </View>
+          </>
         ) : (
           <Button kind="secondary" label={tr('以讀者身分預覽')} onPress={() => router.push({ pathname: '/curation/preview/[id]', params: { id: cur.id } })} />
         )}
@@ -318,28 +363,14 @@ export default function CurationEditorScreen() {
         }}
       />
 
-      <ActionSheet
-        visible={!!itemMenu}
-        title={itemMenu?.books.title}
-        subtitle={itemMenu ? tr('書架上第 {p0} 本', { p0: items.findIndex((x) => x.id === itemMenu.id) + 1 }) : undefined}
-        onClose={() => setItemMenu(null)}
-        actions={
-          itemMenu
-            ? [
-                { label: itemMenu.note ? tr('編輯推薦理由') : tr('加上推薦理由'), onPress: () => setNoteFor(itemMenu) },
-                { label: tr('移到最前面'), disabled: items[0]?.id === itemMenu.id, onPress: () => move(itemMenu, 'top') },
-                { label: tr('往前移'), disabled: items[0]?.id === itemMenu.id, onPress: () => move(itemMenu, -1) },
-                { label: tr('往後移'), disabled: items[items.length - 1]?.id === itemMenu.id, onPress: () => move(itemMenu, 1) },
-                {
-                  label: tr('從書架移除'),
-                  destructive: true,
-                  disabled: isPublished && items.length === 1,
-                  sub: isPublished && items.length === 1 ? tr('發布中的策展至少要留 1 本書') : undefined,
-                  onPress: () => remove(itemMenu),
-                },
-              ]
-            : []
-        }
+      <PublishDateSheet
+        key={`${cur.id}-${dateOpen}`}
+        visible={dateOpen}
+        period={cur.period}
+        initial={cur.scheduled_for ? taipeiDate(cur.scheduled_for).ymd : null}
+        loading={publish.isPending}
+        onClose={() => setDateOpen(false)}
+        onConfirm={onPublish}
       />
 
       <Modal visible={!!noteFor} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setNoteFor(null)}>
@@ -384,11 +415,24 @@ export default function CurationEditorScreen() {
   );
 }
 
+const ROW_H = 84;
+
+function StatCell({ label, value }: { label: string; value: number | undefined }) {
+  return (
+    <View style={{ flex: 1, alignItems: 'center' }}>
+      <AppText style={{ fontSize: 17, fontWeight: '700' }}>{value === undefined ? '–' : String(value)}</AppText>
+      <AppText variant="caption" muted>{label}</AppText>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  headerSave: { minHeight: MinTouch, paddingHorizontal: Spacing.sm, justifyContent: 'center' },
+  statsRow: { flexDirection: 'row', borderWidth: 1, borderRadius: Radius.md, paddingVertical: Spacing.md },
   headerBtn: { width: MinTouch, height: MinTouch, alignItems: 'center', justifyContent: 'center' },
   banner: { borderRadius: Radius.md, padding: Spacing.md },
   empty: { borderWidth: 1.5, borderStyle: 'dashed', borderRadius: Radius.lg, alignItems: 'center', paddingVertical: 28, gap: 4 },
-  item: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, minHeight: 64, paddingVertical: Spacing.sm },
+  item: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingLeft: Spacing.lg, paddingVertical: Spacing.sm },
   badge: { borderRadius: Radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
   footer: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, gap: Spacing.sm },
   footerRow: { flexDirection: 'row', gap: Spacing.md, paddingBottom: Spacing.sm },

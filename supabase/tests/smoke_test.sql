@@ -63,12 +63,12 @@ insert into public.curations (bookstore_id, period, title) select id, public.cur
 insert into public.curation_items (curation_id, book_id)
   select c.id, b.id from public.curations c, public.books b where c.title = '第二檔';
 select pg_temp.expect_error($q$select public.publish_curation((select id from public.curations where title = '第二檔'))$q$, 'one published per month');
--- 兩個月後的草稿不能發布（只能本月發布、下個月預約）
+-- 4 個月後的草稿不能發布（只能本月起 4 個月內）
 insert into public.curations (bookstore_id, period, title)
-  select id, (public.current_period() + interval '2 months')::date, '兩個月後' from t_store;
+  select id, (public.current_period() + interval '4 months')::date, '兩個月後' from t_store;
 insert into public.curation_items (curation_id, book_id)
   select c.id, b.id from public.curations c, public.books b where c.title = '兩個月後';
-select pg_temp.expect_error($q$select public.publish_curation((select id from public.curations where title = '兩個月後'))$q$, 'two months ahead');
+select pg_temp.expect_error($q$select public.publish_curation((select id from public.curations where title = '兩個月後'))$q$, 'four months ahead');
 -- 店主閱讀（私人一筆）
 insert into public.readings (bookstore_id, book_id, is_public) select s.id, b.id, false from t_store s, public.books b;
 insert into public.reading_notes (reading_id, body) select id, '讀到第 7 章' from public.readings;

@@ -48,7 +48,7 @@ select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
 do $$ begin
   assert (select id from public.create_curation(public.current_period())) = (select id from t_cur), 'same-month draft reused';
 end $$;
-select pg_temp.expect_error($q$select public.create_curation((public.current_period() + interval '2 months')::date)$q$, 'period too far');
+select pg_temp.expect_error($q$select public.create_curation((public.current_period() + interval '4 months')::date)$q$, 'period too far');
 select pg_temp.expect_error($q$select public.create_curation((public.current_period() - interval '1 month')::date)$q$, 'past period');
 
 -- O4／C3：加書（不重複、依序排在最後）
@@ -120,7 +120,7 @@ end $$;
 reset role;
 set session_replication_role = replica;  -- 測試用：略過 trigger 直接改期別
 update public.curations set status = 'draft', published_at = null where id = (select id from t_cur);
-update public.curations set period = public.current_period() where id = (select id from t_next);
+update public.curations set period = public.current_period(), scheduled_for = now() - interval '1 minute' where id = (select id from t_next);
 set session_replication_role = origin;
 set role service_role;
 do $$ begin

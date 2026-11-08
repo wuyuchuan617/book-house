@@ -1,11 +1,11 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { BookCover } from '@/components/book-cover';
 import { BookPicker } from '@/components/book-picker';
-import { Chip, chipRow, TextField } from '@/components/form';
+import { Chip, chipRow, TextField, Toggle } from '@/components/form';
 import { AppText, Button, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -123,7 +123,7 @@ export default function NewReadingScreen() {
               <AppText variant="label">{tr('顯示在書店頁')}</AppText>
               <AppText variant="caption" muted>{tr('讀者可以在「店主閱讀」看到')}</AppText>
             </View>
-            <Switch accessibilityLabel={tr('顯示在書店頁')} value={publicValue} onValueChange={setIsPublic} />
+            <Toggle accessibilityLabel={tr('顯示在書店頁')} value={publicValue} onValueChange={setIsPublic} />
           </View>
           ) : (
             <AppText variant="caption" muted>{tr('想讀清單只有你自己看得到。')}</AppText>

@@ -1,14 +1,14 @@
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Share, View } from 'react-native';
+import { Alert, View } from 'react-native';
 
 import { ActionSheet, Dialog } from '@/components/sheet';
 import { AppText, Button } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { track } from '@/lib/analytics';
-import { shareStoreMessage, storeUrl } from '@/lib/links';
+import { shareStore, storeUrl } from '@/lib/links';
 import { safetyError, useBlockStore } from '@/lib/safety';
 import { tr } from '@/lib/i18n';
 
@@ -45,7 +45,7 @@ export function StoreMenu({ store, visible, onClose, isMine }: { store: Store; v
         subtitle={tr('店主 {owner_name}', { owner_name: store.owner_name })}
         onClose={onClose}
         actions={[
-          { label: tr('分享書店'), onPress: () => { track('share_link_copied', { channel: 'system' }); void Share.share({ message: shareStoreMessage(store.name, store.slug) }); } },
+          { label: tr('分享書店'), onPress: () => shareStore(store.name, store.slug, { afterModal: true }) },
           {
             label: tr('複製連結'),
             onPress: async () => {
