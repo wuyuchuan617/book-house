@@ -16,7 +16,7 @@ export function WeekCard({ color = 'clay' }: { color?: StoreColor }) {
   const ws = lastWeekStart();
   const { data: week } = useWeekReview(ws);
   const dow = (new Date(`${taipeiToday()}T00:00:00Z`).getUTCDay() + 6) % 7;
-  if (!week || dow > 2) return null;
+  if (!week?.counts || dow > 2) return null;
   const open = () => router.push({ pathname: '/diary/week/[start]', params: { start: ws, from: 'card' } });
   const empty = isEmptyWeek(week);
 

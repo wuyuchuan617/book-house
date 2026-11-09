@@ -42,8 +42,8 @@ export default function DiaryDayScreen() {
         </ScrollView>
       ) : (
         <View style={{ flex: 1 }}>
-          <EmptyState title={tr('這天沒有記錄')} body={isToday ? tr('記一筆，開始今天的日記。') : tr('日記只能記當天的，這天就讓它空著吧。')} />
-          {isToday ? <Button label={tr('記一筆')} style={{ marginHorizontal: Spacing.xl }} onPress={() => router.push({ pathname: '/diary/compose', params: { kind: 'note' } })} /> : null}
+          <EmptyState title={tr('這天沒有記錄')} body={isToday ? tr('寫一句，開始今天的日記。') : tr('日記只能記當天的，這天就讓它空著吧。')} />
+          {isToday ? <Button label={tr('寫日記')} style={{ marginHorizontal: Spacing.xl }} onPress={() => router.push({ pathname: '/diary/compose', params: { kind: 'note' } })} /> : null}
         </View>
       )}
     </Screen>

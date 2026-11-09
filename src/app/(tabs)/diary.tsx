@@ -81,8 +81,8 @@ export default function DiaryScreen() {
           {streak.data ? <StreakCard streak={streak.data} today={today} activeDays={activeSet} onPress={() => router.push('/diary/calendar')} /> : null}
 
           <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-            <QuickButton icon="edit-3" label={tr('記一筆')} sub={tr('一句話、一張照片')} onPress={() => compose('note')} />
-            <QuickButton icon="map-pin" label={tr('打卡')} sub={tr('在有書的地方')} onPress={() => compose('checkin')} />
+            <QuickButton icon="edit-3" label={tr('寫日記')} sub={tr('只有自己看得到')} onPress={() => compose('note')} />
+            <QuickButton icon="map-pin" label={tr('打卡')} sub={tr('可以選擇公開')} onPress={() => compose('checkin')} />
           </View>
 
           <View style={styles.sectionHead}>
@@ -97,7 +97,7 @@ export default function DiaryScreen() {
             <View style={[styles.empty, { borderColor: c.border }]}>
               <AppText variant="label">{tr('今天還沒有記錄')}</AppText>
               <AppText variant="caption" muted style={{ textAlign: 'center' }}>
-                {mine ? tr('記一筆、打個卡；今天寫的心得、加入的想讀也會自動出現在這裡。') : tr('記一筆、打個卡；今天加入的想讀也會自動出現在這裡。')}
+                {mine ? tr('寫日記、打個卡；今天寫的心得、加入的想讀也會自動出現在這裡。') : tr('寫日記、打個卡；今天加入的想讀也會自動出現在這裡。')}
               </AppText>
             </View>
           )}

@@ -97,7 +97,7 @@ function RootStack() {
         <Stack.Screen name="reading/manage/[id]" options={{ title: tr('這本書') }} />
         <Stack.Screen name="reading/compose" options={{ title: tr('寫心得') }} />
         <Stack.Screen name="reading/note/[id]" options={{ title: tr('心得') }} />
-        <Stack.Screen name="diary/compose" options={{ title: tr('記一筆') }} />
+        <Stack.Screen name="diary/compose" options={{ title: tr('寫日記') }} />
         <Stack.Screen name="diary/day/[date]" options={{ title: tr('日記') }} />
         <Stack.Screen name="diary/calendar" options={{ title: tr('日記月曆') }} />
         <Stack.Screen name="place/[id]" options={{ title: '' }} />

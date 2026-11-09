@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BookCover } from '@/components/book-cover';
 import { BookPicker } from '@/components/book-picker';
 import { Chip, TextField, Toggle } from '@/components/form';
+import { VisibilityBadge } from '@/components/diary';
 import { PlacePicker, type PlaceChoice } from '@/components/place-picker';
 import { AppText, Button, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
@@ -180,22 +181,26 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: existing ? tr('編輯日記') : kind === 'checkin' ? tr('打卡') : tr('記一筆') }} />
+      <Stack.Screen options={{ title: existing ? tr('編輯日記') : kind === 'checkin' ? tr('打卡') : tr('寫日記') }} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={90}>
         <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <AppText variant="caption" muted>{tr('今天 · {date}', { date: dayLabel(today) })}</AppText>
-            <AppText variant="caption" muted>{tr('只有自己看得到')}</AppText>
+            <VisibilityBadge v={publicOn ? { public: true, where: 'place' } : { public: false }} />
           </View>
 
           <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="radiogroup">
             {(['note', 'checkin'] as const).map((k) => (
               <Pressable key={k} accessibilityRole="radio" accessibilityState={{ selected: kind === k }} onPress={() => setKind(k)} style={[styles.segmentItem, kind === k && { backgroundColor: c.surface }]}>
                 <Feather name={k === 'note' ? 'edit-3' : 'map-pin'} size={14} color={kind === k ? c.text : c.textSecondary} />
-                <AppText variant="caption" style={{ fontWeight: '700', color: kind === k ? c.text : c.textSecondary }}>{k === 'note' ? tr('筆記') : tr('打卡')}</AppText>
+                <AppText variant="caption" style={{ fontWeight: '700', color: kind === k ? c.text : c.textSecondary }}>{k === 'note' ? tr('日記') : tr('打卡')}</AppText>
               </Pressable>
             ))}
           </View>
+
+          <AppText variant="caption" muted style={{ marginTop: -Spacing.sm }}>
+            {kind === 'note' ? tr('日記只有自己看得到。') : tr('打卡預設只有自己看得到；在公開場所可以選擇公開到地點頁。')}
+          </AppText>
 
           {kind === 'checkin' ? (
             <View style={{ gap: Spacing.sm }}>

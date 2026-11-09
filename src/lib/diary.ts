@@ -67,11 +67,12 @@ export type DiaryItem =
       place_category: PlaceCategory | null;
       reading_note_id: string | null;
       reading_id: string | null;
+      note_public: boolean | null;
       book: DiaryBook | null;
     }
-  | { type: 'reading_note'; id: string; at: string; reading_id: string; kind: NoteKind; title: string | null; body: string; book: DiaryBook }
+  | { type: 'reading_note'; id: string; at: string; reading_id: string; kind: NoteKind; is_public: boolean; title: string | null; body: string; book: DiaryBook }
   | { type: 'saved'; id: string; at: string; source: string | null; book: DiaryBook }
-  | { type: 'started' | 'finished'; id: string; at: null; reading_id: string; book: DiaryBook };
+  | { type: 'started' | 'finished'; id: string; at: null; reading_id: string; is_public: boolean; book: DiaryBook };
 
 export type DiaryEntry = Extract<DiaryItem, { type: 'note' | 'checkin' }>;
 export type DiaryDay = { date: string; is_today: boolean; items: DiaryItem[] };

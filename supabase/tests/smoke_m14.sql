@@ -38,6 +38,8 @@ declare j jsonb := public.my_diary_day();
 begin
   assert (select count(*) from jsonb_array_elements(j->'items') x where x->>'type' = 'reading_note') = 0, 'linked note hidden';
   assert (select count(*) from jsonb_array_elements(j->'items') x where x->>'type' = 'note' and x->>'reading_note_id' is not null) = 1;
+  assert (select (x->>'note_public')::boolean = false from jsonb_array_elements(j->'items') x where x->>'type' = 'note');
+  assert (select (x->>'is_public') is not null from jsonb_array_elements(j->'items') x where x->>'type' = 'started');
 end $$;
 
 -- 想去：存了還沒去 → want；打卡後 → visited

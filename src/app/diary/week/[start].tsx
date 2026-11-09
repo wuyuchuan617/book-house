@@ -111,7 +111,7 @@ function Numbers({ week }: { week: WeekReview }) {
   const t = useTheme();
   const names = [tr('一'), tr('二'), tr('三'), tr('四'), tr('五'), tr('六'), tr('日')];
   const stats: [string, number][] = [
-    [tr('筆記'), week.counts.notes],
+    [tr('日記'), week.counts.notes],
     [tr('心得'), week.counts.reading_notes],
     [tr('打卡'), week.counts.checkins],
     [tr('想讀'), week.counts.saved],
@@ -271,14 +271,14 @@ function EmptyWeek({ week, color }: { week: WeekReview; color: StoreColor }) {
   return (
     <Card style={{ alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.xl }}>
       <AppText variant="heading">{week.is_current ? tr('這週還沒有紀錄') : tr('這週休息了一下')}</AppText>
-      <AppText muted style={{ textAlign: 'center' }}>{tr('想讀清單裡有一本在等你。讀幾頁，記一筆就好。')}</AppText>
+      <AppText muted style={{ textAlign: 'center' }}>{tr('想讀清單裡有一本在等你。讀幾頁，寫一句日記就好。')}</AppText>
       {week.suggestion ? (
         <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/book/[id]', params: { id: week.suggestion!.id } })} style={{ alignItems: 'center', gap: 6 }}>
           <BookCover title={week.suggestion.title} url={week.suggestion.cover_url} color={color} size="lg" />
           <AppText variant="label" numberOfLines={2} style={{ textAlign: 'center', maxWidth: 200 }}>{week.suggestion.title}</AppText>
         </Pressable>
       ) : null}
-      <Button label={tr('記一筆')} style={{ alignSelf: 'stretch' }} onPress={() => router.push({ pathname: '/diary/compose', params: { kind: 'note' } })} />
+      <Button label={tr('寫日記')} style={{ alignSelf: 'stretch' }} onPress={() => router.push({ pathname: '/diary/compose', params: { kind: 'note' } })} />
     </Card>
   );
 }

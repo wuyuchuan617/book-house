@@ -19,7 +19,7 @@ const ACTION_W = 76;
  * 往左滑露出動作（編輯、刪除）。
  * 列本身請加上 {...swipeA11y(actions)}：VoiceOver／TalkBack 使用者不用滑也能用這些動作。
  */
-export function SwipeRow({ actions, children, enabled = true }: { actions: SwipeAction[]; children: ReactNode; enabled?: boolean }) {
+export function SwipeRow({ actions, children, enabled = true, background }: { actions: SwipeAction[]; children: ReactNode; enabled?: boolean; background?: string }) {
   const c = useTheme();
   return (
     <Swipeable
@@ -45,7 +45,7 @@ export function SwipeRow({ actions, children, enabled = true }: { actions: Swipe
           ))}
         </View>
       )}>
-      <View style={{ backgroundColor: c.surface }}>{children}</View>
+      <View style={{ backgroundColor: background ?? c.surface }}>{children}</View>
     </Swipeable>
   );
 }

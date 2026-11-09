@@ -15,7 +15,6 @@ import {
   categoryLabel,
   formatDistance,
   useDiaryImageUrls,
-  type DiaryEntry,
   type DiaryItem,
   type PublicCheckin,
   type Streak,
@@ -61,77 +60,146 @@ function BookLine({ book, color }: { book: { id: string; title: string; cover_ur
   );
 }
 
-/** 時間軸上的一項：自己記的（筆記、打卡）是卡片；自動帶入的（心得、想讀、開始讀、讀完）是一行 */
-export function DiaryItemRow({ item, color = 'moss' }: { item: DiaryItem; color?: StoreColor }) {
-  const c = useTheme();
-  const time = item.at ? taipeiTime(item.at) : null;
+export type Visibility = { public: boolean; where?: 'place' | 'store' };
 
+/** 每一項是誰看得到：日記、想讀只有自己；打卡看有沒有公開；心得、開始讀、讀完跟著那本書 */
+export function visibilityOf(item: DiaryItem): Visibility {
+  switch (item.type) {
+    case 'checkin':
+      return item.is_public ? { public: true, where: 'place' } : { public: false };
+    case 'reading_note':
+    case 'started':
+    case 'finished':
+      return item.is_public ? { public: true, where: 'store' } : { public: false };
+    default:
+      return { public: false };
+  }
+}
+
+/** 公開／只有自己的標籤：綠底地球＝公開，灰底鎖＝只有自己 */
+export function VisibilityBadge({ v, compact }: { v: Visibility; compact?: boolean }) {
+  const c = useTheme();
+  const label = v.public ? (v.where === 'place' ? tr('公開・地點頁') : tr('公開・書店頁')) : tr('只有自己');
+  return (
+    <View
+      accessible
+      accessibilityLabel={label}
+      style={[styles.vis, { backgroundColor: v.public ? c.successSurface : c.surfaceMuted }]}>
+      <Feather name={v.public ? 'globe' : 'lock'} size={11} color={v.public ? c.success : c.textSecondary} />
+      {compact ? null : <AppText variant="caption" style={{ fontSize: 11, fontWeight: '700', color: v.public ? c.success : c.textSecondary }}>{label}</AppText>}
+    </View>
+  );
+}
+
+const TYPE_ICON = { note: 'edit-3', checkin: 'map-pin', reading_note: 'feather', saved: 'bookmark', started: 'book-open', finished: 'check-circle' } as const;
+
+function typeLabel(item: DiaryItem) {
+  switch (item.type) {
+    case 'note':
+      return tr('日記');
+    case 'checkin':
+      return tr('打卡');
+    case 'reading_note':
+      return tr('心得');
+    case 'saved':
+      return tr('加入想讀');
+    case 'started':
+      return tr('開始讀');
+    case 'finished':
+      return tr('讀完');
+  }
+}
+
+/**
+ * 時間軸上的一項（D1／D4）：左邊時間＋圓點（公開實心綠點、只有自己空心點），
+ * 右邊卡片：類型＋公開標籤，內容。自己寫的（日記、打卡）是白底卡片；自動帶入的（心得、想讀、開始讀、讀完）是虛線框。
+ */
+export function DiaryItemRow({ item, color = 'moss', last }: { item: DiaryItem; color?: StoreColor; last?: boolean }) {
+  const c = useTheme();
+  const v = visibilityOf(item);
+  const time = item.at ? taipeiTime(item.at) : null;
+  const own = item.type === 'note' || item.type === 'checkin';
+
+  const open = () => {
+    if (item.type === 'reading_note') router.push({ pathname: '/reading/note/[id]', params: { id: item.id, readingId: item.reading_id } });
+    else if (item.type === 'started' || item.type === 'finished') router.push({ pathname: '/reading/manage/[id]', params: { id: item.reading_id } });
+    else if (item.type === 'saved') router.push({ pathname: '/book/[id]', params: { id: item.book.id } });
+  };
+
+  return (
+    <View style={styles.row}>
+      <View style={styles.timeCol}>
+        <AppText variant="caption" style={{ color: c.textTertiary, fontSize: 11 }}>{time ?? ''}</AppText>
+      </View>
+      <View style={styles.rail}>
+        <View style={[styles.railDot, v.public ? { backgroundColor: c.success, borderColor: c.success } : { backgroundColor: c.background, borderColor: c.textTertiary }]} />
+        {!last ? <View style={[styles.railLine, { backgroundColor: c.border }]} /> : null}
+      </View>
+      <View style={{ flex: 1, paddingBottom: last ? 0 : Spacing.md }}>
+        <Pressable
+          accessibilityRole={own ? undefined : 'link'}
+          disabled={own}
+          onPress={open}
+          style={({ pressed }) => [
+            styles.card,
+            own ? { backgroundColor: c.surface } : { borderWidth: 1, borderStyle: 'dashed', borderColor: c.border },
+            v.public && own ? { borderLeftWidth: 3, borderLeftColor: c.success } : null,
+            { opacity: pressed ? 0.85 : 1 },
+          ]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Feather name={TYPE_ICON[item.type]} size={13} color={own ? c.text : c.textSecondary} />
+            <AppText variant="caption" style={{ fontWeight: '700', color: own ? c.text : c.textSecondary }}>{typeLabel(item)}</AppText>
+            {item.type === 'reading_note' ? <KindChip kind={item.kind} /> : null}
+            {!own ? <AppText variant="caption" style={{ color: c.textTertiary, fontSize: 11 }}>{tr('自動帶入')}</AppText> : null}
+            <View style={{ flex: 1 }} />
+            <VisibilityBadge v={v} />
+          </View>
+          <ItemBody item={item} color={color} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function ItemBody({ item, color }: { item: DiaryItem; color: StoreColor }) {
+  const c = useTheme();
   if (item.type === 'note' || item.type === 'checkin') {
     const placeName = item.place_name ?? item.place_label;
     return (
-      <Card style={{ gap: Spacing.sm }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Feather name={item.type === 'checkin' ? 'map-pin' : 'edit-3'} size={14} color={item.type === 'checkin' ? c.primary : c.textSecondary} />
-          {item.type === 'checkin' ? (
-            <Pressable
-              accessibilityRole={item.place_id ? 'link' : undefined}
-              disabled={!item.place_id}
-              onPress={() => item.place_id && router.push({ pathname: '/place/[id]', params: { id: item.place_id } })}
-              style={{ flexShrink: 1 }}>
-              <AppText variant="label" numberOfLines={1} style={{ color: item.place_id ? c.primary : c.text }}>{placeName}</AppText>
-            </Pressable>
-          ) : (
-            <AppText variant="caption" muted>{tr('筆記')}</AppText>
-          )}
-          <View style={{ flex: 1 }} />
-          {item.is_public ? (
-            <View style={[styles.badge, { backgroundColor: c.successSurface }]}>
-              <AppText variant="caption" style={{ color: c.success, fontWeight: '700', fontSize: 11 }}>{tr('公開')}</AppText>
-            </View>
-          ) : null}
-          {time ? <AppText variant="caption" style={{ color: c.textTertiary }}>{time}</AppText> : null}
-        </View>
-        {item.body ? <AppText style={{ lineHeight: 23 }}>{item.body}</AppText> : null}
-        <DiaryPhotos paths={item.photo_paths} />
-        {item.book ? <BookLine book={item.book} color={color} /> : null}
-        {item.reading_note_id && item.reading_id ? (
-          <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/reading/note/[id]', params: { id: item.reading_note_id!, readingId: item.reading_id! } })} hitSlop={6} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Feather name="feather" size={12} color={c.primary} />
-            <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('也存成了這本書的心得')}</AppText>
+      <View style={{ gap: Spacing.sm, marginTop: Spacing.sm }}>
+        {item.type === 'checkin' ? (
+          <Pressable
+            accessibilityRole={item.place_id ? 'link' : undefined}
+            disabled={!item.place_id}
+            onPress={() => item.place_id && router.push({ pathname: '/place/[id]', params: { id: item.place_id } })}>
+            <AppText variant="label" numberOfLines={1} style={{ color: item.place_id ? c.primary : c.text, fontSize: 16 }}>{placeName}</AppText>
           </Pressable>
         ) : null}
-      </Card>
+        {item.body ? <AppText style={{ lineHeight: 23 }}>{item.body}</AppText> : null}
+        <DiaryPhotos paths={item.photo_paths} size={76} />
+        {item.book ? <BookLine book={item.book} color={color} /> : null}
+        {item.reading_note_id && item.reading_id ? (
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => router.push({ pathname: '/reading/note/[id]', params: { id: item.reading_note_id!, readingId: item.reading_id! } })}
+            hitSlop={6}
+            style={[styles.linked, { borderTopColor: c.divider }]}>
+            <Feather name="feather" size={12} color={c.textSecondary} />
+            <AppText variant="caption" muted style={{ flex: 1 }}>{tr('也存成了這本書的心得')}</AppText>
+            <VisibilityBadge v={{ public: !!item.note_public, where: 'store' }} />
+          </Pressable>
+        ) : null}
+      </View>
     );
   }
-
-  const auto = item as Exclude<DiaryItem, DiaryEntry>;
-  const open = () => {
-    if (auto.type === 'reading_note') router.push({ pathname: '/reading/note/[id]', params: { id: auto.id, readingId: auto.reading_id } });
-    else if (auto.type === 'started' || auto.type === 'finished') router.push({ pathname: '/reading/manage/[id]', params: { id: auto.reading_id } });
-    else router.push({ pathname: '/book/[id]', params: { id: auto.book.id } });
-  };
-  const icon = auto.type === 'reading_note' ? 'feather' : auto.type === 'saved' ? 'bookmark' : auto.type === 'started' ? 'book-open' : 'check-circle';
-  const text =
-    auto.type === 'reading_note'
-      ? auto.title || auto.body
-      : auto.type === 'saved'
-        ? tr('加入想讀「{title}」', { title: auto.book.title })
-        : auto.type === 'started'
-          ? tr('開始讀「{title}」', { title: auto.book.title })
-          : tr('讀完「{title}」', { title: auto.book.title });
+  const auto = item as Exclude<DiaryItem, { type: 'note' | 'checkin' }>;
+  const text = auto.type === 'reading_note' ? auto.title || auto.body : tr('「{title}」', { title: auto.book.title });
   const sub = auto.type === 'reading_note' ? auto.book.title : auto.type === 'saved' ? auto.source : null;
   return (
-    <Pressable accessibilityRole="link" onPress={open} style={({ pressed }) => [styles.auto, { borderColor: c.border, opacity: pressed ? 0.8 : 1 }]}>
-      <Feather name={icon} size={16} color={c.textSecondary} />
-      <View style={{ flex: 1, gap: 2 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          {auto.type === 'reading_note' ? <KindChip kind={auto.kind} /> : null}
-          <AppText numberOfLines={2} style={{ flex: 1, fontSize: 15 }}>{text}</AppText>
-        </View>
-        {sub ? <AppText variant="caption" muted numberOfLines={1}>{sub}</AppText> : null}
-      </View>
-      {time ? <AppText variant="caption" style={{ color: c.textTertiary }}>{time}</AppText> : null}
-    </Pressable>
+    <View style={{ marginTop: 6, gap: 2 }}>
+      <AppText numberOfLines={2} style={{ fontSize: 15, lineHeight: 21 }}>{text}</AppText>
+      {sub ? <AppText variant="caption" muted numberOfLines={1}>{sub}</AppText> : null}
+    </View>
   );
 }
 
@@ -172,7 +240,7 @@ export function StreakCard({ streak, today, activeDays, onPress }: { streak: Str
           })}
         </View>
         {!streak.today_done ? (
-          <AppText variant="caption" muted>{streak.current_streak ? tr('今天還沒記，記一筆就能延續。') : tr('今天記一筆，開始連續記錄。')}</AppText>
+          <AppText variant="caption" muted>{streak.current_streak ? tr('今天還沒記，寫一句日記就能延續。') : tr('今天寫一句日記，開始連續記錄。')}</AppText>
         ) : null}
       </Card>
     </Pressable>
@@ -251,8 +319,14 @@ export function CheckinCard({ checkin, onMore }: { checkin: PublicCheckin; onMor
 }
 
 const styles = StyleSheet.create({
-  badge: { borderRadius: Radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
-  auto: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderWidth: 1, borderStyle: 'dashed', borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, minHeight: 52 },
+  vis: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: Radius.pill, paddingHorizontal: 8, paddingVertical: 3 },
+  row: { flexDirection: 'row' },
+  timeCol: { width: 40, paddingTop: 13 },
+  rail: { width: 18, alignItems: 'center' },
+  railDot: { width: 11, height: 11, borderRadius: 6, borderWidth: 2, marginTop: 15 },
+  railLine: { width: 1.5, flex: 1, marginTop: 4 },
+  card: { borderRadius: Radius.lg, paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, marginLeft: 6 },
+  linked: { flexDirection: 'row', alignItems: 'center', gap: 6, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: Spacing.sm },
   dot: { width: 30, height: 30, borderRadius: 15, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   thumb: { width: 56, height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
 });
