@@ -61,32 +61,48 @@ begin
 end $$;
 select pg_temp.expect_error($q$insert into public.place_saves (place_id, note) values ((select id from public.places where google_place_id = 'gp-indie'), repeat('長', 101)) on conflict (user_id, place_id) do update set note = excluded.note$q$, 'note too long');
 
--- 獨立書店：1 票不算、2 票算；咖啡店不能標；管理員可以覆寫
-select pg_temp.expect_error($q$select public.set_indie_vote((select id from public.places where google_place_id = 'gp-cafe2'), true)$q$, 'cafe cannot be indie');
-do $$ begin assert not public.set_indie_vote((select id from public.places where google_place_id = 'gp-indie'), true), 'one vote'; end $$;
+-- 地點類型（v1.4）：使用者選，最多人選的那個；管理員可以覆寫；沒人選就不分類
+do $$
+declare pid uuid := (select id from public.places where google_place_id = 'gp-indie');
+begin
+  assert public.place_category(pid) is null, 'no votes = no category';
+  assert public.set_place_type(pid, 'bookstore') = 'bookstore';
+  assert public.set_place_type(pid, 'indie') = 'indie', 'change my vote';
+  assert public.set_place_type((select id from public.places where google_place_id = 'gp-cafe2'), 'cafe') = 'cafe';
+end $$;
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000e2');
 do $$
 declare pid uuid := (select id from public.places where google_place_id = 'gp-indie');
 begin
-  assert public.set_indie_vote(pid, true), 'two votes';
+  perform public.set_place_type(pid, 'indie');
   assert (public.place_detail(pid)->>'is_indie')::boolean;
-  assert (public.place_detail(pid)->>'my_indie_vote')::boolean;
-  assert (select count(*) from public.place_indie_votes) = 1, 'only my vote visible';
+  assert public.place_detail(pid)->>'my_type' = 'indie';
+  assert (public.place_detail(pid)->'type_votes'->>'indie')::int = 2;
+  assert (select count(*) from public.place_type_votes) = 1, 'only my vote visible';
+  assert public.set_indie_vote(pid, true), 'legacy call still works';
 end $$;
-select pg_temp.expect_error($q$select public.admin_set_place_indie((select id from public.places where google_place_id = 'gp-indie'), false)$q$, 'not admin');
+select pg_temp.expect_error($q$select public.admin_set_place_category((select id from public.places where google_place_id = 'gp-indie'), 'bookstore')$q$, 'not admin');
 reset role;
 insert into public.app_admins (user_id) values ('00000000-0000-0000-0000-0000000000e2');
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000e2');
-select public.admin_set_place_indie((select id from public.places where google_place_id = 'gp-indie'), false);
-do $$ begin assert not public.place_is_indie((select id from public.places where google_place_id = 'gp-indie')), 'override'; end $$;
-select public.admin_set_place_indie((select id from public.places where google_place_id = 'gp-indie'), null);
+select public.admin_set_place_category((select id from public.places where google_place_id = 'gp-indie'), 'bookstore');
+do $$ begin assert public.place_category((select id from public.places where google_place_id = 'gp-indie')) = 'bookstore', 'override'; end $$;
+select public.admin_set_place_category((select id from public.places where google_place_id = 'gp-indie'), null);
+
+-- 當天存的想去會出現在日記時間軸
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000e1');
+do $$
+begin
+  assert (select count(*) from jsonb_array_elements(public.my_diary_day()->'items') x where x->>'type' = 'want_place') = 2, 'want places in diary';
+end $$;
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000e2');
 
 -- 探索可以篩獨立書店（要有公開打卡才會出現在探索）
 insert into public.diary_entries (kind, place_id, is_public) values ('checkin', (select id from public.places where google_place_id = 'gp-indie'), true);
 do $$
 begin
   assert (select count(*) from public.explore_places('latest', 'indie')) = 1, 'indie filter';
-  assert (select is_indie from public.explore_places('latest', 'bookstore') where name = '小小書房');
+  assert (select is_indie from public.explore_places('latest', 'bookstore') where name = '小小書房'), 'bookstore filter includes indie';
 end $$;
 
 select 'V1.3 PLACES SMOKE TEST PASSED';

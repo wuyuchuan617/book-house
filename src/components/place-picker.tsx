@@ -75,7 +75,7 @@ export function PlacePicker({ visible, onClose, onPick, googleOnly, title }: { v
 
   const pickRecent = (r: RecentPlace) => {
     if (r.place_id && r.name && r.google_place_id) {
-      done({ kind: 'google', place: { id: r.place_id, name: r.name, address: null, category: r.category ?? 'other', public_ok: !!r.public_ok, google_place_id: r.google_place_id } });
+      done({ kind: 'google', place: { id: r.place_id, name: r.name, address: null, category: r.category ?? null, public_ok: !!r.public_ok, google_place_id: r.google_place_id } });
     } else if (r.place_label) {
       done({ kind: 'label', label: r.place_label });
     }
@@ -124,7 +124,7 @@ export function PlacePicker({ visible, onClose, onPick, googleOnly, title }: { v
                           key={r.place_id ?? r.place_label ?? ''}
                           icon={r.place_id ? categoryIcon(r.category) : 'edit-3'}
                           title={r.name ?? r.place_label ?? ''}
-                          sub={r.place_id ? categoryLabel(r.category) : tr('自己輸入的地點 · 只有自己看得到')}
+                          sub={r.place_id ? categoryLabel(r.category) || tr('Google 地點') : tr('自己輸入的地點 · 只有自己看得到')}
                           onPress={() => pickRecent(r)}
                         />
                       ))}
@@ -145,9 +145,9 @@ export function PlacePicker({ visible, onClose, onPick, googleOnly, title }: { v
                   {(search.data ?? []).map((s) => (
                     <Row
                       key={s.googlePlaceId}
-                      icon={categoryIcon(s.category)}
+                      icon="map-pin"
                       title={s.name}
-                      sub={[s.public_ok ? categoryLabel(s.category) : tr('私人地點 · 不能公開'), s.address].filter(Boolean).join(' · ')}
+                      sub={[s.public_ok ? null : tr('私人地點 · 不能公開'), s.address].filter(Boolean).join(' · ')}
                       busy={busy === s.googlePlaceId}
                       disabled={!!busy}
                       onPress={() => void pickGoogle(s, s.googlePlaceId)}

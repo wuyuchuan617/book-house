@@ -17,15 +17,18 @@ export const DIARY_PHOTO_MAX = 3;
 export const PLACE_LABEL_MAX = 60;
 const DIARY_BUCKET = 'diary';
 
-export type PlaceCategory = 'bookstore' | 'library' | 'cafe' | 'park' | 'museum' | 'other';
-export const PLACE_CATEGORIES: PlaceCategory[] = ['bookstore', 'library', 'cafe', 'park', 'museum', 'other'];
+/** 地點類型（v1.4 起由使用者選；沒人選就是 null） */
+export type PlaceCategory = 'bookstore' | 'indie' | 'library' | 'cafe' | 'park' | 'museum' | 'other';
+export const PLACE_CATEGORIES: PlaceCategory[] = ['bookstore', 'indie', 'library', 'cafe', 'park', 'museum', 'other'];
 
-/** 探索的類型篩選：多一個「獨立書店」（書店裡被標記為獨立的） */
-export type PlaceFilter = PlaceCategory | 'indie';
-export const PLACE_FILTERS: PlaceFilter[] = ['bookstore', 'indie', 'library', 'cafe', 'park', 'museum', 'other'];
+/** 探索的類型篩選（「書店」也包含獨立書店） */
+export type PlaceFilter = PlaceCategory;
+export const PLACE_FILTERS: PlaceFilter[] = PLACE_CATEGORIES;
 
+/** 類型名稱；沒有類型（沒人選）回傳空字串，呼叫端用 filter(Boolean) 略過 */
 export function categoryLabel(c: PlaceFilter | string | null | undefined, isIndie?: boolean) {
-  if (isIndie && (c === 'bookstore' || c === 'indie')) return tr('獨立書店');
+  if (isIndie && c === 'bookstore') return tr('獨立書店');
+  if (!c) return '';
   switch (c) {
     case 'indie':
       return tr('獨立書店');
@@ -45,7 +48,7 @@ export function categoryLabel(c: PlaceFilter | string | null | undefined, isIndi
 }
 
 type IconName = 'book' | 'book-open' | 'coffee' | 'sun' | 'image' | 'map-pin';
-const CATEGORY_ICON: Record<string, IconName> = { bookstore: 'book', library: 'book-open', cafe: 'coffee', park: 'sun', museum: 'image' };
+const CATEGORY_ICON: Record<string, IconName> = { bookstore: 'book', indie: 'book', library: 'book-open', cafe: 'coffee', park: 'sun', museum: 'image' };
 export const categoryIcon = (c: string | null | undefined): IconName => CATEGORY_ICON[c ?? ''] ?? 'map-pin';
 
 type DiaryBook = { id: string; title: string; cover_url: string | null };
@@ -72,6 +75,7 @@ export type DiaryItem =
     }
   | { type: 'reading_note'; id: string; at: string; reading_id: string; kind: NoteKind; is_public: boolean; title: string | null; body: string; book: DiaryBook }
   | { type: 'saved'; id: string; at: string; source: string | null; book: DiaryBook }
+  | { type: 'want_place'; id: string; at: string; note: string | null; place_name: string; place_category: PlaceCategory | null }
   | { type: 'started' | 'finished'; id: string; at: null; reading_id: string; is_public: boolean; book: DiaryBook };
 
 export type DiaryEntry = Extract<DiaryItem, { type: 'note' | 'checkin' }>;
@@ -257,7 +261,7 @@ export function useDiaryImageUrls(paths: string[] | undefined) {
 // 選地點（D7）：Edge Function place-search 代理 Google Places（只用免費的 Essentials）
 // ---------------------------------------------------------------------------
 export type PlaceSuggestion = { googlePlaceId: string; name: string; address: string | null; types: string[]; category: PlaceCategory; public_ok: boolean };
-export type PickedPlace = { id: string; name: string; address: string | null; category: PlaceCategory; public_ok: boolean; google_place_id: string };
+export type PickedPlace = { id: string; name: string; address: string | null; category: PlaceCategory | null; public_ok: boolean; google_place_id: string };
 
 export class PlaceSearchError extends Error {
   constructor(public code: 'quota' | 'not_configured' | 'other', message: string) {
@@ -325,11 +329,11 @@ export type PublicCheckin = {
 };
 
 export type PlaceDetail = {
-  place: { id: string; name: string; address: string | null; category: PlaceCategory; public_ok: boolean; google_place_id: string };
+  place: { id: string; name: string; address: string | null; category: PlaceCategory | null; public_ok: boolean; google_place_id: string };
   is_indie: boolean;
-  indie_override: boolean | null;
-  indie_votes: number;
-  my_indie_vote: boolean;
+  category_override: PlaceCategory | null;
+  type_votes: Partial<Record<PlaceCategory, number>>;
+  my_type: PlaceCategory | null;
   my_note: string | null;
   checkin_count: number;
   save_count: number;
@@ -352,7 +356,7 @@ export type ExplorePlace = {
   id: string;
   name: string;
   address: string | null;
-  category: PlaceCategory;
+  category: PlaceCategory | null;
   checkin_count: number;
   save_count: number;
   last_checkin: string | null;
@@ -386,7 +390,7 @@ export type MyPlace = {
   id: string;
   name: string;
   address: string | null;
-  category: PlaceCategory;
+  category: PlaceCategory | null;
   is_indie: boolean;
   saved: boolean;
   note: string | null;
@@ -412,12 +416,12 @@ function invalidatePlace(qc: QueryClient, placeId: string) {
   qc.invalidateQueries({ queryKey: ['saved-places'] });
 }
 
-/** 存成想去（可以寫一句為什麼想去）／移除；indie = true 時順便標成獨立書店 */
+/** 存成想去（可以寫一句為什麼想去）／移除；type = 順便選這個地點的類型 */
 export function useSavePlace() {
   const qc = useQueryClient();
   const { session } = useAuth();
   return useMutation({
-    mutationFn: async ({ placeId, save, note, indie }: { placeId: string; save: boolean; note?: string | null; indie?: boolean; from?: string }) => {
+    mutationFn: async ({ placeId, save, note, type }: { placeId: string; save: boolean; note?: string | null; type?: PlaceCategory | null; from?: string }) => {
       if (!save) {
         const res = await supabase.from('place_saves').delete().eq('place_id', placeId);
         if (res.error) throw new Error(res.error.message);
@@ -427,31 +431,31 @@ export function useSavePlace() {
         .from('place_saves')
         .upsert({ user_id: session!.user.id, place_id: placeId, note: note?.trim().slice(0, PLACE_NOTE_MAX) || null }, { onConflict: 'user_id,place_id' });
       if (res.error) throw new Error(res.error.message);
-      if (indie) await supabase.rpc('set_indie_vote', { p_place_id: placeId, p_vote: true });
+      if (type) await supabase.rpc('set_place_type', { p_place_id: placeId, p_category: type });
     },
     onSuccess: (_d, v) => {
-      if (v.save) track('place_saved', { from: v.from ?? 'place_page', has_note: !!v.note?.trim(), indie: !!v.indie });
+      if (v.save) track('place_saved', { from: v.from ?? 'place_page', has_note: !!v.note?.trim(), type: v.type ?? null });
       invalidatePlace(qc, v.placeId);
     },
   });
 }
 
-/** 我覺得這是獨立書店（2 人以上標記就會顯示） */
-export function useIndieVote() {
+/** 選這個地點的類型（null = 取消）；顯示的是大家選最多的那個 */
+export function useSetPlaceType() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ placeId, vote }: { placeId: string; vote: boolean }) =>
-      unwrap<boolean>(await supabase.rpc('set_indie_vote', { p_place_id: placeId, p_vote: vote })),
+    mutationFn: async ({ placeId, type }: { placeId: string; type: PlaceCategory | null }) =>
+      unwrap<PlaceCategory | null>(await supabase.rpc('set_place_type', { p_place_id: placeId, p_category: type })),
     onSuccess: (_d, v) => invalidatePlace(qc, v.placeId),
   });
 }
 
-/** 管理員修正獨立書店（null = 交回給使用者標記） */
-export function useAdminIndie() {
+/** 管理員修正類型（null = 交回給使用者） */
+export function useAdminCategory() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ placeId, value }: { placeId: string; value: boolean | null }) => {
-      const res = await supabase.rpc('admin_set_place_indie', { p_place_id: placeId, p_value: value });
+    mutationFn: async ({ placeId, value }: { placeId: string; value: PlaceCategory | null }) => {
+      const res = await supabase.rpc('admin_set_place_category', { p_place_id: placeId, p_category: value });
       if (res.error) throw new Error(res.error.message);
     },
     onSuccess: (_d, v) => invalidatePlace(qc, v.placeId),
@@ -499,6 +503,7 @@ export function diaryError(message: string) {
   if (message.includes('diary_has_content')) return tr('寫一句話或加一張照片。');
   if (message.includes('diary_checkin_place')) return tr('打卡要選一個地點。');
   if (message.includes('already reported')) return tr('你已經檢舉過這則打卡了。');
+  if (message.includes('place_type_votes_category_check')) return tr('沒有這個類型。');
   if (message.includes('place_saves_note_check')) return tr('想去的原因最多 {n} 字。', { n: PLACE_NOTE_MAX });
   return userMessage(message);
 }

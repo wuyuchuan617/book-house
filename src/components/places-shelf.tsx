@@ -4,8 +4,6 @@ import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { PlaceRow } from '@/components/diary';
-import { PlacePicker } from '@/components/place-picker';
-import { SavePlaceSheet, type PlaceToSave } from '@/components/save-place-sheet';
 import { SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
 import { AppText, EmptyState } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
@@ -20,9 +18,10 @@ export function PlacesShelf() {
   const c = useTheme();
   const [kind, setKind] = useState<MyPlaceKind>('want');
   const list = useMyPlaces(kind);
-  const [picking, setPicking] = useState(false);
-  const [toSave, setToSave] = useState<PlaceToSave | null>(null);
-  const [editing, setEditing] = useState<MyPlace | null>(null);
+  // 「＋ 加地方」與編輯都開寫日記頁的「想去」
+  const add = () => router.push({ pathname: '/diary/compose', params: { kind: 'want' } });
+  const edit = (p: MyPlace) =>
+    router.push({ pathname: '/diary/compose', params: { kind: 'want', placeId: p.id, placeName: p.name, googlePlaceId: 'saved', publicOk: '0', saved: '1', note: p.note ?? '' } });
   const remove = useSavePlace();
 
   const meta = (p: MyPlace) =>
@@ -45,7 +44,7 @@ export function PlacesShelf() {
             </Pressable>
           ))}
         </View>
-        <Pressable accessibilityRole="button" onPress={() => setPicking(true)} hitSlop={8} style={styles.add}>
+        <Pressable accessibilityRole="button" onPress={() => add()} hitSlop={8} style={styles.add}>
           <Feather name="plus" size={16} color={c.primary} />
           <AppText variant="label" style={{ color: c.primary }}>{tr('加地方')}</AppText>
         </Pressable>
@@ -61,7 +60,7 @@ export function PlacesShelf() {
           refreshControl={<RefreshControl refreshing={list.isRefetching} onRefresh={() => void list.refetch()} />}
           ListEmptyComponent={
             kind === 'want' ? (
-              <EmptyState title={tr('還沒有想去的地方')} body={tr('看到喜歡的書店、圖書館，先存起來，下次經過就去看看。')} actionLabel={tr('加一個地方')} onAction={() => setPicking(true)} />
+              <EmptyState title={tr('還沒有想去的地方')} body={tr('看到喜歡的書店、圖書館，先存起來，下次經過就去看看。')} actionLabel={tr('加一個地方')} onAction={() => add()} />
             ) : (
               <EmptyState title={tr('還沒有去過的地方')} body={tr('在有書的地方打卡，就會記在這裡。')} actionLabel={tr('去打卡')} onAction={() => router.push({ pathname: '/diary/compose', params: { kind: 'checkin' } })} />
             )
@@ -69,7 +68,7 @@ export function PlacesShelf() {
           renderItem={({ item }) => {
             if (kind !== 'want') return <PlaceRow place={item} isIndie={item.is_indie} meta={meta(item)} />;
             const actions: SwipeAction[] = [
-              { label: tr('編輯'), icon: 'edit-2', onPress: () => setEditing(item) },
+              { label: tr('編輯'), icon: 'edit-2', onPress: () => edit(item) },
               { label: tr('移除'), icon: 'trash-2', destructive: true, onPress: () => remove.mutate({ placeId: item.id, save: false }) },
             ];
             return (
@@ -84,18 +83,6 @@ export function PlacesShelf() {
         />
       )}
 
-      <PlacePicker
-        visible={picking}
-        googleOnly
-        title={tr('加一個想去的地方')}
-        onClose={() => setPicking(false)}
-        onPick={(choice) => {
-          setPicking(false);
-          if (choice.kind === 'google') setTimeout(() => setToSave(choice.place), 400);
-        }}
-      />
-      <SavePlaceSheet place={toSave} from="shelf" onClose={() => setToSave(null)} onSaved={() => setKind('want')} />
-      <SavePlaceSheet place={editing ? { ...editing, my_indie_vote: false } : null} saved from="shelf" onClose={() => setEditing(null)} />
     </View>
   );
 }

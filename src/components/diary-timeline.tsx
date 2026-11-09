@@ -1,20 +1,35 @@
+import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
-import { Alert, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
-import { DiaryItemRow, VisibilityBadge, visibilityOf } from '@/components/diary';
-import { AppText } from '@/components/ui';
+import { AutoItemRow, OwnEntryCard, visibilityOf } from '@/components/diary';
 import { SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
-import { Spacing, type StoreColor } from '@/constants/theme';
+import { AppText } from '@/components/ui';
+import { Radius, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { diaryError, useDeleteEntry, useUnpublishEntry, type DiaryEntry, type DiaryItem } from '@/lib/diary';
 import { tr } from '@/lib/i18n';
 
-/** 一天的時間軸。自己記的往左滑：今天可以編輯；任何時候都能刪除、把公開打卡改回私人 */
-export function DiaryTimeline({ items, isToday, color, showSummary = true }: { items: DiaryItem[]; isToday: boolean; color?: StoreColor; showSummary?: boolean }) {
+type Filter = 'all' | 'private' | 'public';
+
+/**
+ * D2 一天的時間軸：上方篩選（全部／只有自己／公開）；
+ * 「我寫的」日記與打卡是大卡片（往左滑：今天可編輯；隨時可改成私人、刪除），
+ * 「自動帶入」的心得、想讀、想去、開始讀、讀完收在下面一個框裡，可以收合。
+ */
+export function DiaryTimeline({ items, isToday, color }: { items: DiaryItem[]; isToday: boolean; color?: StoreColor }) {
   const c = useTheme();
   const del = useDeleteEntry();
   const unpublish = useUnpublishEntry();
+  const [filter, setFilter] = useState<Filter>('all');
+  const [autoOpen, setAutoOpen] = useState(true);
   const fail = (e: Error) => Alert.alert(tr('沒有成功'), diaryError(e.message));
+
+  const pubCount = items.filter((i) => visibilityOf(i).public).length;
+  const shown = items.filter((i) => filter === 'all' || (filter === 'public') === visibilityOf(i).public);
+  const own = shown.filter((i): i is DiaryEntry => i.type === 'note' || i.type === 'checkin');
+  const auto = shown.filter((i): i is Exclude<DiaryItem, DiaryEntry> => i.type !== 'note' && i.type !== 'checkin');
 
   const actionsFor = (e: DiaryEntry): SwipeAction[] => [
     ...(isToday ? [{ label: tr('編輯'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/diary/compose', params: { entryId: e.id } }) }] : []),
@@ -31,34 +46,71 @@ export function DiaryTimeline({ items, isToday, color, showSummary = true }: { i
     },
   ];
 
-  const pub = items.filter((i) => visibilityOf(i).public).length;
+  const FILTERS: [Filter, string, number][] = [
+    ['all', tr('全部 {n}', { n: items.length }), items.length],
+    ['private', tr('只有自己 {n}', { n: items.length - pubCount }), items.length - pubCount],
+    ['public', tr('公開 {n}', { n: pubCount }), pubCount],
+  ];
+
   return (
-    <View>
-      {showSummary && items.length ? (
-        <View style={styles.summary}>
-          <VisibilityBadge v={{ public: false }} />
-          <AppText variant="caption" muted>{tr('{n} 則', { n: items.length - pub })}</AppText>
-          <View style={{ width: Spacing.md }} />
-          <VisibilityBadge v={{ public: true, where: 'store' }} compact />
-          <AppText variant="caption" muted>{tr('公開 {n} 則', { n: pub })}</AppText>
+    <View style={{ gap: Spacing.md }}>
+      <View style={{ flexDirection: 'row', gap: Spacing.sm }} accessibilityRole="tablist">
+        {FILTERS.map(([f, label]) => {
+          const on = filter === f;
+          return (
+            <Pressable
+              key={f}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: on }}
+              onPress={() => setFilter(f)}
+              style={[styles.filter, { backgroundColor: on ? c.text : c.surface, borderColor: on ? c.text : c.border }]}>
+              {f !== 'all' ? <Feather name={f === 'public' ? 'globe' : 'lock'} size={12} color={on ? c.background : f === 'public' ? c.success : c.textSecondary} /> : null}
+              <AppText variant="caption" style={{ fontWeight: '700', color: on ? c.background : c.text }}>{label}</AppText>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {own.length ? (
+        <View style={{ gap: Spacing.sm }}>
+          <AppText variant="caption" style={styles.section}>{tr('我寫的')}</AppText>
+          {own.map((e) => {
+            const actions = actionsFor(e);
+            return (
+              <View key={e.id} {...swipeA11y(actions)}>
+                <SwipeRow actions={actions} background={c.background}>
+                  <OwnEntryCard item={e} color={color} />
+                </SwipeRow>
+              </View>
+            );
+          })}
         </View>
       ) : null}
-      {items.map((item, i) => {
-        const last = i === items.length - 1;
-        if (item.type !== 'note' && item.type !== 'checkin') return <DiaryItemRow key={`${item.type}-${item.id}`} item={item} color={color} last={last} />;
-        const actions = actionsFor(item);
-        return (
-          <View key={item.id} {...swipeA11y(actions)}>
-            <SwipeRow actions={actions} background={c.background}>
-              <DiaryItemRow item={item} color={color} last={last} />
-            </SwipeRow>
-          </View>
-        );
-      })}
+
+      {auto.length ? (
+        <View style={{ gap: Spacing.sm }}>
+          <Pressable accessibilityRole="button" accessibilityState={{ expanded: autoOpen }} onPress={() => setAutoOpen(!autoOpen)} style={styles.autoHead}>
+            <AppText variant="caption" style={[styles.section, { flex: 1 }]}>{tr('自動帶入 · {n}', { n: auto.length })}</AppText>
+            <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{autoOpen ? tr('收合') : tr('展開')}</AppText>
+            <Feather name={autoOpen ? 'chevron-up' : 'chevron-down'} size={14} color={c.primary} />
+          </Pressable>
+          {autoOpen ? (
+            <View style={[styles.autoBox, { borderColor: c.border }]}>
+              {auto.map((i, idx) => <AutoItemRow key={`${i.type}-${i.id}`} item={i} first={idx === 0} />)}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
+      {!own.length && !auto.length ? <AppText variant="caption" muted style={{ textAlign: 'center', paddingVertical: Spacing.lg }}>{tr('這個篩選沒有項目。')}</AppText> : null}
+      {own.length ? <AppText variant="caption" style={{ color: c.textTertiary }}>{isToday ? tr('往左滑：可以編輯、改成私人、刪除') : tr('往左滑：可以改成私人、刪除')}</AppText> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  summary: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: Spacing.md },
+  filter: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 34, paddingHorizontal: 12, borderRadius: Radius.pill, borderWidth: 1 },
+  section: { fontWeight: '700', paddingHorizontal: 2 },
+  autoHead: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32 },
+  autoBox: { borderWidth: 1, borderStyle: 'dashed', borderRadius: Radius.xl, paddingHorizontal: Spacing.lg },
 });

@@ -25,8 +25,11 @@ import {
   diaryError,
   useDiaryDay,
   useDiaryImageUrls,
-  useIndieVote,
+  PLACE_CATEGORIES,
+  PLACE_NOTE_MAX,
   useSaveEntry,
+  useSavePlace,
+  useSetPlaceType,
   type DiaryEntry,
   type DiaryPhoto,
   type PlaceCategory,
@@ -39,10 +42,24 @@ import { useAddReading, useMyReadings, useSaveNote } from '@/lib/readings';
 type MiniBook = { id: string; title: string; cover_url: string | null };
 
 /**
- * D2 記一筆／D3 打卡（只能記今天）。書（選填）→ 地點（打卡）→ 一句話 → 照片 → 底部儲存。
- * 打卡選了公開場所才能公開；公開後立刻出現在地點頁，只顯示日期。
+ * D3 寫日記／D4 打卡／想去（只能記今天）。
+ * 日記：書（選填）→ 一句話 → 照片。打卡：地點 → 類型（選填）→ 公開 → 書、一句話、照片。
+ * 想去：還沒去的地方先存起來（書櫃 › 地方・想去），寫原因、選類型；書櫃「＋ 加地方」與地點頁「想去」都開這一頁。
  */
-type Params = { kind?: 'note' | 'checkin'; entryId?: string; placeId?: string; placeName?: string; googlePlaceId?: string; publicOk?: string; category?: PlaceCategory };
+type Kind = 'note' | 'checkin' | 'want';
+type Params = {
+  kind?: Kind;
+  entryId?: string;
+  placeId?: string;
+  placeName?: string;
+  googlePlaceId?: string;
+  publicOk?: string;
+  category?: PlaceCategory;
+  /** 想去：編輯時帶入原本的原因、我選的類型；saved = '1' 表示已經存過（可以移除） */
+  note?: string;
+  type?: PlaceCategory;
+  saved?: string;
+};
 
 export default function DiaryComposeScreen() {
   const params = useLocalSearchParams<Params>();
@@ -55,11 +72,11 @@ export default function DiaryComposeScreen() {
 
 function initialPlace(params: Params, e?: DiaryEntry): PlaceChoice | null {
   if (e?.place_id && e.place_name && e.google_place_id) {
-    return { kind: 'google', place: { id: e.place_id, name: e.place_name, address: e.place_address, category: e.place_category ?? 'other', public_ok: !!e.place_public_ok, google_place_id: e.google_place_id } };
+    return { kind: 'google', place: { id: e.place_id, name: e.place_name, address: e.place_address, category: e.place_category ?? null, public_ok: !!e.place_public_ok, google_place_id: e.google_place_id } };
   }
   if (e?.place_label) return { kind: 'label', label: e.place_label };
   if (!e && params.placeId && params.placeName && params.googlePlaceId) {
-    return { kind: 'google', place: { id: params.placeId, name: params.placeName, address: null, category: params.category ?? 'other', public_ok: params.publicOk === '1', google_place_id: params.googlePlaceId } };
+    return { kind: 'google', place: { id: params.placeId, name: params.placeName, address: null, category: params.category ?? null, public_ok: params.publicOk === '1', google_place_id: params.googlePlaceId } };
   }
   return null;
 }
@@ -72,10 +89,11 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
   const saves = useSavedBooks();
   const save = useSaveEntry();
   const saveNote = useSaveNote();
-  const indieVote = useIndieVote();
+  const savePlace = useSavePlace();
+  const setPlaceType = useSetPlaceType();
   const [busy, setBusy] = useState(false);
 
-  const [kind, setKind] = useState<'note' | 'checkin'>(existing?.type ?? (params.kind === 'checkin' ? 'checkin' : 'note'));
+  const [kind, setKind] = useState<Kind>(existing?.type ?? (params.kind === 'checkin' || params.kind === 'want' ? params.kind : 'note'));
   const [book, setBook] = useState<MiniBook | null>(existing?.book ?? null);
   const [place, setPlace] = useState<PlaceChoice | null>(() => initialPlace(params, existing));
   const [body, setBody] = useState(existing?.body ?? '');
@@ -87,12 +105,14 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
   const [alsoNote, setAlsoNote] = useState(false);
   const [addToReading, setAddToReading] = useState(false);
   const addReading = useAddReading();
-  const [indie, setIndie] = useState(false);
+  const [placeType, setPlaceTypeState] = useState<PlaceCategory | null>(params.type ?? null);
+  const [wantNote, setWantNote] = useState(params.note ?? '');
+  const editingWant = params.kind === 'want' && params.saved === '1';
   const autoOpened = useRef(false);
 
   // 從「打卡」進來：直接打開選地點
   useEffect(() => {
-    if (params.kind !== 'checkin' || params.entryId || params.placeId || autoOpened.current) return;
+    if ((params.kind !== 'checkin' && params.kind !== 'want') || params.entryId || params.placeId || autoOpened.current) return;
     autoOpened.current = true;
     const t = setTimeout(() => setPlaceOpen(true), 400);
     return () => clearTimeout(t);
@@ -115,14 +135,16 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
   const canAddReading = kind === 'note' && !existing && !!store && !!book && !!readings.data && !linkedReading;
   const newReadingPublic = store?.store.reading_public_default ?? true;
   const willHaveReading = !!linkedReading || (canAddReading && addToReading);
-  const isBookstore = kind === 'checkin' && place?.kind === 'google' && place.place.category === 'bookstore';
+  const googlePlace = place?.kind === 'google' ? place.place : null;
 
   const canPublic = kind === 'checkin' && place?.kind === 'google' && place.place.public_ok;
   const publicOn = canPublic && isPublic;
 
   const dirty = existing
     ? body !== (existing.body ?? '') || book?.id !== existing.book?.id || kind !== existing.type || photos.length !== existing.photo_paths.length || photos.some((p) => 'uri' in p) || publicOn !== existing.is_public || placeKey(place) !== (existing.place_id ?? existing.place_label ?? '')
-    : !!(body.trim() || photos.length || book || place);
+    : kind === 'want'
+      ? !editingWant && !!(place || wantNote.trim())
+      : !!(body.trim() || photos.length || book || place);
 
   usePreventRemove(dirty && !done, ({ repeat }) => {
     Alert.alert(tr('捨棄這筆日記？'), tr('還沒儲存的內容會不見。'), [
@@ -149,10 +171,21 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
       { text: tr('取消'), style: 'cancel' },
     ]);
 
-  const ready = kind === 'checkin' ? !!place : !!(body.trim() || photos.length);
+  const ready = kind === 'want' ? !!googlePlace : kind === 'checkin' ? !!place : !!(body.trim() || photos.length);
+  const finish = () => {
+    setDone(true);
+    setTimeout(() => router.back(), 0);
+  };
+
   const submit = async () => {
     setBusy(true);
     try {
+      if (kind === 'want') {
+        if (!googlePlace) return;
+        await savePlace.mutateAsync({ placeId: googlePlace.id, save: true, note: wantNote, type: placeType, from: editingWant ? 'edit' : 'compose' });
+        finish();
+        return;
+      }
       let readingNoteId: string | null = null;
       let readingId = linkedReading?.id;
       if (canAddReading && addToReading && book) {
@@ -179,9 +212,8 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
           readingNoteId,
         },
       });
-      if (isBookstore && indie && place?.kind === 'google') await indieVote.mutateAsync({ placeId: place.place.id, vote: true }).catch(() => {});
-      setDone(true);
-      setTimeout(() => router.back(), 0);
+      if (kind === 'checkin' && googlePlace && placeType) await setPlaceType.mutateAsync({ placeId: googlePlace.id, type: placeType }).catch(() => {});
+      finish();
     } catch (e) {
       Alert.alert(tr('沒有儲存成功'), diaryError((e as Error).message));
     } finally {
@@ -189,9 +221,53 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
     }
   };
 
+  const removeWant = () =>
+    googlePlace &&
+    savePlace.mutate({ placeId: googlePlace.id, save: false }, { onSuccess: finish, onError: (e) => Alert.alert(tr('沒有成功'), diaryError(e.message)) });
+
+  const typeChips = (
+    <View style={{ gap: Spacing.sm }}>
+      <AppText variant="label">
+        {tr('類型')}
+        <AppText variant="caption" muted>{tr('  選填')}</AppText>
+      </AppText>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }}>
+        {PLACE_CATEGORIES.map((t) => (
+          <Chip key={t} label={categoryLabel(t)} selected={placeType === t} onPress={() => setPlaceTypeState(placeType === t ? null : t)} />
+        ))}
+      </View>
+      <AppText variant="caption" muted>{tr('你選的類型會幫地點分類（大家選最多的那個）。不選也可以。')}</AppText>
+    </View>
+  );
+
+  const placeField = (
+    <View style={{ gap: Spacing.sm }}>
+      <AppText variant="label">{tr('地點')}</AppText>
+      <Pressable accessibilityRole="button" disabled={editingWant} onPress={() => setPlaceOpen(true)} style={[styles.field, { backgroundColor: c.surface, borderColor: place ? c.border : c.primary }]}>
+        <Feather name={googlePlace ? categoryIcon(googlePlace.category) : place ? 'edit-3' : 'map-pin'} size={18} color={place ? c.text : c.primary} />
+        <View style={{ flex: 1 }}>
+          <AppText variant="label" style={{ color: place ? c.text : c.primary }} numberOfLines={1}>
+            {place ? (place.kind === 'google' ? place.place.name : place.label) : tr('選一個地點')}
+          </AppText>
+          {place ? (
+            <AppText variant="caption" muted numberOfLines={1}>
+              {place.kind === 'google' ? [categoryLabel(place.place.category), place.place.address].filter(Boolean).join(' · ') || tr('Google 地點') : tr('自己輸入的地點')}
+            </AppText>
+          ) : null}
+        </View>
+        {!editingWant ? <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{place ? tr('更換') : ''}</AppText> : null}
+      </Pressable>
+      {kind === 'want' && place?.kind === 'label' ? <AppText variant="caption" style={{ color: c.danger }}>{tr('想去要選 Google 上的地點，才能在地圖打開。')}</AppText> : null}
+    </View>
+  );
+
+  const KINDS: Kind[] = existing ? ['note', 'checkin'] : ['note', 'checkin', 'want'];
+  const KIND_ICON = { note: 'edit-3', checkin: 'map-pin', want: 'star' } as const;
+  const kindLabel = (k: Kind) => (k === 'note' ? tr('日記') : k === 'checkin' ? tr('打卡') : tr('想去'));
+
   return (
     <Screen>
-      <Stack.Screen options={{ title: existing ? tr('編輯日記') : kind === 'checkin' ? tr('打卡') : tr('寫日記') }} />
+      <Stack.Screen options={{ title: existing ? tr('編輯日記') : kind === 'want' ? (editingWant ? tr('編輯想去') : tr('想去')) : kind === 'checkin' ? tr('打卡') : tr('寫日記') }} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={90}>
         <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -199,36 +275,38 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
             <VisibilityBadge v={publicOn ? { public: true, where: 'place' } : { public: false }} />
           </View>
 
-          <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="radiogroup">
-            {(['note', 'checkin'] as const).map((k) => (
-              <Pressable key={k} accessibilityRole="radio" accessibilityState={{ selected: kind === k }} onPress={() => setKind(k)} style={[styles.segmentItem, kind === k && { backgroundColor: c.surface }]}>
-                <Feather name={k === 'note' ? 'edit-3' : 'map-pin'} size={14} color={kind === k ? c.text : c.textSecondary} />
-                <AppText variant="caption" style={{ fontWeight: '700', color: kind === k ? c.text : c.textSecondary }}>{k === 'note' ? tr('日記') : tr('打卡')}</AppText>
-              </Pressable>
-            ))}
-          </View>
+          {!editingWant ? (
+            <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="radiogroup">
+              {KINDS.map((k) => (
+                <Pressable key={k} accessibilityRole="radio" accessibilityState={{ selected: kind === k }} onPress={() => setKind(k)} style={[styles.segmentItem, kind === k && { backgroundColor: c.surface }]}>
+                  <Feather name={KIND_ICON[k]} size={14} color={kind === k ? c.text : c.textSecondary} />
+                  <AppText variant="caption" style={{ fontWeight: '700', color: kind === k ? c.text : c.textSecondary }}>{kindLabel(k)}</AppText>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
 
-          <AppText variant="caption" muted style={{ marginTop: -Spacing.sm }}>
-            {kind === 'note' ? tr('日記只有自己看得到。') : tr('打卡預設只有自己看得到；在公開場所可以選擇公開到地點頁。')}
+          <AppText variant="caption" muted style={{ marginTop: editingWant ? 0 : -Spacing.sm }}>
+            {kind === 'note'
+              ? tr('日記只有自己看得到。')
+              : kind === 'want'
+                ? tr('還沒去、先存起來，會放進書櫃 › 地方・想去；到了在這裡打卡，就會移到「去過」。')
+                : tr('打卡預設只有自己看得到；在公開場所可以選擇公開到地點頁。')}
           </AppText>
+
+          {kind === 'want' ? (
+            <>
+              {placeField}
+              <TextField label={tr('為什麼想去？')} optional max={PLACE_NOTE_MAX} value={wantNote} onChangeText={setWantNote} placeholder={tr('朋友推薦、想找某本書、二樓很安靜…')} />
+              {googlePlace ? typeChips : null}
+              <AppText variant="caption" muted>{tr('想去的地方只有自己看得到；地點頁只會多一個「N 人想去」。')}</AppText>
+              {editingWant ? <Button kind="link" label={tr('從想去移除')} onPress={removeWant} /> : null}
+            </>
+          ) : null}
 
           {kind === 'checkin' ? (
             <View style={{ gap: Spacing.sm }}>
-              <AppText variant="label">{tr('地點')}</AppText>
-              <Pressable accessibilityRole="button" onPress={() => setPlaceOpen(true)} style={[styles.field, { backgroundColor: c.surface, borderColor: place ? c.border : c.primary }]}>
-                <Feather name={place?.kind === 'google' ? categoryIcon(place.place.category) : place ? 'edit-3' : 'map-pin'} size={18} color={place ? c.text : c.primary} />
-                <View style={{ flex: 1 }}>
-                  <AppText variant="label" style={{ color: place ? c.text : c.primary }} numberOfLines={1}>
-                    {place ? (place.kind === 'google' ? place.place.name : place.label) : tr('選一個地點')}
-                  </AppText>
-                  {place ? (
-                    <AppText variant="caption" muted numberOfLines={1}>
-                      {place.kind === 'google' ? [place.place.category !== 'other' ? categoryLabel(place.place.category) : null, place.place.address].filter(Boolean).join(' · ') || tr('Google 地點') : tr('自己輸入的地點')}
-                    </AppText>
-                  ) : null}
-                </View>
-                <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{place ? tr('更換') : ''}</AppText>
-              </Pressable>
+              {placeField}
 
               <View style={[styles.switchRow, { backgroundColor: c.surface, opacity: canPublic ? 1 : 0.6 }]}>
                 <View style={{ flex: 1, gap: 2 }}>
@@ -247,11 +325,12 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
                 </View>
                 <Toggle accessibilityLabel={tr('公開在地點頁')} value={!!publicOn} disabled={!canPublic} onValueChange={setIsPublic} />
               </View>
-              {isBookstore && !existing ? (
-                <Check checked={indie} onPress={() => setIndie(!indie)} label={tr('這是獨立書店')} sub={tr('2 個人以上標記，就會顯示成獨立書店。')} />
-              ) : null}
+              {googlePlace && !existing ? typeChips : null}
             </View>
           ) : null}
+
+          {kind !== 'want' ? (
+            <>
 
           <View style={{ gap: Spacing.sm }}>
             <AppText variant="label">
@@ -329,15 +408,19 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
               ) : null}
             </View>
           </View>
+            </>
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
 
       <SafeAreaView edges={['bottom']} style={[styles.footer, { backgroundColor: c.surface, borderTopColor: c.border }]}>
-        <Button label={publicOn ? tr('儲存並公開') : tr('儲存')} disabled={!ready} loading={busy} onPress={() => void submit()} />
+        <Button label={kind === 'want' ? (editingWant ? tr('儲存') : tr('存成想去')) : publicOn ? tr('儲存並公開') : tr('儲存')} disabled={!ready} loading={busy} onPress={() => void submit()} />
       </SafeAreaView>
 
       <PlacePicker
         visible={placeOpen}
+        googleOnly={kind === 'want'}
+        title={kind === 'want' ? tr('加一個想去的地方') : undefined}
         onClose={() => setPlaceOpen(false)}
         onPick={(choice) => {
           setPlaceOpen(false);
