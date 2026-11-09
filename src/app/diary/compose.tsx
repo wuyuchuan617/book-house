@@ -34,7 +34,7 @@ import {
 import { tr } from '@/lib/i18n';
 import { taipeiToday } from '@/lib/period';
 import { useMyStore } from '@/lib/queries';
-import { useMyReadings, useSaveNote } from '@/lib/readings';
+import { useAddReading, useMyReadings, useSaveNote } from '@/lib/readings';
 
 type MiniBook = { id: string; title: string; cover_url: string | null };
 
@@ -85,6 +85,8 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
   const [bookOpen, setBookOpen] = useState(false);
   const [done, setDone] = useState(false);
   const [alsoNote, setAlsoNote] = useState(false);
+  const [addToReading, setAddToReading] = useState(false);
+  const addReading = useAddReading();
   const [indie, setIndie] = useState(false);
   const autoOpened = useRef(false);
 
@@ -109,6 +111,10 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
 
   // 日記筆記選了店主閱讀裡的書：可以同時存成那本書的心得（跟著那本書的公開設定）
   const linkedReading = kind === 'note' && !existing && book ? readings.data?.find((r) => r.books.id === book.id) : undefined;
+  // 選了一本還不在店主閱讀裡的書：可以順便加入店主閱讀（正在讀）
+  const canAddReading = kind === 'note' && !existing && !!store && !!book && !!readings.data && !linkedReading;
+  const newReadingPublic = store?.store.reading_public_default ?? true;
+  const willHaveReading = !!linkedReading || (canAddReading && addToReading);
   const isBookstore = kind === 'checkin' && place?.kind === 'google' && place.place.category === 'bookstore';
 
   const canPublic = kind === 'checkin' && place?.kind === 'google' && place.place.public_ok;
@@ -148,9 +154,13 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
     setBusy(true);
     try {
       let readingNoteId: string | null = null;
-      if (linkedReading && alsoNote && body.trim()) {
+      let readingId = linkedReading?.id;
+      if (canAddReading && addToReading && book) {
+        readingId = (await addReading.mutateAsync({ bookId: book.id, status: 'reading', isPublic: newReadingPublic })).id;
+      }
+      if (readingId && willHaveReading && alsoNote && body.trim()) {
         const r = await saveNote.mutateAsync({
-          readingId: linkedReading.id,
+          readingId,
           input: { kind: 'thought', body, photos: photos.filter((p) => 'uri' in p), fromScan: false },
         });
         readingNoteId = r.id;
@@ -275,12 +285,20 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
             onChangeText={setBody}
             placeholder={kind === 'checkin' ? tr('在這裡讀了什麼、遇見什麼') : tr('一句話就好')}
           />
-          {linkedReading ? (
+          {canAddReading ? (
+            <Check
+              checked={addToReading}
+              onPress={() => setAddToReading(!addToReading)}
+              label={tr('也加入店主閱讀（正在讀）')}
+              sub={newReadingPublic ? tr('依你的設定會公開在書店頁，之後可以在這本書的頁面改。') : tr('依你的設定只有自己看得到，之後可以在這本書的頁面改。')}
+            />
+          ) : null}
+          {willHaveReading ? (
             <Check
               checked={alsoNote}
               onPress={() => setAlsoNote(!alsoNote)}
               label={tr('也存成這本書的心得')}
-              sub={linkedReading.is_public ? tr('這本書公開在書店頁，讀者會看到這則心得（想法）。') : tr('存成「想法」，只有自己看得到。')}
+              sub={(linkedReading ? linkedReading.is_public : newReadingPublic) ? tr('這本書公開在書店頁，讀者會看到這則心得（想法）。') : tr('存成「想法」，只有自己看得到。')}
             />
           ) : existing?.reading_note_id ? (
             <AppText variant="caption" muted>{tr('這則也存成了心得；要修改心得請到這本書的頁面。')}</AppText>

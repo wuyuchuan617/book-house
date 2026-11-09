@@ -155,12 +155,17 @@ select cron.schedule('push-dispatch', '* * * * *', $$
     headers := jsonb_build_object('x-cron-secret', '<一串隨機字>')
   )
 $$);
-select cron.schedule('monthly-curation-reminders', '0 1 * * *', 'select public.enqueue_monthly_reminders()');
 select cron.schedule('promote-scheduled-curations', '5 * * * *', 'select public.promote_scheduled_curations()');
+select cron.schedule('monthly-curation-reminders', '0 1 * * *', 'select public.enqueue_monthly_reminders()');
+select cron.schedule('onboarding-nudges', '30 2 * * *', 'select public.enqueue_onboarding_nudges()');
 select cron.schedule('purge-deleted-accounts', '0 19 * * *', 'select public.purge_deleted_accounts()');
+select cron.schedule('expire-place-coordinates', '20 3 * * *', 'select public.expire_place_coordinates()');
+select cron.schedule('weekly-reviews', '30 0 * * 1', 'select public.enqueue_weekly_reviews()');
 ```
 
-（後三個排程在 migration 裡也有寫，但只有在 pg_cron 已開啟時才會建立；先開 pg_cron 再執行這段最保險。）
+（除了 push-dispatch，其他排程在 migration 裡也有寫，但只有在 pg_cron 已開啟時才會建立；先開 pg_cron 再執行這段最保險。檢查：`select jobname, schedule from cron.job;` 應該有 7 個。）
+
+沒收到通知時，在 SQL Editor 查：`select kind, created_at, sent_at, error from notification_outbox order by created_at desc limit 10;`（`sent_at` 空的＝排程沒跑）與 `select * from push_tokens;`（沒有資料＝手機沒登記推播）。
 
 ## 三個版本可以同時裝
 

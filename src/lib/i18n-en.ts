@@ -997,4 +997,8 @@ export const EN: Record<string, Entry> = {
   '「{title}」': '“{title}”',
   '日記只有自己看得到。': 'Diary entries are only visible to you.',
   '打卡預設只有自己看得到；在公開場所可以選擇公開到地點頁。': 'Check-ins are private by default. At public places you can share them on the place page.',
+  '記一本書': 'Log a book',
+  '也加入店主閱讀（正在讀）': 'Also add to your reading (Reading)',
+  '依你的設定會公開在書店頁，之後可以在這本書的頁面改。': 'Based on your settings, it will be public on your store page. You can change this on the book’s page.',
+  '依你的設定只有自己看得到，之後可以在這本書的頁面改。': 'Based on your settings, only you can see it. You can change this on the book’s page.',
 };

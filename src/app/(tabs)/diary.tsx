@@ -19,7 +19,7 @@ import { useMyStore } from '@/lib/queries';
 
 /**
  * D1 日記（只有自己看得到）：連續記錄、今天的時間軸（自己記的＋當天的心得、想讀、開始讀、讀完）、
- * 「記一筆」「打卡」兩個快速按鈕、最近幾天。只能記今天。週一到週三最上方有「上週回顧」（W1）。
+ * 「寫日記」「打卡」（有開店再加「記一本書」）快速按鈕、最近幾天。只能記今天。週一到週三最上方有「上週回顧」（W1）。
  */
 export default function DiaryScreen() {
   const c = useTheme();
@@ -81,8 +81,9 @@ export default function DiaryScreen() {
           {streak.data ? <StreakCard streak={streak.data} today={today} activeDays={activeSet} onPress={() => router.push('/diary/calendar')} /> : null}
 
           <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-            <QuickButton icon="edit-3" label={tr('寫日記')} sub={tr('只有自己看得到')} onPress={() => compose('note')} />
-            <QuickButton icon="map-pin" label={tr('打卡')} sub={tr('可以選擇公開')} onPress={() => compose('checkin')} />
+            <QuickButton icon="edit-3" label={tr('寫日記')} sub={tr('只有自己看得到')} onPress={() => compose('note')} stacked={!!mine} />
+            <QuickButton icon="map-pin" label={tr('打卡')} sub={tr('可以選擇公開')} onPress={() => compose('checkin')} stacked={!!mine} />
+            {mine ? <QuickButton icon="book" label={tr('記一本書')} sub={tr('加入店主閱讀')} onPress={() => router.push('/reading/new')} stacked /> : null}
           </View>
 
           <View style={styles.sectionHead}>
@@ -131,8 +132,20 @@ export default function DiaryScreen() {
   );
 }
 
-function QuickButton({ icon, label, sub, onPress }: { icon: 'edit-3' | 'map-pin'; label: string; sub: string; onPress: () => void }) {
+/** 快速按鈕：有開店時三個並排（寫日記、打卡、記一本書），改成上下排 */
+function QuickButton({ icon, label, sub, onPress, stacked }: { icon: 'edit-3' | 'map-pin' | 'book'; label: string; sub: string; onPress: () => void; stacked?: boolean }) {
   const c = useTheme();
+  if (stacked) {
+    return (
+      <Pressable accessibilityRole="button" accessibilityLabel={`${label}，${sub}`} onPress={onPress} style={({ pressed }) => [styles.quickStacked, { backgroundColor: c.surface, borderColor: c.border, opacity: pressed ? 0.85 : 1 }]}>
+        <View style={[styles.quickIcon, { backgroundColor: c.primary }]}>
+          <Feather name={icon} size={18} color={c.onPrimary} />
+        </View>
+        <AppText variant="label" style={{ textAlign: 'center' }}>{label}</AppText>
+        <AppText variant="caption" muted numberOfLines={1} style={{ fontSize: 11, textAlign: 'center' }}>{sub}</AppText>
+      </Pressable>
+    );
+  }
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.quick, { backgroundColor: c.surface, borderColor: c.border, opacity: pressed ? 0.85 : 1 }]}>
       <View style={[styles.quickIcon, { backgroundColor: c.primary }]}>
@@ -153,5 +166,6 @@ const styles = StyleSheet.create({
   empty: { borderWidth: 1.5, borderStyle: 'dashed', borderRadius: Radius.lg, alignItems: 'center', padding: Spacing.xl, gap: 6 },
   dayRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, minHeight: 52 },
   quick: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.md, minHeight: 64 },
+  quickStacked: { flex: 1, alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: Radius.lg, paddingVertical: Spacing.md, paddingHorizontal: Spacing.xs },
   quickIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
 });
