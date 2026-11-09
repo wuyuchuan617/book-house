@@ -8,18 +8,18 @@ import { AppText, EmptyState } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
-import { categoryLabel, PLACE_CATEGORIES, useExplorePlaces, type PlaceCategory, type PlaceSort } from '@/lib/diary';
+import { categoryLabel, PLACE_FILTERS, useExplorePlaces, type PlaceFilter, type PlaceSort } from '@/lib/diary';
 import { tr } from '@/lib/i18n';
 import { approximateLocation, locationAvailable, type Coords } from '@/lib/location';
 
-const SORTS = (): [PlaceSort, string][] => [['near', tr('附近')], ['latest', tr('最新打卡')], ['saves', tr('最多收藏')]];
+const SORTS = (): [PlaceSort, string][] => [['near', tr('附近')], ['latest', tr('最新打卡')], ['saves', tr('最多人想去')]];
 
 /** L2 探索 → 書的地方：有公開打卡的地點（附近／最新／最多收藏、類型篩選） */
 export function PlacesExplore() {
   const c = useTheme();
   const { requireAuth } = useAuth();
   const [sort, setSort] = useState<PlaceSort>(locationAvailable() ? 'near' : 'latest');
-  const [category, setCategory] = useState<PlaceCategory | undefined>();
+  const [category, setCategory] = useState<PlaceFilter | undefined>();
   const [near, setNear] = useState<Coords | null>(null);
   const [noLocation, setNoLocation] = useState(false);
 
@@ -54,7 +54,7 @@ export function PlacesExplore() {
       <View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
           <Chip label={tr('全部類型')} selected={!category} onPress={() => setCategory(undefined)} />
-          {PLACE_CATEGORIES.map((k) => <Chip key={k} label={categoryLabel(k)} selected={category === k} onPress={() => setCategory(category === k ? undefined : k)} />)}
+          {PLACE_FILTERS.map((k) => <Chip key={k} label={categoryLabel(k)} selected={category === k} onPress={() => setCategory(category === k ? undefined : k)} />)}
         </ScrollView>
       </View>
       {noLocation ? <AppText variant="caption" muted style={{ paddingHorizontal: Spacing.xl, paddingTop: Spacing.sm }}>{tr('拿不到位置，先依最新打卡排序。')}</AppText> : null}
@@ -72,7 +72,7 @@ export function PlacesExplore() {
           renderItem={({ item }) => (
             <PlaceRow
               place={item}
-              meta={[tr('{n} 則打卡', { n: item.checkin_count }), item.save_count ? tr('{n} 人收藏', { n: item.save_count }) : null].filter(Boolean).join(' · ')}
+              meta={[tr('{n} 則打卡', { n: item.checkin_count }), item.save_count ? tr('{n} 人想去', { n: item.save_count }) : null].filter(Boolean).join(' · ')}
             />
           )}
           ListEmptyComponent={

@@ -6,9 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
 import { Chip, Toggle } from '@/components/form';
-import { kindLabel, NOTE_KINDS, NoteCard } from '@/components/note-card';
+import { kindLabel, NOTE_KINDS, NoteTimeline } from '@/components/note-card';
 import { ReadingActions } from '@/components/reading-actions';
-import { SwipeRow, swipeA11y } from '@/components/swipe-row';
 import { AppText, Button, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -111,19 +110,19 @@ export default function ReadingBookScreen() {
           </View>
         ) : null}
 
-        {shown.map((n, i) => {
-          const actions = [
-            { label: tr('編輯'), icon: 'edit-2' as const, onPress: () => compose(n.id) },
-            { label: tr('刪除'), icon: 'trash-2' as const, destructive: true, onPress: () => confirmDelete(n) },
-          ];
-          return (
-            <View key={n.id} style={{ borderRadius: Radius.lg, overflow: 'hidden' }} {...swipeA11y(actions)}>
-              <SwipeRow actions={actions}>
-                <NoteCard note={n} latest={i === 0 && filter === 'all'} onPress={() => router.push({ pathname: '/reading/note/[id]', params: { id: n.id, readingId: r.id } })} />
-              </SwipeRow>
-            </View>
-          );
-        })}
+        {shown.length ? (
+          <NoteTimeline
+            notes={shown}
+            startedAt={filter === 'all' ? r.started_at : null}
+            highlightLatest={filter === 'all'}
+            photoSize={80}
+            onPressNote={(n) => router.push({ pathname: '/reading/note/[id]', params: { id: n.id, readingId: r.id } })}
+            actionsFor={(n) => [
+              { label: tr('編輯'), icon: 'edit-2', onPress: () => compose(n.id) },
+              { label: tr('刪除'), icon: 'trash-2', destructive: true, onPress: () => confirmDelete(n) },
+            ]}
+          />
+        ) : null}
         {!notes.length ? (
           <View style={[styles.empty, { borderColor: c.border }]}>
             <AppText variant="label">{tr('還沒有心得')}</AppText>

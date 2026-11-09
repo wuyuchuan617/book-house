@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
 import { AppText } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -73,30 +74,86 @@ export function NoteBody({ note, lines }: { note: Pick<ReadingNote, 'kind' | 'bo
   return <AppText numberOfLines={lines} style={{ lineHeight: 23 }}>{note.body}</AppText>;
 }
 
-/** 列表裡的一則心得（店主與讀者共用） */
-export function NoteCard({ note, onPress, latest }: { note: ReadingNote; onPress?: () => void; latest?: boolean }) {
+/**
+ * 心得時間軸（店主「這本書」與讀者「店主閱讀」共用同一種卡片）：
+ * 左邊時間線＋圓點（最新一則上色），右邊類型、日期、標題、內容、圖片；最後一列是「開始讀」。
+ * 店主版傳 actionsFor：每一則可以往左滑（編輯、刪除）。
+ */
+export function NoteTimeline({ notes, startedAt, onPressNote, actionsFor, highlightLatest = true, photoSize = 96 }: {
+  notes: ReadingNote[];
+  startedAt?: string | null;
+  onPressNote?: (n: ReadingNote) => void;
+  actionsFor?: (n: ReadingNote) => SwipeAction[];
+  highlightLatest?: boolean;
+  photoSize?: number;
+}) {
   const c = useTheme();
-  const inner = (
-    <View style={{ gap: 6 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
-        <KindChip kind={note.kind} />
-        <View style={{ flex: 1 }} />
-        <AppText variant="caption" muted>{latest ? timeAgo(note.created_at) : md(note.created_at)}</AppText>
-      </View>
-      {note.title ? <AppText variant="label">{note.title}</AppText> : null}
-      <NoteBody note={note} lines={onPress ? 6 : undefined} />
-      <NotePhotos paths={note.photo_paths} />
+  return (
+    <View style={[styles.timeline, { backgroundColor: c.surface }]}>
+      {notes.map((n, i) => {
+        const last = i === notes.length - 1 && !startedAt;
+        const item = (
+          <Pressable
+            accessibilityRole={onPressNote ? 'button' : undefined}
+            disabled={!onPressNote}
+            onPress={() => onPressNote?.(n)}
+            style={({ pressed }) => [styles.item, { opacity: pressed ? 0.85 : 1 }]}>
+            <View style={styles.rail}>
+              <View style={[styles.dot, { backgroundColor: i === 0 && highlightLatest ? c.primary : c.border }]} />
+              {!last ? <View style={[styles.line, { backgroundColor: c.divider }]} /> : null}
+            </View>
+            <View style={{ flex: 1, paddingBottom: last ? 0 : Spacing.lg, gap: 6 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+                <KindChip kind={n.kind} />
+                <AppText variant="caption" muted>{i === 0 && highlightLatest ? timeAgo(n.created_at) : md(n.created_at)}</AppText>
+              </View>
+              {n.title ? <AppText variant="label">{n.title}</AppText> : null}
+              <NoteBody note={n} lines={onPressNote ? 6 : undefined} />
+              <NotePhotos paths={n.photo_paths} size={photoSize} />
+            </View>
+          </Pressable>
+        );
+        const actions = actionsFor?.(n);
+        if (!actions?.length) return <View key={n.id}>{item}</View>;
+        return (
+          <View key={n.id} {...swipeA11y(actions)} style={{ marginHorizontal: -Spacing.lg, paddingHorizontal: 0 }}>
+            <SwipeRow actions={actions}>
+              <View style={{ paddingHorizontal: Spacing.lg }}>{item}</View>
+            </SwipeRow>
+          </View>
+        );
+      })}
+      {startedAt ? (
+        <View style={styles.item}>
+          <View style={styles.rail}>
+            <View style={[styles.dot, { backgroundColor: c.border }]} />
+          </View>
+          <AppText variant="caption" muted>{tr('{p0} · 開始讀', { p0: md(startedAt) })}</AppText>
+        </View>
+      ) : null}
     </View>
   );
-  if (!onPress) return <View style={[styles.card, { backgroundColor: c.surface }]}>{inner}</View>;
+}
+
+/** 書店頁「正在讀」列表上的最新一則：依類型顯示（摘句才加引號） */
+export function NoteSnippet({ note }: { note: Pick<ReadingNote, 'kind' | 'title' | 'body' | 'created_at'> }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.card, { backgroundColor: c.surface, opacity: pressed ? 0.9 : 1 }]}>
-      {inner}
-    </Pressable>
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 4 }}>
+      <KindChip kind={note.kind} />
+      <AppText variant="caption" style={{ flex: 1, lineHeight: 19 }} numberOfLines={3}>
+        {note.title ? `${note.title}｜` : ''}
+        {note.kind === 'quote' ? tr('「{body}」', { body: note.body }) : note.body}
+        <AppText variant="caption" muted>{` · ${timeAgo(note.created_at)}`}</AppText>
+      </AppText>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   chip: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
-  card: { borderRadius: Radius.lg, padding: Spacing.lg },
+  timeline: { borderRadius: Radius.xl, padding: Spacing.lg, overflow: 'hidden' },
+  item: { flexDirection: 'row', gap: Spacing.md },
+  rail: { width: 12, alignItems: 'center' },
+  dot: { width: 10, height: 10, borderRadius: 5, marginTop: 5 },
+  line: { width: 2, flex: 1, marginTop: 4 },
 });

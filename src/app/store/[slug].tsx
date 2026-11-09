@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { BookCover } from '@/components/book-cover';
+import { NoteSnippet } from '@/components/note-card';
 import { CurationView } from '@/components/curation-view';
 import { FollowButton, StoreAvatar } from '@/components/social';
 import { StoreMenu } from '@/components/store-menu';
@@ -12,7 +13,7 @@ import { AppText, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing, StoreColors, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useStoreReadings, type PublicReading } from '@/lib/browse';
-import { currentPeriod, monthOf, timeAgo } from '@/lib/period';
+import { currentPeriod, monthOf } from '@/lib/period';
 import { recordVisit, useMyStore, usePublicStore } from '@/lib/queries';
 import { storageUrl } from '@/lib/uploads';
 import { tr } from '@/lib/i18n';
@@ -156,12 +157,7 @@ function ReadingTab({ readings, color }: { readings: PublicReading[] | undefined
                   <View style={{ flex: 1, gap: 2 }}>
                     <AppText variant="label">{r.books.title}</AppText>
                     <AppText variant="caption" muted>{r.books.authors.join(tr('、'))}</AppText>
-                    {latest ? (
-                      <AppText variant="caption" style={{ marginTop: 4, lineHeight: 19 }} numberOfLines={3}>
-                        {tr('「{body}」', { body: latest.body })}
-                        <AppText variant="caption" muted>{` · ${timeAgo(latest.created_at)}`}</AppText>
-                      </AppText>
-                    ) : null}
+                    {latest ? <NoteSnippet note={latest} /> : null}
                     {older.length ? <AppText variant="caption" style={{ color: c.primary, marginTop: 2 }}>{tr('還有 {length} 則心得', { length: older.length })}</AppText> : null}
                   </View>
                   <Feather name="chevron-right" size={16} color={c.textTertiary} />

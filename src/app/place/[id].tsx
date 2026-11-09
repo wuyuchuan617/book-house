@@ -5,23 +5,32 @@ import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleS
 
 import { BookCover } from '@/components/book-cover';
 import { CheckinCard } from '@/components/diary';
+import { Chip } from '@/components/form';
+import { SavePlaceSheet } from '@/components/save-place-sheet';
 import { ActionSheet } from '@/components/sheet';
 import { AppText, Button, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
-import { categoryIcon, categoryLabel, diaryError, openInGoogleMaps, usePlaceDetail, useReportCheckin, useTogglePlaceSave, type PublicCheckin } from '@/lib/diary';
+import { categoryIcon, categoryLabel, diaryError, openInGoogleMaps, useAdminIndie, useIndieVote, usePlaceDetail, useReportCheckin, type PublicCheckin } from '@/lib/diary';
+import { useIsAdmin } from '@/lib/admin';
 import { tr } from '@/lib/i18n';
 import { REPORT_REASONS } from '@/lib/safety';
 
-/** L1 地點頁：收藏、在 Google 地圖開啟、在這裡打卡；在這裡讀過的書、公開打卡（只顯示日期，可檢舉） */
+/**
+ * L1 地點頁：想去（可寫原因）、在 Google 地圖開啟、在這裡打卡；獨立書店標記；
+ * 在這裡讀過的書、公開打卡（只顯示日期，可檢舉）
+ */
 export default function PlaceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const c = useTheme();
   const { session, requireAuth } = useAuth();
   const { data, isLoading, refetch, isRefetching } = usePlaceDetail(id);
-  const toggle = useTogglePlaceSave();
+  const vote = useIndieVote();
+  const adminIndie = useAdminIndie();
+  const { data: isAdmin } = useIsAdmin();
+  const [saveOpen, setSaveOpen] = useState(false);
   const report = useReportCheckin();
   const [menuFor, setMenuFor] = useState<PublicCheckin | null>(null);
   const [reportFor, setReportFor] = useState<PublicCheckin | null>(null);
@@ -34,7 +43,9 @@ export default function PlaceScreen() {
   if (!data) return <EmptyState title={tr('找不到這個地點')} body={tr('它可能已經被移除了。')} />;
   const { place } = data;
 
-  const toggleSave = () => requireAuth(() => toggle.mutate({ placeId: place.id, save: !data.saved }, { onError: (e) => Alert.alert(tr('沒有成功'), diaryError(e.message)) }));
+  const fail = (e: Error) => Alert.alert(tr('沒有成功'), diaryError(e.message));
+  const openSave = () => requireAuth(() => setSaveOpen(true));
+  const bookstore = place.category === 'bookstore';
   const checkinHere = () =>
     requireAuth(() =>
       router.push({
@@ -53,22 +64,22 @@ export default function PlaceScreen() {
           </View>
           <View style={{ flex: 1, gap: 2 }}>
             <AppText variant="title" style={{ fontSize: 24 }}>{place.name}</AppText>
-            <AppText variant="caption" muted>{[categoryLabel(place.category), place.address].filter(Boolean).join(' · ')}</AppText>
+            <AppText variant="caption" muted>{[categoryLabel(place.category, data.is_indie), place.address].filter(Boolean).join(' · ')}</AppText>
           </View>
         </View>
 
         <AppText variant="caption" muted>
-          {[tr('{n} 則公開打卡', { n: data.checkin_count }), tr('{n} 人收藏', { n: data.save_count }), session && data.my_checkins ? tr('你來過 {n} 次', { n: data.my_checkins }) : null].filter(Boolean).join(' · ')}
+          {[tr('{n} 則公開打卡', { n: data.checkin_count }), tr('{n} 人想去', { n: data.save_count }), session && data.my_checkins ? tr('你來過 {n} 次', { n: data.my_checkins }) : null].filter(Boolean).join(' · ')}
         </AppText>
 
         <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ selected: data.saved }}
-            onPress={toggleSave}
+            onPress={openSave}
             style={[styles.action, { backgroundColor: data.saved ? c.primary : c.surface, borderColor: data.saved ? c.primary : c.border }]}>
             <Feather name="bookmark" size={16} color={data.saved ? c.onPrimary : c.text} />
-            <AppText variant="label" style={{ color: data.saved ? c.onPrimary : c.text }}>{data.saved ? tr('已收藏') : tr('收藏')}</AppText>
+            <AppText variant="label" style={{ color: data.saved ? c.onPrimary : c.text }}>{data.saved ? tr('已存想去') : tr('想去')}</AppText>
           </Pressable>
           <Pressable accessibilityRole="link" onPress={() => openInGoogleMaps(place.name, place.google_place_id)} style={[styles.action, { backgroundColor: c.surface, borderColor: c.border, flex: 1.6 }]}>
             <Feather name="navigation" size={16} color={c.text} />
@@ -76,6 +87,41 @@ export default function PlaceScreen() {
           </Pressable>
         </View>
         <Button label={tr('在這裡打卡')} onPress={checkinHere} />
+
+        {data.saved && data.my_note ? (
+          <Pressable accessibilityRole="button" onPress={openSave} style={[styles.note, { backgroundColor: c.surface }]}>
+            <Feather name="bookmark" size={14} color={c.primary} />
+            <AppText style={{ flex: 1, lineHeight: 21 }}>{data.my_note}</AppText>
+            <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('編輯')}</AppText>
+          </Pressable>
+        ) : null}
+
+        {bookstore && session ? (
+          <View style={[styles.indie, { backgroundColor: c.surface }]}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <AppText variant="label">{data.is_indie ? tr('獨立書店') : tr('這是獨立書店嗎？')}</AppText>
+              <AppText variant="caption" muted>
+                {data.indie_override != null ? tr('由書棲確認') : tr('{n} 人標記為獨立書店 · 2 人以上就會顯示', { n: data.indie_votes })}
+              </AppText>
+            </View>
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: data.my_indie_vote }}
+              disabled={vote.isPending}
+              onPress={() => vote.mutate({ placeId: place.id, vote: !data.my_indie_vote }, { onError: fail })}
+              style={[styles.voteBtn, { borderColor: data.my_indie_vote ? c.primary : c.border, backgroundColor: data.my_indie_vote ? c.primary : 'transparent' }]}>
+              <AppText variant="caption" style={{ fontWeight: '700', color: data.my_indie_vote ? c.onPrimary : c.text }}>{data.my_indie_vote ? tr('已標記') : tr('是')}</AppText>
+            </Pressable>
+          </View>
+        ) : null}
+        {bookstore && isAdmin ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flexWrap: 'wrap' }}>
+            <AppText variant="caption" muted>{tr('管理員：')}</AppText>
+            {([[true, tr('設為獨立書店')], [false, tr('不是獨立書店')], [null, tr('交給使用者標記')]] as const).map(([v, label]) => (
+              <Chip key={String(v)} label={label} selected={data.indie_override === v} onPress={() => adminIndie.mutate({ placeId: place.id, value: v }, { onError: fail })} />
+            ))}
+          </View>
+        ) : null}
 
         {data.books.length ? (
           <View style={{ gap: Spacing.sm }}>
@@ -105,6 +151,12 @@ export default function PlaceScreen() {
         <AppText variant="caption" style={{ color: c.textTertiary, textAlign: 'center' }}>{tr('地點資料來自 Google')}</AppText>
       </ScrollView>
 
+      <SavePlaceSheet
+        place={saveOpen ? { ...place, is_indie: data.is_indie, note: data.my_note, my_indie_vote: data.my_indie_vote } : null}
+        saved={data.saved}
+        from="place_page"
+        onClose={() => setSaveOpen(false)}
+      />
       <ActionSheet
         visible={!!menuFor}
         onClose={() => setMenuFor(null)}
@@ -147,5 +199,8 @@ export default function PlaceScreen() {
 
 const styles = StyleSheet.create({
   icon: { width: 60, height: 60, borderRadius: Radius.lg, alignItems: 'center', justifyContent: 'center' },
+  note: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: Radius.lg, padding: Spacing.lg },
+  indie: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.lg, padding: Spacing.lg },
+  voteBtn: { minWidth: 64, minHeight: 36, borderRadius: Radius.pill, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.md },
   action: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, borderWidth: 1, borderRadius: Radius.md, minHeight: MinTouch + 4 },
 });

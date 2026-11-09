@@ -94,6 +94,12 @@ export function DiaryItemRow({ item, color = 'moss' }: { item: DiaryItem; color?
         {item.body ? <AppText style={{ lineHeight: 23 }}>{item.body}</AppText> : null}
         <DiaryPhotos paths={item.photo_paths} />
         {item.book ? <BookLine book={item.book} color={color} /> : null}
+        {item.reading_note_id && item.reading_id ? (
+          <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/reading/note/[id]', params: { id: item.reading_note_id!, readingId: item.reading_id! } })} hitSlop={6} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Feather name="feather" size={12} color={c.primary} />
+            <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('也存成了這本書的心得')}</AppText>
+          </Pressable>
+        ) : null}
       </Card>
     );
   }
@@ -178,10 +184,12 @@ export function PlaceRow({
   place,
   meta,
   onPress,
+  isIndie,
 }: {
-  place: { id: string; name: string; address: string | null; category: string; photo_paths: string[]; distance_m?: number | null; saved?: boolean };
+  place: { id: string; name: string; address: string | null; category: string; photo_paths: string[]; distance_m?: number | null; saved?: boolean; is_indie?: boolean };
   meta: string;
   onPress?: () => void;
+  isIndie?: boolean;
 }) {
   const c = useTheme();
   const { data: urls } = useDiaryImageUrls(place.photo_paths.slice(0, 1));
@@ -200,7 +208,7 @@ export function PlaceRow({
             <AppText variant="label" numberOfLines={1} style={{ flexShrink: 1, fontSize: 16 }}>{place.name}</AppText>
             {place.saved ? <Feather name="bookmark" size={14} color={c.primary} /> : null}
           </View>
-          <AppText variant="caption" muted numberOfLines={1}>{[categoryLabel(place.category), distance, place.address].filter(Boolean).join(' · ')}</AppText>
+          <AppText variant="caption" muted numberOfLines={1}>{[categoryLabel(place.category, isIndie ?? place.is_indie), distance, place.address].filter(Boolean).join(' · ')}</AppText>
           <AppText variant="caption" style={{ color: c.textTertiary }}>{meta}</AppText>
         </View>
         <Feather name="chevron-right" size={18} color={c.textTertiary} />

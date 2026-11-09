@@ -24,6 +24,7 @@ import {
   diaryError,
   useDiaryDay,
   useDiaryImageUrls,
+  useIndieVote,
   useSaveEntry,
   type DiaryEntry,
   type DiaryPhoto,
@@ -32,7 +33,7 @@ import {
 import { tr } from '@/lib/i18n';
 import { taipeiToday } from '@/lib/period';
 import { useMyStore } from '@/lib/queries';
-import { useMyReadings } from '@/lib/readings';
+import { useMyReadings, useSaveNote } from '@/lib/readings';
 
 type MiniBook = { id: string; title: string; cover_url: string | null };
 
@@ -53,7 +54,7 @@ export default function DiaryComposeScreen() {
 
 function initialPlace(params: Params, e?: DiaryEntry): PlaceChoice | null {
   if (e?.place_id && e.place_name && e.google_place_id) {
-    return { kind: 'google', place: { id: e.place_id, name: e.place_name, address: e.place_address, category: 'other', public_ok: !!e.place_public_ok, google_place_id: e.google_place_id } };
+    return { kind: 'google', place: { id: e.place_id, name: e.place_name, address: e.place_address, category: e.place_category ?? 'other', public_ok: !!e.place_public_ok, google_place_id: e.google_place_id } };
   }
   if (e?.place_label) return { kind: 'label', label: e.place_label };
   if (!e && params.placeId && params.placeName && params.googlePlaceId) {
@@ -69,6 +70,9 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
   const readings = useMyReadings();
   const saves = useSavedBooks();
   const save = useSaveEntry();
+  const saveNote = useSaveNote();
+  const indieVote = useIndieVote();
+  const [busy, setBusy] = useState(false);
 
   const [kind, setKind] = useState<'note' | 'checkin'>(existing?.type ?? (params.kind === 'checkin' ? 'checkin' : 'note'));
   const [book, setBook] = useState<MiniBook | null>(existing?.book ?? null);
@@ -79,6 +83,8 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
   const [placeOpen, setPlaceOpen] = useState(false);
   const [bookOpen, setBookOpen] = useState(false);
   const [done, setDone] = useState(false);
+  const [alsoNote, setAlsoNote] = useState(false);
+  const [indie, setIndie] = useState(false);
   const autoOpened = useRef(false);
 
   // 從「打卡」進來：直接打開選地點
@@ -99,6 +105,10 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
       .filter(({ b }) => (seen.has(b.id) ? false : (seen.add(b.id), true)))
       .slice(0, 6);
   }, [readings.data, saves.data]);
+
+  // 日記筆記選了店主閱讀裡的書：可以同時存成那本書的心得（跟著那本書的公開設定）
+  const linkedReading = kind === 'note' && !existing && book ? readings.data?.find((r) => r.books.id === book.id) : undefined;
+  const isBookstore = kind === 'checkin' && place?.kind === 'google' && place.place.category === 'bookstore';
 
   const canPublic = kind === 'checkin' && place?.kind === 'google' && place.place.public_ok;
   const publicOn = canPublic && isPublic;
@@ -133,9 +143,18 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
     ]);
 
   const ready = kind === 'checkin' ? !!place : !!(body.trim() || photos.length);
-  const submit = () =>
-    save.mutate(
-      {
+  const submit = async () => {
+    setBusy(true);
+    try {
+      let readingNoteId: string | null = null;
+      if (linkedReading && alsoNote && body.trim()) {
+        const r = await saveNote.mutateAsync({
+          readingId: linkedReading.id,
+          input: { kind: 'thought', body, photos: photos.filter((p) => 'uri' in p), fromScan: false },
+        });
+        readingNoteId = r.id;
+      }
+      await save.mutateAsync({
         entryId: existing?.id,
         previousPaths: existing?.photo_paths,
         input: {
@@ -146,16 +165,18 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
           placeLabel: place?.kind === 'label' ? place.label : null,
           photos,
           isPublic: !!publicOn,
+          readingNoteId,
         },
-      },
-      {
-        onSuccess: () => {
-          setDone(true);
-          setTimeout(() => router.back(), 0);
-        },
-        onError: (e) => Alert.alert(tr('沒有儲存成功'), diaryError(e.message)),
-      },
-    );
+      });
+      if (isBookstore && indie && place?.kind === 'google') await indieVote.mutateAsync({ placeId: place.place.id, vote: true }).catch(() => {});
+      setDone(true);
+      setTimeout(() => router.back(), 0);
+    } catch (e) {
+      Alert.alert(tr('沒有儲存成功'), diaryError((e as Error).message));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <Screen>
@@ -211,6 +232,9 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
                 </View>
                 <Toggle accessibilityLabel={tr('公開在地點頁')} value={!!publicOn} disabled={!canPublic} onValueChange={setIsPublic} />
               </View>
+              {isBookstore && !existing ? (
+                <Check checked={indie} onPress={() => setIndie(!indie)} label={tr('這是獨立書店')} sub={tr('2 個人以上標記，就會顯示成獨立書店。')} />
+              ) : null}
             </View>
           ) : null}
 
@@ -246,6 +270,16 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
             onChangeText={setBody}
             placeholder={kind === 'checkin' ? tr('在這裡讀了什麼、遇見什麼') : tr('一句話就好')}
           />
+          {linkedReading ? (
+            <Check
+              checked={alsoNote}
+              onPress={() => setAlsoNote(!alsoNote)}
+              label={tr('也存成這本書的心得')}
+              sub={linkedReading.is_public ? tr('這本書公開在書店頁，讀者會看到這則心得（想法）。') : tr('存成「想法」，只有自己看得到。')}
+            />
+          ) : existing?.reading_note_id ? (
+            <AppText variant="caption" muted>{tr('這則也存成了心得；要修改心得請到這本書的頁面。')}</AppText>
+          ) : null}
 
           <View style={{ gap: Spacing.sm }}>
             <AppText variant="label">
@@ -276,7 +310,7 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
       </KeyboardAvoidingView>
 
       <SafeAreaView edges={['bottom']} style={[styles.footer, { backgroundColor: c.surface, borderTopColor: c.border }]}>
-        <Button label={publicOn ? tr('儲存並公開') : tr('儲存')} disabled={!ready} loading={save.isPending} onPress={submit} />
+        <Button label={publicOn ? tr('儲存並公開') : tr('儲存')} disabled={!ready} loading={busy} onPress={() => void submit()} />
       </SafeAreaView>
 
       <PlacePicker
@@ -297,6 +331,19 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
         onAdd={async (b: Book) => setBook(b)}
       />
     </Screen>
+  );
+}
+
+function Check({ checked, onPress, label, sub }: { checked: boolean; onPress: () => void; label: string; sub?: string }) {
+  const c = useTheme();
+  return (
+    <Pressable accessibilityRole="checkbox" accessibilityState={{ checked }} onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, minHeight: MinTouch }}>
+      <Feather name={checked ? 'check-square' : 'square'} size={20} color={checked ? c.primary : c.textSecondary} />
+      <View style={{ flex: 1 }}>
+        <AppText variant="label">{label}</AppText>
+        {sub ? <AppText variant="caption" muted>{sub}</AppText> : null}
+      </View>
+    </Pressable>
   );
 }
 

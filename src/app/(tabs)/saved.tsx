@@ -5,14 +5,14 @@ import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Vie
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
-import { PlaceRow } from '@/components/diary';
+import { PlacesShelf } from '@/components/places-shelf';
 import { FollowButton, StoreAvatar, UndoToast } from '@/components/social';
 import { AppText, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { useFollowedStores, useSavedBooks, useToggleSave, wantSource, type FollowedStore, type SavedBook } from '@/lib/browse';
-import { useSavedPlaces } from '@/lib/diary';
+import { useMyPlaces } from '@/lib/diary';
 import { useMyStore } from '@/lib/queries';
 import { SwipeRow, swipeA11y } from '@/components/swipe-row';
 import { WantSheet } from '@/components/want-sheet';
@@ -28,7 +28,7 @@ export default function SavedScreen() {
   const [tab, setTab] = useState<Tab>('books');
   const stores = useFollowedStores();
   const books = useSavedBooks();
-  const places = useSavedPlaces();
+  const places = useMyPlaces('want');
   const toggleSave = useToggleSave();
   const [undo, setUndo] = useState<SavedBook | null>(null);
   const [openWant, setOpenWant] = useState<SavedBook | null>(null);
@@ -79,25 +79,7 @@ export default function SavedScreen() {
         </View>
 
         {tab === 'places' ? (
-          places.isLoading ? (
-            <ActivityIndicator style={{ marginTop: 48 }} />
-          ) : (
-            <FlatList
-              data={places.data}
-              keyExtractor={(p) => p.id}
-              contentContainerStyle={styles.list}
-              refreshControl={<RefreshControl refreshing={places.isRefetching} onRefresh={() => void places.refetch()} />}
-              ListEmptyComponent={
-                <EmptyState title={tr('還沒有收藏的地方')} body={tr('在「探索 → 書的地方」找到喜歡的書店、圖書館，\n按「收藏」就會出現在這裡。')} actionLabel={tr('去看書的地方')} onAction={() => router.navigate('/')} />
-              }
-              renderItem={({ item }) => (
-                <PlaceRow
-                  place={item}
-                  meta={[item.my_checkins ? tr('你來過 {n} 次', { n: item.my_checkins }) : tr('還沒去過'), item.checkin_count ? tr('{n} 則打卡', { n: item.checkin_count }) : null].filter(Boolean).join(' · ')}
-                />
-              )}
-            />
-          )
+          <PlacesShelf />
         ) : tab === 'stores' ? (
           stores.isLoading ? (
             <ActivityIndicator style={{ marginTop: 48 }} />

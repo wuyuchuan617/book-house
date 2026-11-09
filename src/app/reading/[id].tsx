@@ -1,14 +1,12 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 
 import { BookCover } from '@/components/book-cover';
-import { KindChip, NoteBody, NotePhotos } from '@/components/note-card';
+import { NoteTimeline } from '@/components/note-card';
 import { SaveButton, StoreAvatar } from '@/components/social';
-import { AppText, Card, EmptyState, Screen } from '@/components/ui';
+import { AppText, EmptyState, Screen } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useReading } from '@/lib/browse';
-import { timeAgo } from '@/lib/period';
 import { tr } from '@/lib/i18n';
 
 const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
@@ -16,7 +14,6 @@ const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
 /** A5 店主閱讀・心得時間軸（讀者） */
 export default function ReadingNotesScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const c = useTheme();
   const { data, isLoading } = useReading(id);
 
   if (isLoading) return <ActivityIndicator style={{ marginTop: 48 }} />;
@@ -46,41 +43,8 @@ export default function ReadingNotesScreen() {
           <AppText variant="label">{tr('{owner_name} 的閱讀心得 · {length} 則', { owner_name: store.owner_name, length: notes.length })}</AppText>
         </Pressable>
 
-        <Card style={{ gap: 0 }}>
-          {notes.map((n, i) => (
-            <View key={n.id} style={styles.item}>
-              <View style={styles.rail}>
-                <View style={[styles.dot, { backgroundColor: i === 0 ? c.primary : c.border }]} />
-                {i < notes.length - 1 ? <View style={[styles.line, { backgroundColor: c.divider }]} /> : null}
-              </View>
-              <View style={{ flex: 1, paddingBottom: Spacing.lg }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
-                  <KindChip kind={n.kind} />
-                  <AppText variant="caption" muted>{i === 0 ? timeAgo(n.created_at) : md(n.created_at)}</AppText>
-                </View>
-                {n.title ? <AppText variant="label" style={{ marginTop: 6 }}>{n.title}</AppText> : null}
-                <View style={{ marginTop: 6, gap: 8 }}>
-                  <NoteBody note={n} />
-                  <NotePhotos paths={n.photo_paths} size={96} />
-                </View>
-              </View>
-            </View>
-          ))}
-          <View style={styles.item}>
-            <View style={styles.rail}>
-              <View style={[styles.dot, { backgroundColor: c.border }]} />
-            </View>
-            <AppText variant="caption" muted>{tr('{p0} · 開始讀', { p0: md(r.started_at) })}</AppText>
-          </View>
-        </Card>
+        <NoteTimeline notes={notes} startedAt={r.started_at} />
       </ScrollView>
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  item: { flexDirection: 'row', gap: Spacing.md },
-  rail: { width: 12, alignItems: 'center' },
-  dot: { width: 10, height: 10, borderRadius: 5, marginTop: 4 },
-  line: { width: 2, flex: 1, marginTop: 4 },
-});

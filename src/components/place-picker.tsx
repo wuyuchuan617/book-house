@@ -28,7 +28,7 @@ export type PlaceChoice = { kind: 'google'; place: PickedPlace } | { kind: 'labe
  * D7 選地點：搜尋 Google 地點（偏向附近）、最近去過的地點、或直接輸入名稱（只有自己看得到）。
  * 只用 Google 的 Essentials（免費額度內）；次數用完或還沒開放時，一樣可以直接輸入。
  */
-export function PlacePicker({ visible, onClose, onPick }: { visible: boolean; onClose: () => void; onPick: (choice: PlaceChoice) => void }) {
+export function PlacePicker({ visible, onClose, onPick, googleOnly, title }: { visible: boolean; onClose: () => void; onPick: (choice: PlaceChoice) => void; googleOnly?: boolean; title?: string }) {
   const c = useTheme();
   const [input, setInput] = useState('');
   const [query, setQuery] = useState('');
@@ -91,7 +91,7 @@ export function PlacePicker({ visible, onClose, onPick }: { visible: boolean; on
         <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
           <View style={[styles.bar, { borderBottomColor: c.divider }]}>
             <View style={{ width: 64 }} />
-            <AppText variant="label" style={{ fontSize: 16 }}>{tr('選地點')}</AppText>
+            <AppText variant="label" style={{ fontSize: 16 }}>{title ?? tr('選地點')}</AppText>
             <Pressable accessibilityRole="button" onPress={close} style={styles.barBtn}>
               <AppText style={{ color: c.primary, fontWeight: '600' }}>{tr('取消')}</AppText>
             </Pressable>
@@ -116,10 +116,10 @@ export function PlacePicker({ visible, onClose, onPick }: { visible: boolean; on
             <ScrollView contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
               {showRecent ? (
                 <>
-                  {recent.data?.length ? (
+                  {recent.data?.some((r) => !googleOnly || r.place_id) ? (
                     <>
                       <AppText variant="caption" muted style={styles.section}>{tr('最近去過')}</AppText>
-                      {recent.data.map((r) => (
+                      {recent.data.filter((r) => !googleOnly || r.place_id).map((r) => (
                         <Row
                           key={r.place_id ?? r.place_label ?? ''}
                           icon={r.place_id ? categoryIcon(r.category) : 'edit-3'}
@@ -154,7 +154,7 @@ export function PlacePicker({ visible, onClose, onPick }: { visible: boolean; on
                     />
                   ))}
                   {search.data && !search.data.length && !err ? <AppText variant="caption" muted style={styles.section}>{tr('找不到符合的地點。')}</AppText> : null}
-                  {typed ? (
+                  {typed && !googleOnly ? (
                     <Row icon="edit-3" title={tr('直接使用「{name}」', { name: typed })} sub={tr('不連到地圖 · 只有自己看得到')} onPress={() => done({ kind: 'label', label: typed })} />
                   ) : null}
                   {search.data?.length ? <AppText variant="caption" style={{ color: c.textTertiary, marginTop: Spacing.md, textAlign: 'right' }}>{tr('地點資料來自 Google')}</AppText> : null}
