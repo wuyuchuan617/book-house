@@ -26,19 +26,20 @@ import { currentPeriod, monthOf, periodLabel, previousPeriod } from '@/lib/perio
 import { useMyStore, type ExploreItem } from '@/lib/queries';
 import { tagLabel, tr } from '@/lib/i18n';
 
-type Scope = 'all' | 'following' | 'places';
+type Tab = 'curations' | 'places';
 type FeedCard = ExploreItem & { visited?: boolean; is_following?: boolean };
 
 const SORTS = (): [ExploreSort, string][] => [['recommend', tr('推薦')], ['latest', tr('最新')], ['popular', tr('熱門')]];
 
 /**
- * A2 探索 v1.1：全部／追蹤中、月份切換、推薦／最新／熱門、已逛過（標示、可只看沒逛過）、
+ * A2 探索：上方「策展／書的地方」分頁；策展可勾「追蹤中」「沒逛過」、月份切換、推薦／最新／熱門、已逛過（標示、可只看沒逛過）、
  * 主題篩選、搜尋（所有月份）；本月不到 6 檔時用上個月補位（S3 無結果）；M10「書的地方」（L2）
  */
 export default function ExploreScreen() {
   const c = useTheme();
   const { session, requireAuth } = useAuth();
-  const [scope, setScope] = useState<Scope>('all');
+  const [tab, setTab] = useState<Tab>('curations');
+  const [following, setFollowing] = useState(false);
   const [period, setPeriod] = useState(currentPeriod());
   const [sort, setSort] = useState<ExploreSort>('recommend');
   const [unvisitedOnly, setUnvisitedOnly] = useState(false);
@@ -54,7 +55,6 @@ export default function ExploreScreen() {
     return () => clearTimeout(t);
   }, [input]);
 
-  const following = scope === 'following';
   const list = useExploreList({ period: following ? null : period, sort, tag, following, unvisitedOnly });
   const search = useExploreFeed({ tag, query });
   const isCurrent = period === currentPeriod();
@@ -103,9 +103,9 @@ export default function ExploreScreen() {
   ) : following && !session ? (
     <EmptyState title={tr('登入後看追蹤中的書店')} body={tr('追蹤喜歡的店主，新策展上架時會出現在這裡。')} actionLabel={tr('登入')} onAction={() => requireAuth(() => {})} />
   ) : following ? (
-    <EmptyState title={unvisitedOnly ? tr('追蹤的書店都逛過了') : tr('還沒有追蹤的書店')} body={unvisitedOnly ? tr('有新策展上架時會出現在這裡。') : tr('在書店頁按「追蹤」，他們的策展會集中在這裡。')} actionLabel={tr('看全部策展')} onAction={() => setScope('all')} />
+    <EmptyState title={unvisitedOnly ? tr('追蹤的書店都逛過了') : tr('還沒有追蹤的書店')} body={unvisitedOnly ? tr('有新策展上架時會出現在這裡。') : tr('在書店頁按「追蹤」，他們的策展會集中在這裡。')} actionLabel={tr('看全部策展')} onAction={() => setFollowing(false)} />
   ) : unvisitedOnly ? (
-    <EmptyState title={tr('這個月的策展都逛過了')} body={tr('看看其他月份，或關掉「只看沒逛過」。')} actionLabel={tr('顯示全部')} onAction={() => setUnvisitedOnly(false)} />
+    <EmptyState title={tr('這個月的策展都逛過了')} body={tr('看看其他月份，或關掉「沒逛過」。')} actionLabel={tr('顯示全部')} onAction={() => setUnvisitedOnly(false)} />
   ) : tag ? (
     <EmptyState title={tr('{p0} 月還沒有「{p1}」的策展', { p0: monthOf(period), p1: tagName ?? '' })} body={tr('換個主題看看，或回到全部。')} actionLabel={tr('看全部策展')} onAction={() => setTag(undefined)} />
   ) : (
@@ -113,16 +113,16 @@ export default function ExploreScreen() {
   );
 
   const segment = (
-    <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
-      {([['all', tr('全部')], ['following', tr('追蹤中')], ['places', tr('書的地方')]] as const).map(([s, label]) => (
-        <Pressable key={s} accessibilityRole="tab" accessibilityState={{ selected: scope === s }} onPress={() => setScope(s)} style={[styles.segmentItem, scope === s && { backgroundColor: c.surface }]}>
-          <AppText variant="caption" style={{ fontWeight: '700', color: scope === s ? c.text : c.textSecondary }}>{label}</AppText>
+    <View style={[styles.tabs, { borderBottomColor: c.border }]} accessibilityRole="tablist">
+      {([['curations', tr('策展')], ['places', tr('書的地方')]] as const).map(([t, label]) => (
+        <Pressable key={t} accessibilityRole="tab" accessibilityState={{ selected: tab === t }} onPress={() => setTab(t)} style={[styles.tab, tab === t && { borderBottomColor: c.text }]}>
+          <AppText style={{ fontSize: 15, fontWeight: tab === t ? '700' : '500', color: tab === t ? c.text : c.textSecondary }}>{label}</AppText>
         </Pressable>
       ))}
     </View>
   );
 
-  if (scope === 'places') {
+  if (tab === 'places') {
     return (
       <Screen>
         <SafeAreaView edges={['top']} style={{ flex: 1 }}>
@@ -193,10 +193,16 @@ export default function ExploreScreen() {
                 </Pressable>
               ))}
             </View>
-            <Pressable accessibilityRole="switch" accessibilityState={{ checked: unvisitedOnly }} onPress={() => setUnvisitedOnly(!unvisitedOnly)} hitSlop={8} style={styles.sortItem}>
-              <Feather name={unvisitedOnly ? 'check-square' : 'square'} size={16} color={unvisitedOnly ? c.primary : c.textSecondary} />
-              <AppText variant="caption" style={{ color: unvisitedOnly ? c.primary : c.textSecondary, fontWeight: '600' }}>{tr('只看沒逛過')}</AppText>
-            </Pressable>
+            <View style={{ flexDirection: 'row', gap: Spacing.md }}>
+              <Pressable accessibilityRole="switch" accessibilityState={{ checked: following }} onPress={() => requireAuth(() => setFollowing(!following))} hitSlop={8} style={styles.sortItem}>
+                <Feather name={following ? 'check-square' : 'square'} size={16} color={following ? c.primary : c.textSecondary} />
+                <AppText variant="caption" style={{ color: following ? c.primary : c.textSecondary, fontWeight: '600' }}>{tr('追蹤中')}</AppText>
+              </Pressable>
+              <Pressable accessibilityRole="switch" accessibilityState={{ checked: unvisitedOnly }} onPress={() => setUnvisitedOnly(!unvisitedOnly)} hitSlop={8} style={styles.sortItem}>
+                <Feather name={unvisitedOnly ? 'check-square' : 'square'} size={16} color={unvisitedOnly ? c.primary : c.textSecondary} />
+                <AppText variant="caption" style={{ color: unvisitedOnly ? c.primary : c.textSecondary, fontWeight: '600' }}>{tr('沒逛過')}</AppText>
+              </Pressable>
+            </View>
           </View>
         ) : null}
 
@@ -314,8 +320,8 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   month: { flexDirection: 'row', alignItems: 'center' },
   arrow: { width: MinTouch - 4, height: MinTouch, alignItems: 'center', justifyContent: 'center' },
-  segment: { flexDirection: 'row', marginHorizontal: Spacing.xl, marginTop: Spacing.sm, borderRadius: Radius.md, padding: 3 },
-  segmentItem: { flex: 1, minHeight: MinTouch - 4, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },
+  tabs: { flexDirection: 'row', gap: Spacing.xxl, marginHorizontal: Spacing.xl, marginTop: Spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth },
+  tab: { minHeight: MinTouch, justifyContent: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent', marginBottom: -StyleSheet.hairlineWidth },
   search: { marginHorizontal: Spacing.xl, marginTop: Spacing.md, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderWidth: 1, borderRadius: Radius.md, paddingLeft: 14, minHeight: 48 },
   searchInput: { flex: 1, fontSize: 16, minHeight: 48, outlineWidth: 0 },
   clear: { width: MinTouch, height: MinTouch, alignItems: 'center', justifyContent: 'center' },
