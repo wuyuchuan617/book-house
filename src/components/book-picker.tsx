@@ -4,7 +4,7 @@ import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressa
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
-import { IsbnScanner } from '@/components/isbn-scanner';
+import { isbnScanAvailable, IsbnScanner } from '@/components/isbn-scanner';
 import { Chip, chipRow, TextField } from '@/components/form';
 import { AppText, Button, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing, type StoreColor } from '@/constants/theme';
@@ -98,17 +98,17 @@ export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, 
             <Feather name="x-circle" size={18} color={c.textTertiary} />
           </Pressable>
         ) : null}
-        {Platform.OS !== 'web' ? (
+        {isbnScanAvailable() ? (
           <Pressable accessibilityRole="button" accessibilityLabel={tr('掃描書背條碼')} onPress={() => setScanning(true)} style={[styles.clear, { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: c.border }]}>
             <Feather name="maximize" size={18} color={c.primary} />
           </Pressable>
         ) : null}
       </View>
-      <IsbnScanner visible={scanning} onClose={() => setScanning(false)} onScanned={setQuery} />
+      {scanning ? <IsbnScanner visible onClose={() => setScanning(false)} onScanned={setQuery} /> : null}
 
       {tooShort ? (
         <>
-          <AppText variant="caption" muted>{tr('輸入 2 個字以上開始搜尋，或按右邊掃描書背條碼')}</AppText>
+          <AppText variant="caption" muted>{isbnScanAvailable() ? tr('輸入 2 個字以上開始搜尋，或按右邊掃描書背條碼') : tr('輸入 2 個字以上開始搜尋')}</AppText>
           {suggestions?.books.length ? (
             <>
               <AppText variant="label" style={{ marginTop: Spacing.sm }}>{suggestions.label}</AppText>

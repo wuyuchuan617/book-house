@@ -394,6 +394,7 @@ export const EN: Record<string, Entry> = {
   '{label}：{title}': '{label}: {title}',
   '掃描書背條碼': 'Scan barcode',
   '輸入 2 個字以上開始搜尋，或按右邊掃描書背條碼': 'Type 2+ characters to search, or scan the barcode on the right',
+  '輸入 2 個字以上開始搜尋': 'Type 2+ characters to search',
   '搜尋沒有成功：{p0}': 'Search failed: {p0}',
   '找到 {length} 本{p1}': (v) => `${s(v.length, 'result')}${v.p1 ?? ''}`,
   ' · {p0} {pickedCount} 本': ' · {p0}: {pickedCount}',
