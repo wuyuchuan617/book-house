@@ -1,10 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider, usePathname, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useState } from 'react';
-import { Platform, Pressable } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { LoginGate } from '@/components/login-gate';
@@ -16,8 +16,10 @@ import { usePushNotifications } from '@/lib/push';
 import { loadAppearance } from '@/lib/appearance';
 import { loadLanguage, localeTag, tr, useLang } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
+import { installCrashReporter, reportError, setCrashRoute } from '@/lib/crash';
 
 SplashScreen.preventAutoHideAsync();
+installCrashReporter();
 const prefsLoaded = Promise.all([loadAppearance(), loadLanguage()]);
 
 const WELCOME_SEEN = 'bookhaus.welcome-seen';
@@ -35,6 +37,8 @@ function RootStack() {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const c = Colors[scheme];
   usePushNotifications(session?.user.id);
+  const pathname = usePathname();
+  useEffect(() => setCrashRoute(pathname), [pathname]);
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
   const lang = useLang();
   const uid = session?.user.id;
@@ -115,6 +119,28 @@ function RootStack() {
       <LoginGate />
       <OfflineBanner />
     </ThemeProvider>
+  );
+}
+
+/** 畫面出錯時不要直接關掉 App：顯示錯誤訊息（方便截圖回報）＋再試一次，並記到 events（app_error） */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => {
+    reportError(error);
+  }, [error]);
+  return (
+    <View style={{ flex: 1, backgroundColor: '#F3EFE8', padding: 24, paddingTop: 80, gap: 12 }}>
+      <Text style={{ fontSize: 22, fontWeight: '700', color: '#1F1B16' }}>{tr('出了點問題')}</Text>
+      <Text style={{ fontSize: 15, color: '#5F574E', lineHeight: 22 }}>{tr('這個畫面沒有正常顯示。錯誤已經記錄下來，可以再試一次；如果一直發生，請截圖這頁回報。')}</Text>
+      <ScrollView style={{ maxHeight: 240, backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12 }}>
+        <Text selectable style={{ fontSize: 12, color: '#1F1B16', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>{`${error.message}\n\n${(error.stack ?? '').split('\n').slice(0, 8).join('\n')}`}</Text>
+      </ScrollView>
+      <Pressable accessibilityRole="button" onPress={retry} style={{ marginTop: 8, minHeight: 48, borderRadius: 12, backgroundColor: '#8B4F37', alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>{tr('再試一次')}</Text>
+      </Pressable>
+      <Pressable accessibilityRole="button" onPress={() => router.replace('/')} style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: '#8B4F37', fontSize: 15, fontWeight: '600' }}>{tr('回到首頁')}</Text>
+      </Pressable>
+    </View>
   );
 }
 

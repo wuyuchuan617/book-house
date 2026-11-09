@@ -1011,4 +1011,7 @@ export const EN: Record<string, Entry> = {
   '心得（{kind}）': 'Note ({kind})',
   '存了想去的地方': 'Saved a place',
   '沒有這個類型。': 'Unknown type.',
+  '出了點問題': 'Something went wrong',
+  '這個畫面沒有正常顯示。錯誤已經記錄下來，可以再試一次；如果一直發生，請截圖這頁回報。': 'This screen didn’t load properly. The error was recorded. Try again, and if it keeps happening, send us a screenshot of this page.',
+  '回到首頁': 'Go to home',
 };
