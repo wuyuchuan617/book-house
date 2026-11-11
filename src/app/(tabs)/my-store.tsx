@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
-import { IconButton, NotificationBell, SearchButton } from '@/components/icon-button';
+import { IconButton } from '@/components/icon-button';
 import { OwnerRx } from '@/components/rx-mine';
 import { CountLink, SmallButton, StoreHeader } from '@/components/store-header';
 import { UnderlineTabs } from '@/components/underline-tabs';
@@ -28,7 +28,7 @@ type Tab = 'curation' | 'reading' | 'journal' | 'want' | 'place' | 'rx';
 const TAB_KEYS: Tab[] = ['curation', 'reading', 'journal', 'want', 'place', 'rx'];
 
 /**
- * W1 我的書店（v1.7.2 AA1–AA4）：精簡的書店資訊（背景圖變矮、名字在圖下面、追蹤數一行字、編輯／讀者視角／分享是小按鈕）；
+ * W1 我的書店（v1.7.2 AA1–AA4）：精簡的書店資訊（背景圖變矮、名字在圖下面、追蹤數一行字、編輯／數據／讀者視角／分享是小按鈕，右上只留設定）；
  * 固定 6 格分頁 策展｜閱讀｜手記｜想讀｜想去｜處方簽（不放數字，往下捲黏在最上面）。
  * 自己看得到全部分頁；公開設定沒開的那一類，最上面一條「讀者看不到」。第一次進來跳出 G0 設定卡。
  */
@@ -94,9 +94,6 @@ export default function MyStoreScreen() {
           buttons={
             <>
               <View style={{ flex: 1 }} />
-              <SearchButton onImage />
-              <IconButton icon="bar-chart-2" label={tr('數據')} onImage onPress={() => router.push('/store-insights')} />
-              <NotificationBell onImage />
               <IconButton icon="settings" label={tr('設定')} onImage onPress={() => router.push('/settings')} />
             </>
           }
@@ -109,6 +106,7 @@ export default function MyStoreScreen() {
           actions={
             <>
               <SmallButton icon="edit-2" label={tr('編輯')} showLabel onPress={() => router.push('/store-edit')} />
+              <SmallButton icon="bar-chart-2" label={tr('數據')} onPress={() => router.push('/store-insights')} />
               <SmallButton icon="eye" label={tr('讀者視角')} onPress={() => router.push({ pathname: '/store/[slug]', params: { slug: store.slug } })} />
               <SmallButton icon="share" label={tr('分享')} onPress={() => shareStore(store.name, store.slug)} />
             </>
