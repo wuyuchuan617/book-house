@@ -31,7 +31,7 @@ begin
   assert s.slug::text ~ '^store-[a-z0-9]{6}$', 'chinese name → store- slug';
   assert (select slug::text from public.bookstores where owner_id = '00000000-0000-0000-0000-0000000000f2') = 'auto-two';
   assert not (select monthly_reminder from public.notification_prefs where user_id = s.owner_id), 'no monthly reminder for auto store';
-  assert s.show_reading and s.show_post and s.show_rx and not s.show_want and not s.show_place, 'default show settings';
+  assert s.show_reading and s.show_post and s.show_rx and s.show_want and s.show_place and s.show_owned, 'default show settings (v1.7.1：想讀想去積讀預設開)';
 end $$;
 
 -- ensure_my_bookstore：已經有就回傳同一間

@@ -43,14 +43,15 @@ do $$ begin
   assert exists (select 1 from public.readings r join public.books b on b.id = r.book_id where b.title = '一七直接讀'), 'started reading';
 end $$;
 
--- 積讀公開：預設關；開了別人只看到書，看不到金額
+-- 積讀公開：關掉看不到（v1.7.1 起預設開）；開了別人只看到書，看不到金額
+update public.bookstores set show_owned = false where owner_id = auth.uid();
 insert into public.books (source, title, authors, created_by) values ('manual', '一七還沒讀', array['某人'], auth.uid());
 select 1 from public.record_purchase((select id from public.books where title = '一七還沒讀'), null, null, '誠品', 450);
 select pg_temp.as_user('00000000-0000-0000-0000-0000000001e2');
 do $$
 declare slug text := (select slug from public.bookstores where owner_id = '00000000-0000-0000-0000-0000000001e1');
 begin
-  assert jsonb_array_length(public.store_tbr(slug)) = 0, 'tbr hidden by default';
+  assert jsonb_array_length(public.store_tbr(slug)) = 0, 'tbr hidden when off';
   assert not exists (select 1 from public.book_purchases), 'cannot read others purchases';
 end $$;
 select pg_temp.as_user('00000000-0000-0000-0000-0000000001e1');

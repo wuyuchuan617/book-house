@@ -98,8 +98,8 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bo
     switch (item.type) {
       case 'want':
         return [
-          { label: tr('編輯'), icon: 'edit-2', onPress: () => router.push({ pathname: '/want-book', params: { bookId: item.id } }) },
-          { label: tr('買了'), sub: tr('移到積讀，記在哪買'), icon: 'shopping-bag', onPress: () => router.push({ pathname: '/purchase', params: { bookId: item.id } }) },
+          { label: tr('編輯'), icon: 'edit-2', onPress: () => router.push({ pathname: '/want-book', params: { bookId: item.id, from: 'want' } }) },
+          { label: tr('買了'), sub: tr('移到積讀，記在哪買'), icon: 'shopping-bag', onPress: () => router.push({ pathname: '/purchase', params: { bookId: item.id, from: 'want' } }) },
           { label: tr('移除'), sub: tr('6 秒內可以復原'), icon: 'trash-2', destructive: true, onPress: () => toggleSave.mutate({ bookId: item.id, save: false }, { onSuccess: () => setUndo(item), onError: fail }) },
         ];
       case 'place':

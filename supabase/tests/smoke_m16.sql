@@ -53,7 +53,8 @@ begin
   assert (select (x->>'is_public')::boolean from jsonb_array_elements(j) x where x->'place'->>'name' = '某人的家' and x->>'type' = 'place') = false, 'private place never public';
 end $$;
 
--- 別人看：預設 想讀關、想去關、貼文開 → 只看到 2 則公開貼文
+-- 別人看：店主關掉想讀、想去（v1.7.1 起預設是開的），貼文開 → 只看到 2 則公開貼文
+update public.bookstores set show_want = false, show_place = false where owner_id = auth.uid();
 select pg_temp.as_user('00000000-0000-0000-0000-0000000001a2');
 do $$
 declare j jsonb := public.store_journal((select id from public.bookstores where owner_id = '00000000-0000-0000-0000-0000000001a1'));

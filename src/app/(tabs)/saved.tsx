@@ -124,7 +124,7 @@ function BookRow({ item, hint, onUnsave }: { item: SavedBook; hint?: boolean; on
   const from = wantSource(item);
   const start = useStartReading();
   const actions = [
-    { label: tr('編輯'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/want-book', params: { bookId: item.book_id } }) },
+    { label: tr('編輯'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/want-book', params: { bookId: item.book_id, from: 'want' } }) },
     {
       label: tr('開始讀'),
       icon: 'book-open' as const,
@@ -134,7 +134,7 @@ function BookRow({ item, hint, onUnsave }: { item: SavedBook; hint?: boolean; on
           onError: (e) => Alert.alert(tr('沒有成功'), userMessage(e)),
         }),
     },
-    { label: tr('買了'), sub: tr('移到積讀，記在哪買'), icon: 'shopping-bag' as const, onPress: () => router.push({ pathname: '/purchase', params: { bookId: item.book_id } }) },
+    { label: tr('買了'), sub: tr('移到積讀，記在哪買'), icon: 'shopping-bag' as const, onPress: () => router.push({ pathname: '/purchase', params: { bookId: item.book_id, from: 'want' } }) },
     { label: tr('移除'), sub: tr('6 秒內可以復原'), icon: 'trash-2' as const, destructive: true, onPress: onUnsave },
   ];
   const [menu, setMenu] = useState(false);

@@ -10,6 +10,7 @@ import { useUpdateStore } from '@/lib/readings';
 import { useBlockedAccounts } from '@/lib/safety';
 import { useIsAdmin } from '@/lib/admin';
 import { setAppearance, useAppearancePref } from '@/lib/appearance';
+import { canChooseMaps, setMapsPref, useMapsPref } from '@/lib/maps';
 import { useAuth } from '@/lib/auth';
 import { track } from '@/lib/analytics';
 import { supabase } from '@/lib/supabase';
@@ -29,6 +30,7 @@ export default function SettingsScreen() {
   const { data: blocked } = useBlockedAccounts();
   const { data: isAdmin } = useIsAdmin();
   const appearance = useAppearancePref();
+  const mapsPref = useMapsPref();
   const language = useLanguagePref();
   const changeLanguage = (v: LangPref) => {
     const before = currentLang();
@@ -131,6 +133,21 @@ export default function SettingsScreen() {
             ))}
           </View>
         </Card>
+        {canChooseMaps ? (
+          <>
+            <AppText variant="label">{tr('地圖')}</AppText>
+            <Card style={{ paddingVertical: Spacing.md, gap: Spacing.sm }}>
+              <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="radiogroup">
+                {([['ask', tr('每次問')], ['apple', tr('Apple 地圖')], ['google', tr('Google 地圖')]] as const).map(([v, label]) => (
+                  <Pressable key={v} accessibilityRole="radio" accessibilityState={{ selected: mapsPref === v }} onPress={() => setMapsPref(v)} style={[styles.segmentItem, mapsPref === v && { backgroundColor: c.surface }]}>
+                    <AppText variant="caption" style={{ fontWeight: '700', color: mapsPref === v ? c.text : c.textSecondary }}>{label}</AppText>
+                  </Pressable>
+                ))}
+              </View>
+              <AppText variant="caption" muted>{tr('地點頁「地圖」用哪個 App 打開。')}</AppText>
+            </Card>
+          </>
+        ) : null}
         <AppText variant="label">{tr('語言')}</AppText>
         <Card style={{ paddingVertical: Spacing.md, gap: Spacing.sm }}>
           <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="radiogroup">

@@ -42,7 +42,7 @@ export function usePostFilter() {
 
 /**
  * E1 探索 › 貼文（v1.6）：公開的日記貼文＋書公開的心得；看誰的（全部／追蹤中／附近）由上面的「篩選」決定。
- * 最上面一張主題卡＝最新一則有照片的貼文；右上切「貼文／地點」：地點就是原本的「書的地方」（E2）。
+ * v1.7.1 Z4：不再有「最新的照片貼文」主題卡（看起來像被選取）。右上切「貼文／地點」：地點就是原本的「書的地方」（E2）。
  */
 export function PostsExplore({ filter, near, onReset, view, kind }: { filter: PostFilter; near: Coords | null; onReset: () => void; view: 'posts' | 'places'; kind: PostKindFilter }) {
   const { requireAuth } = useAuth();
@@ -53,8 +53,6 @@ export function PostsExplore({ filter, near, onReset, view, kind }: { filter: Po
   const data = (list.data ?? []).filter((p) =>
     kind === 'all' ? true : kind === 'note' ? p.source === 'note' : kind === 'checkin' ? p.source !== 'note' && (p.kind === 'checkin' || !!p.place_id) : p.source !== 'note' && p.kind !== 'checkin' && !p.place_id,
   );
-  const themeIndex = filter === 'all' && kind === 'all' ? data.findIndex((p) => p.photo_paths.length > 0) : -1;
-  const ordered = themeIndex > 0 ? [data[themeIndex], ...data.slice(0, themeIndex), ...data.slice(themeIndex + 1)] : data;
 
   return (
     <View style={{ flex: 1 }}>
@@ -66,7 +64,7 @@ export function PostsExplore({ filter, near, onReset, view, kind }: { filter: Po
         <EmptyState title={tr('沒有載入成功')} body={tr('檢查網路後再試一次。')} actionLabel={tr('重試')} onAction={() => void list.refetch()} />
       ) : (
         <FlatList
-          data={ordered}
+          data={data}
           keyExtractor={(p) => p.id}
           contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.sm, gap: Spacing.md, flexGrow: 1, paddingBottom: 96 }}
           refreshControl={<RefreshControl refreshing={list.isRefetching} onRefresh={() => void list.refetch()} />}
@@ -79,7 +77,7 @@ export function PostsExplore({ filter, near, onReset, view, kind }: { filter: Po
               <EmptyState title={tr('還沒有公開貼文')} body={tr('寫日記時選「公開」，就會出現在這裡。')} />
             )
           }
-          renderItem={({ item, index }) => <PostCard post={item} theme={index === 0 && themeIndex >= 0} onMore={item.is_mine || item.source === 'note' ? undefined : () => requireAuth(() => setMenuFor(item))} />}
+          renderItem={({ item }) => <PostCard post={item} onMore={item.is_mine || item.source === 'note' ? undefined : () => requireAuth(() => setMenuFor(item))} />}
         />
       )}
 
@@ -138,7 +136,7 @@ function PostKind({ post }: { post: PublicPost }) {
 
 export type PostKindFilter = 'all' | 'diary' | 'checkin' | 'note';
 
-export function PostCard({ post, onMore, theme }: { post: PublicPost; onMore?: () => void; theme?: boolean }) {
+export function PostCard({ post, onMore }: { post: PublicPost; onMore?: () => void }) {
   const c = useTheme();
   const { requireAuth } = useAuth();
   const color = (post.author_store_color ?? 'moss') as StoreColor;
@@ -146,19 +144,20 @@ export function PostCard({ post, onMore, theme }: { post: PublicPost; onMore?: (
   const toggleSave = useToggleSave();
   const savePlace = useSavePlace();
   const bookSaved = !!post.book_id && !!saveIds?.has(post.book_id);
+  const [placeSaved, setPlaceSaved] = useState(false);
+  const showWant = !post.is_mine && !!(post.book_id || post.place_id);
 
   const wantPlace = () =>
     requireAuth(() =>
       savePlace.mutate(
         { placeId: post.place_id!, save: true, from: 'post' },
-        { onSuccess: () => Alert.alert(tr('已存成想去'), tr('在書櫃 › 地方・想去可以寫原因。')), onError: (e) => Alert.alert(tr('沒有成功'), diaryError(e.message)) },
+        { onSuccess: () => { setPlaceSaved(true); Alert.alert(tr('已存成想去'), tr('在書櫃 › 地方・想去可以寫原因。')); }, onError: (e) => Alert.alert(tr('沒有成功'), diaryError(e.message)) },
       ),
     );
   const wantBook = () => requireAuth(() => toggleSave.mutate({ bookId: post.book_id!, save: !bookSaved, sourceText: bookSaved ? null : tr('貼文：{name}', { name: post.author_name }).slice(0, 60) }));
 
   return (
-    <Card style={[{ gap: Spacing.sm }, theme && { borderWidth: 1.5, borderColor: c.primary }]}>
-      {theme ? <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('最新的照片貼文')}</AppText> : null}
+    <Card style={{ gap: Spacing.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
         <Pressable
           accessibilityRole={post.author_store_slug ? 'link' : undefined}
@@ -170,16 +169,11 @@ export function PostCard({ post, onMore, theme }: { post: PublicPost; onMore?: (
           <AppText variant="caption" style={{ color: c.textTertiary }}>{`· ${timeAgo(post.created_at)}`}</AppText>
         </Pressable>
         <PostKind post={post} />
-        {onMore ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={tr('更多操作')} hitSlop={10} onPress={onMore}>
-            <Feather name="more-horizontal" size={18} color={c.textSecondary} />
-          </Pressable>
-        ) : null}
       </View>
       {post.source === 'note' && post.title ? <AppText variant="label">{post.title}</AppText> : null}
       {post.body ? <AppText style={{ lineHeight: 23, fontSize: 15 }}>{post.source === 'note' && post.note_kind === 'quote' ? tr('「{body}」', { body: post.body }) : post.body}</AppText> : null}
       {post.source === 'note' ? <NotePhotos paths={post.photo_paths} /> : <DiaryPhotos paths={post.photo_paths} />}
-      {/* Y10：有書不放書封，《書名》、頁數、地點同一行；右邊是想讀／想去 */}
+      {/* Y10／Z4：《書名》完整顯示、頁數、地點；最下面一排：左邊想讀／想去，右邊 ⋯（只有圖示加字，不加框） */}
       <View style={styles.meta}>
         {post.book_id && post.book_title ? (
           <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/book/[id]', params: { id: post.book_id! } })} hitSlop={6} style={{ flexShrink: 1 }}>
@@ -194,19 +188,28 @@ export function PostCard({ post, onMore, theme }: { post: PublicPost; onMore?: (
             {post.distance_m != null ? <AppText variant="caption" muted>{post.distance_m < 1000 ? tr('{n} 公尺', { n: post.distance_m }) : tr('{n} 公里', { n: (post.distance_m / 1000).toFixed(1) })}</AppText> : null}
           </Pressable>
         ) : null}
-        <View style={{ flex: 1 }} />
-        {!post.is_mine && post.book_id ? (
-          <Pressable accessibilityRole="button" accessibilityState={{ selected: bookSaved }} onPress={wantBook} hitSlop={8} style={styles.action}>
-            <Feather name="bookmark" size={13} color={bookSaved ? c.primary : c.textSecondary} />
-            <AppText variant="caption" style={{ color: bookSaved ? c.primary : c.textSecondary, fontWeight: bookSaved ? '700' : '400' }}>{bookSaved ? tr('已在想讀') : tr('想讀')}</AppText>
-          </Pressable>
-        ) : !post.is_mine && post.place_id ? (
-          <Pressable accessibilityRole="button" onPress={wantPlace} hitSlop={8} style={styles.action}>
-            <Feather name="bookmark" size={13} color={c.textSecondary} />
-            <AppText variant="caption" muted>{tr('想去')}</AppText>
-          </Pressable>
-        ) : null}
       </View>
+      {showWant || onMore ? (
+        <View style={styles.foot}>
+          {!post.is_mine && post.book_id ? (
+            <Pressable accessibilityRole="button" accessibilityState={{ selected: bookSaved }} onPress={wantBook} style={styles.footBtn}>
+              <Feather name="bookmark" size={16} color={bookSaved ? c.primary : c.textSecondary} />
+              <AppText variant="caption" style={{ color: bookSaved ? c.primary : c.textSecondary, fontWeight: bookSaved ? '700' : '500' }}>{bookSaved ? tr('已想讀') : tr('想讀')}</AppText>
+            </Pressable>
+          ) : !post.is_mine && post.place_id ? (
+            <Pressable accessibilityRole="button" accessibilityState={{ selected: placeSaved }} onPress={wantPlace} style={styles.footBtn}>
+              <Feather name="bookmark" size={16} color={placeSaved ? c.primary : c.textSecondary} />
+              <AppText variant="caption" style={{ color: placeSaved ? c.primary : c.textSecondary, fontWeight: placeSaved ? '700' : '500' }}>{placeSaved ? tr('已想去') : tr('想去')}</AppText>
+            </Pressable>
+          ) : null}
+          <View style={{ flex: 1 }} />
+          {onMore ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={tr('更多操作')} onPress={onMore} style={[styles.footBtn, { justifyContent: 'center', minWidth: 44 }]}>
+              <Feather name="more-horizontal" size={18} color={c.textSecondary} />
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
     </Card>
   );
 }
@@ -218,5 +221,7 @@ const styles = StyleSheet.create({
   place: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: Radius.pill, maxWidth: '100%' },
   action: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, flexWrap: 'wrap' },
+  foot: { flexDirection: 'row', alignItems: 'center', marginTop: -Spacing.xs, marginBottom: -Spacing.sm },
+  footBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 44 },
   kind: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radius.sm },
 });

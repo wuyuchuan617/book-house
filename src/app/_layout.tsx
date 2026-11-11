@@ -14,13 +14,14 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { usePushNotifications } from '@/lib/push';
 import { loadAppearance } from '@/lib/appearance';
+import { loadMapsPref } from '@/lib/maps';
 import { loadLanguage, localeTag, tr, useLang } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { installCrashReporter, reportError, setCrashRoute } from '@/lib/crash';
 
 SplashScreen.preventAutoHideAsync();
 installCrashReporter();
-const prefsLoaded = Promise.all([loadAppearance(), loadLanguage()]);
+const prefsLoaded = Promise.all([loadAppearance(), loadLanguage(), loadMapsPref()]);
 
 const WELCOME_SEEN = 'bookhaus.welcome-seen';
 
