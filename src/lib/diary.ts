@@ -198,7 +198,13 @@ export function useSaveEntry() {
         photo_paths: paths,
         ...(input.readingNoteId ? { reading_note_id: input.readingNoteId } : {}),
       };
-      const res = entryId ? await supabase.from('diary_entries').update(fields).eq('id', id) : await supabase.from('diary_entries').insert({ id, ...fields });
+      let res = entryId ? await supabase.from('diary_entries').update(fields).eq('id', id) : await supabase.from('diary_entries').insert({ id, ...fields });
+      // 資料庫還沒套用 v1.5 ②（沒有 page_ref）：不帶頁數再存一次
+      if (res.error && /page_ref/i.test(res.error.message)) {
+        const { page_ref: _omit, ...old } = fields;
+        void _omit;
+        res = entryId ? await supabase.from('diary_entries').update(old).eq('id', id) : await supabase.from('diary_entries').insert({ id, ...old });
+      }
       if (res.error) {
         const fresh = paths.filter((p) => !previousPaths.includes(p));
         if (fresh.length) await supabase.storage.from(DIARY_BUCKET).remove(fresh).then(() => {}, () => {});
@@ -489,18 +495,13 @@ export function useSavePlace() {
         if (res.error) throw new Error(res.error.message);
         return;
       }
-      const res = await supabase
-        .from('place_saves')
-        .upsert(
-          {
-            user_id: session!.user.id,
-            place_id: placeId,
-            note: note?.trim().slice(0, PLACE_NOTE_MAX) || null,
-            ...(link !== undefined ? { link: normalizeLink(link) } : {}),
-            ...(isPublic !== undefined ? { is_public: isPublic } : {}),
-          },
-          { onConflict: 'user_id,place_id' },
-        );
+      const base = { user_id: session!.user.id, place_id: placeId, note: note?.trim().slice(0, PLACE_NOTE_MAX) || null };
+      const extra = { ...(link !== undefined ? { link: normalizeLink(link) } : {}), ...(isPublic !== undefined ? { is_public: isPublic } : {}) };
+      let res = await supabase.from('place_saves').upsert({ ...base, ...extra }, { onConflict: 'user_id,place_id' });
+      // 資料庫還沒套用 v1.5 ②：先存原本的欄位
+      if (res.error && Object.keys(extra).length && /link|is_public|column/i.test(res.error.message)) {
+        res = await supabase.from('place_saves').upsert(base, { onConflict: 'user_id,place_id' });
+      }
       if (res.error) throw new Error(res.error.message);
       if (type) await supabase.rpc('set_place_type', { p_place_id: placeId, p_category: type });
     },
@@ -572,6 +573,7 @@ export function diaryError(message: string) {
   if (message.includes('cannot be public')) return tr('這個地點不能公開打卡，只有公開場所可以分享。');
   if (message.includes('content not allowed')) return tr('內容含有不適合公開的字詞，請修改後再試。');
   if (message.includes('diary_has_content')) return tr('寫一句話或加一張照片。');
+  if (message.includes('diary_public_checkin')) return tr('伺服器還沒更新到新版，沒有地點的日記暫時不能公開；先存成只有自己，更新後就可以。');
   if (message.includes('diary_checkin_place')) return tr('打卡要選一個地點。');
   if (message.includes('already reported')) return tr('你已經檢舉過這則打卡了。');
   if (message.includes('place_type_votes_category_check')) return tr('沒有這個類型。');

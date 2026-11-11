@@ -342,17 +342,16 @@ export function useUpsertWant() {
   const { session } = useAuth();
   return useMutation({
     mutationFn: async ({ bookId, note, sourceText, link, isPublic }: { bookId: string; note?: string | null; sourceText?: string | null; link?: string | null; isPublic?: boolean }) => {
-      const res = await supabase.from('book_saves').upsert(
-        {
-          user_id: session!.user.id,
-          book_id: bookId,
-          note: note?.trim() || null,
-          source_text: sourceText?.trim() || null,
-          ...(link !== undefined ? { link: link?.trim() ? (/^https?:\/\//i.test(link.trim()) ? link.trim() : `https://${link.trim()}`).slice(0, 500) : null } : {}),
-          ...(isPublic !== undefined ? { is_public: isPublic } : {}),
-        },
-        { onConflict: 'user_id,book_id' },
-      );
+      const base = { user_id: session!.user.id, book_id: bookId, note: note?.trim() || null, source_text: sourceText?.trim() || null };
+      const extra = {
+        ...(link !== undefined ? { link: link?.trim() ? (/^https?:\/\//i.test(link.trim()) ? link.trim() : `https://${link.trim()}`).slice(0, 500) : null } : {}),
+        ...(isPublic !== undefined ? { is_public: isPublic } : {}),
+      };
+      let res = await supabase.from('book_saves').upsert({ ...base, ...extra }, { onConflict: 'user_id,book_id' });
+      // 資料庫還沒套用 v1.5 ②（沒有 link、is_public）：先存原本的欄位，不要整個失敗
+      if (res.error && Object.keys(extra).length && /link|is_public|column/i.test(res.error.message)) {
+        res = await supabase.from('book_saves').upsert(base, { onConflict: 'user_id,book_id' });
+      }
       if (res.error) throw new Error(res.error.message);
     },
     onSuccess: () => {

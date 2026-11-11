@@ -1074,4 +1074,5 @@ export const EN: Record<string, Entry> = {
   '想讀清單沒有載入成功': 'Couldn’t load your want-to-read list',
   '你的想讀都還在，只是這次沒讀到。檢查網路後再試一次。': 'Your books are still saved; they just didn’t load this time. Check your connection and try again.',
   '店主手記沒有載入成功': 'Couldn’t load owner’s notes',
+  '伺服器還沒更新到新版，沒有地點的日記暫時不能公開；先存成只有自己，更新後就可以。': 'The server hasn’t been updated yet, so entries without a place can’t be public for now. Save it as private; you can make it public after the update.',
 };
