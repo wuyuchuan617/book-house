@@ -4,7 +4,7 @@ import { useCallback, useMemo } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { IconButton, NotificationBell } from '@/components/icon-button';
+import { IconButton, NotificationBell, SearchButton } from '@/components/icon-button';
 import { StreakCard } from '@/components/diary';
 import { DiaryTimeline } from '@/components/diary-timeline';
 import { WeekCard } from '@/components/week-card';
@@ -47,6 +47,7 @@ export default function DiaryScreen() {
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <IconButton icon="bar-chart-2" label={tr('每週回顧')} onPress={() => router.push('/diary/weeks')} />
           <IconButton icon="calendar" label={tr('日記月曆')} onPress={() => router.push('/diary/calendar')} />
+          <SearchButton />
           <NotificationBell />
         </View>
       ) : null}

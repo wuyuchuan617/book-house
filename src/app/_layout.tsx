@@ -114,6 +114,7 @@ function RootStack() {
         <Stack.Screen name="follows" options={{ title: '' }} />
         <Stack.Screen name="store-insights" options={{ title: tr('數據') }} />
         <Stack.Screen name="notifications" options={{ title: tr('通知') }} />
+        <Stack.Screen name="search" options={{ headerShown: false, animation: 'fade' }} />
         <Stack.Screen name="rx/new" options={{ title: tr('發起閱讀處方簽') }} />
         <Stack.Screen name="rx/[id]" options={{ title: tr('閱讀處方簽') }} />
         <Stack.Screen name="rx/reply" options={{ title: tr('開一張處方') }} />

@@ -45,3 +45,8 @@ const styles = StyleSheet.create({
   btn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   dot: { position: 'absolute', top: -1, right: -1, width: 10, height: 10, borderRadius: 5, borderWidth: 2 },
 });
+
+/** v1.7 Y11：每一頁右上的搜尋（鈴鐺左邊） */
+export function SearchButton({ onImage }: { onImage?: boolean }) {
+  return <IconButton icon="search" label={tr('搜尋')} onImage={onImage} onPress={() => router.push('/search')} />;
+}

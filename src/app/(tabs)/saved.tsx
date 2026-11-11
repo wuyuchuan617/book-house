@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { NotificationBell } from '@/components/icon-button';
+import { NotificationBell, SearchButton } from '@/components/icon-button';
 import { BookCover } from '@/components/book-cover';
 import { PlacesShelf } from '@/components/places-shelf';
 import { UndoToast } from '@/components/social';
@@ -63,7 +63,10 @@ export default function SavedScreen() {
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         <View style={[styles.title, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
           <AppText variant="title">{tr('書櫃')}</AppText>
-          <NotificationBell />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <SearchButton />
+            <NotificationBell />
+          </View>
         </View>
         <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
           {(['books', 'places'] as Tab[]).map((t) => {

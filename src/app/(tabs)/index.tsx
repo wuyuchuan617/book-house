@@ -1,13 +1,13 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
 import { MonthSheet, monthPillLabel } from '@/components/month-sheet';
-import { FilterBar, FilterSheet, SearchResults, type ActiveFilter, type FilterGroup } from '@/components/explore-filter';
-import { NotificationBell } from '@/components/icon-button';
+import { FilterBar, FilterSheet, type ActiveFilter, type FilterGroup } from '@/components/explore-filter';
+import { NotificationBell, SearchButton } from '@/components/icon-button';
 import { PostsExplore, usePostFilter } from '@/components/posts-explore';
 import { RX_FILTERS, RxExplore } from '@/components/rx-explore';
 import { FollowButton, StoreAvatar } from '@/components/social';
@@ -59,20 +59,14 @@ export default function ExploreScreen() {
   const [sort, setSort] = useState<ExploreSort>('recommend');
   const [unvisitedOnly, setUnvisitedOnly] = useState(false);
   const [tag, setTag] = useState<string | undefined>();
-  const [input, setInput] = useState('');
-  const [query, setQuery] = useState('');
   const { data: tags } = useSystemTags();
   const { data: months } = useExploreMonths();
   const { data: mine } = useMyStore();
 
-  useEffect(() => {
-    const t = setTimeout(() => setQuery(input), 400);
-    return () => clearTimeout(t);
-  }, [input]);
 
   const list = useExploreList({ period: following ? null : period, sort, tag, following, unvisitedOnly });
   const isCurrent = period === currentPeriod();
-  const fill = !query && !following && isCurrent && !unvisitedOnly && !list.isPending && (list.data?.length ?? 0) < EXPLORE_MIN;
+  const fill = !following && isCurrent && !unvisitedOnly && !list.isPending && (list.data?.length ?? 0) < EXPLORE_MIN;
   const { data: previous } = usePreviousMonthFeed({ tag, enabled: fill });
 
   const { first, rest, prevStart } = useMemo(() => {
@@ -169,48 +163,21 @@ export default function ExploreScreen() {
     }
   };
   const resultLabel = tab === 'curations' ? tr('看 {n} 檔策展', { n: count }) : tab === 'posts' ? tr('看貼文') : tr('看處方簽');
-  const clearSearch = () => {
-    setInput('');
-    setQuery('');
-  };
 
   return (
     <Screen>
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         <View style={styles.header}>
           <AppText variant="title">{tr('探索')}</AppText>
-          <NotificationBell />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <SearchButton />
+            <NotificationBell />
+          </View>
         </View>
 
         {segment}
 
-        <View style={[styles.search, { backgroundColor: c.surface, borderColor: c.border }]}>
-          <Feather name="search" size={18} color={c.textSecondary} />
-          <TextInput
-            accessibilityLabel={tr('搜尋策展、貼文、處方簽、書名')}
-            placeholder={tr('搜尋策展、貼文、處方簽、書名')}
-            placeholderTextColor={c.textTertiary}
-            value={input}
-            onChangeText={setInput}
-            returnKeyType="search"
-            onSubmitEditing={() => setQuery(input)}
-            style={[styles.searchInput, { color: c.text }]}
-          />
-          {input ? (
-            <Pressable accessibilityRole="button" accessibilityLabel={tr('清除搜尋')} onPress={clearSearch} style={styles.clear}>
-              <Feather name="x-circle" size={18} color={c.textTertiary} />
-            </Pressable>
-          ) : null}
-        </View>
-
-        {query ? (
-          <SearchResults
-            query={query}
-            onClear={clearSearch}
-            onSeeCurations={() => setTab('curations')}
-            renderCuration={(i) => <CompactCard item={i} showMonth />}
-          />
-        ) : (
+        {(
           <>
             <View>
               <FilterBar

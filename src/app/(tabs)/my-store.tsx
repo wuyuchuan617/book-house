@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { IconButton, NotificationBell } from '@/components/icon-button';
+import { IconButton, NotificationBell, SearchButton } from '@/components/icon-button';
 import { OwnerRx } from '@/components/rx-mine';
 import { StoreAvatar } from '@/components/social';
 import { StoreJournal } from '@/components/store-journal';
@@ -90,6 +90,7 @@ export default function MyStoreScreen() {
           )}
           <View style={[styles.bannerShade]} />
           <View style={[styles.topButtons, { top: insets.top + 10 }]}>
+            <SearchButton onImage />
             <IconButton icon="bar-chart-2" label={tr('數據')} onImage onPress={() => router.push('/store-insights')} />
             <NotificationBell onImage />
             <IconButton icon="settings" label={tr('設定')} onImage onPress={() => router.push('/settings')} />
