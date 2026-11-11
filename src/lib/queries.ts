@@ -39,7 +39,7 @@ export type PublicStore = {
 } & Partial<StoreShow>;
 
 /** 公開設定：書店頁顯示哪幾類（一類關掉 → 書店頁整類看不到） */
-export type StoreShow = { show_reading: boolean; show_want: boolean; show_place: boolean; show_post: boolean; show_rx: boolean };
+export type StoreShow = { show_reading: boolean; show_want: boolean; show_place: boolean; show_post: boolean; show_rx: boolean; show_owned?: boolean };
 
 export type MyStore = Omit<PublicStore, 'follower_count'> &
   StoreShow & { status: 'active' | 'paused' | 'deleted'; reading_public_default: boolean; auto_created: boolean; setup_done: boolean };

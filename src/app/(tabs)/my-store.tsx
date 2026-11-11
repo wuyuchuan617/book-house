@@ -8,6 +8,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { IconButton, NotificationBell, SearchButton } from '@/components/icon-button';
 import { OwnerRx } from '@/components/rx-mine';
 import { StoreAvatar } from '@/components/social';
+import { UnderlineTabs } from '@/components/underline-tabs';
 import { StoreJournal } from '@/components/store-journal';
 import { StoreSetupSheet } from '@/components/store-setup';
 import { AppText, EmptyState, Screen } from '@/components/ui';
@@ -24,7 +25,7 @@ import { tr } from '@/lib/i18n';
 import { useStoreInsights } from '@/lib/store-v16';
 import { storageUrl } from '@/lib/uploads';
 
-type Tab = 'curation' | 'reading' | 'journal' | 'rx';
+type Tab = 'curation' | 'reading' | 'journal' | 'lists' | 'rx';
 
 /**
  * W1 我的書店（v1.6）：120px 背景橫幅（右上 數據／通知／設定）、追蹤者／追蹤中點得進去、
@@ -38,7 +39,7 @@ export default function MyStoreScreen() {
   const readings = useMyReadings();
   const removal = useReadingRemoval();
   const params = useLocalSearchParams<{ tab?: string }>();
-  const [tab, setTab] = useState<Tab>(params.tab === 'rx' ? 'rx' : 'curation');
+  const [tab, setTab] = useState<Tab>((['reading', 'journal', 'lists', 'rx'] as string[]).includes(params.tab ?? '') ? (params.tab as Tab) : 'curation');
   const insights = useStoreInsights();
   const insets = useSafeAreaInsets();
   const readingCount = (readings.data ?? []).filter((r) => r.id !== removal.pending?.id).length;
@@ -75,6 +76,7 @@ export default function MyStoreScreen() {
     ['curation', tr('策展 · {p0}', { p0: curations?.length ?? 0 })],
     ['reading', tr('店主閱讀 · {readingCount}', { readingCount })],
     ['journal', tr('手記')],
+    ['lists', tr('想讀想去')],
     ['rx', tr('處方簽')],
   ];
 
@@ -113,30 +115,22 @@ export default function MyStoreScreen() {
             <Pill icon="edit-2" label={tr('編輯')} onPress={() => router.push('/store-edit')} />
             <Pill icon="eye" label={tr('讀者視角')} onPress={() => router.push({ pathname: '/store/[slug]', params: { slug: store.slug } })} />
             <Pill icon="share" label={tr('分享')} onPress={() => shareStore(store.name, store.slug)} />
-            <Pill icon="globe" label={tr('公開設定')} onPress={() => router.push('/store-visibility')} />
           </ScrollView>
         </View>
 
-        <View style={{ backgroundColor: c.background, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.xl }}>
-          <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
-            {TABS.map(([t, label]) => {
-              const selected = tab === t;
-              return (
-                <Pressable key={t} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => setTab(t)} style={[styles.segmentItem, selected && { backgroundColor: c.surface }]}>
-                  <AppText variant="caption" numberOfLines={1} style={{ fontWeight: '700', color: selected ? c.text : c.textSecondary }}>{label}</AppText>
-                </Pressable>
-              );
-            })}
-          </View>
+        <View style={{ paddingTop: Spacing.sm }}>
+          <UnderlineTabs tabs={TABS} value={tab} onChange={setTab} />
         </View>
 
-        <View style={{ paddingHorizontal: Spacing.xl, paddingTop: Spacing.sm }}>
+        <View style={{ paddingHorizontal: Spacing.xl, paddingTop: Spacing.md }}>
           {tab === 'curation' ? (
             <CurationSection />
           ) : tab === 'reading' ? (
             <ReadingSection readings={readings.data} loading={readings.isLoading} color={store.color} removal={removal} />
           ) : tab === 'journal' ? (
-            <StoreJournal bookstoreId={store.id} color={store.color} mine />
+            <StoreJournal bookstoreId={store.id} color={store.color} mine scope="posts" />
+          ) : tab === 'lists' ? (
+            <StoreJournal bookstoreId={store.id} color={store.color} mine scope="lists" />
           ) : (
             <OwnerRx />
           )}

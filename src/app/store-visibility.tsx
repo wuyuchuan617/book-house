@@ -26,6 +26,7 @@ export default function StoreVisibilityScreen() {
   const rows: [Key, string, string][] = [
     ['show_reading', tr('正在讀／讀過'), tr('就是「店主閱讀」；每本書可以再個別設成私人')],
     ['show_want', tr('想讀的書'), tr('顯示書名、為什麼想讀、在哪看到；連結不公開')],
+    ['show_owned', tr('積讀'), tr('買了還沒讀的書；只顯示書，不顯示金額和在哪買')],
     ['show_place', tr('想去的地點'), tr('只顯示公開場所與原因；私人地點、連結不公開')],
     ['show_post', tr('日記貼文'), tr('只顯示設成「公開」的日記（含打卡）')],
     ['show_rx', tr('閱讀處方簽'), tr('你開的處方、用書店身分發起的處方簽；匿名發起的不會出現')],
@@ -57,11 +58,11 @@ export default function StoreVisibilityScreen() {
                 <AppText variant="label">{label}</AppText>
                 <AppText variant="caption" muted style={{ lineHeight: 18 }}>{sub}</AppText>
               </View>
-              <Toggle accessibilityLabel={label} value={local[key] ?? store[key]} onValueChange={(v) => set(key, v)} />
+              <Toggle accessibilityLabel={label} value={local[key] ?? store[key] ?? false} onValueChange={(v) => set(key, v)} />
             </View>
           ))}
         </Card>
-        <AppText variant="caption" muted style={{ lineHeight: 19 }}>{tr('自己在「我的書店」永遠看得到全部。想讀、想去、日記貼文會出現在書店頁的「店主手記」。')}</AppText>
+        <AppText variant="caption" muted style={{ lineHeight: 19 }}>{tr('自己在「我的書店」永遠看得到全部。日記貼文在書店頁的「手記」；想讀、想去、積讀在「想讀想去」。')}</AppText>
       </ScrollView>
     </Screen>
   );

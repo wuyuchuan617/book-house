@@ -25,10 +25,10 @@ type Filter = 'all' | 'want' | 'place' | 'post';
  * 店主手記：想讀、想去、日記貼文依時間混在一起（v1.6：處方簽獨立成書店的「處方簽」分頁）。
  * mine（G2）：自己看全部，每一則標出書店頁看不看得到；每一則右邊「⋯」＋往左滑；讀者（G4）：只看公開的。
  */
-export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string; color: StoreColor; mine?: boolean }) {
+export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bookstoreId: string; color: StoreColor; mine?: boolean; scope?: 'posts' | 'lists' }) {
   const c = useTheme();
   const { data, isLoading, error, refetch } = useStoreJournal(bookstoreId);
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<Filter>(scope === 'lists' ? 'want' : 'post');
   const setPublic = useSetJournalPublic();
   const toggleSave = useToggleSave();
   const savePlace = useSavePlace();
@@ -54,7 +54,9 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
       </Card>
     );
   if (isLoading || !data) return <ActivityIndicator style={{ marginTop: 32 }} />;
-  const items = data.filter((i) => i.type !== 'rx' && i.type !== 'rx_reply' && (filter === 'all' || i.type === filter));
+  // v1.7：手記只放日記貼文；想讀、想去在「想讀想去」分頁
+  const items = data.filter((i) => i.type === filter);
+  const count = (t: Filter) => data.filter((i) => i.type === t).length;
 
   const toggle = (item: JournalItem) => {
     // v1.6：想讀、想去不再一則一則選，只看公開設定
@@ -160,18 +162,15 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
     setUndo(null);
   };
 
-  const FILTERS: [Filter, string][] = [
-    ['all', tr('全部')],
-    ['want', tr('想讀')],
-    ['place', tr('想去')],
-    ['post', tr('日記')],
-  ];
+  const FILTERS: [Filter, string][] = scope === 'lists' ? [['want', tr('想讀 · {n}', { n: count('want') })], ['place', tr('想去 · {n}', { n: count('place') })]] : [];
 
   return (
     <View style={{ gap: Spacing.md }}>
-      <View style={chipRow}>
-        {FILTERS.map(([f, label]) => <Chip key={f} label={label} selected={filter === f} onPress={() => setFilter(f)} />)}
-      </View>
+      {FILTERS.length ? (
+        <View style={chipRow}>
+          {FILTERS.map(([f, label]) => <Chip key={f} label={label} selected={filter === f} onPress={() => setFilter(f)} />)}
+        </View>
+      ) : null}
       {undo ? (
         <View style={[styles.undo, { backgroundColor: c.text }]} accessibilityLiveRegion="polite">
           <AppText variant="caption" style={{ color: c.background, flex: 1 }} numberOfLines={1}>
@@ -183,12 +182,14 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
         </View>
       ) : null}
       {items.length === 0 ? (
-        <Card style={{ alignItems: 'center', gap: 6, paddingVertical: 24 }}>
-          <AppText variant="label">{mine ? tr('這裡還沒有東西') : tr('店主還沒有公開的手記')}</AppText>
-          <AppText variant="caption" muted style={{ textAlign: 'center' }}>
-            {mine ? tr('按右下角的＋記想讀的書、想去的地點或寫日記，設成公開就會出現在書店頁。') : tr('店主公開的想讀、想去和日記會出現在這裡。')}
+        <View style={{ alignItems: 'center', gap: 6, paddingVertical: 48, paddingHorizontal: Spacing.xl }}>
+          <AppText variant="label">
+            {filter === 'want' ? (mine ? tr('還沒有想讀的書') : tr('店主還沒有公開的想讀')) : filter === 'place' ? (mine ? tr('還沒有想去的地點') : tr('店主還沒有公開的想去')) : mine ? tr('還沒有日記貼文') : tr('店主還沒有公開的日記')}
           </AppText>
-        </Card>
+          <AppText variant="caption" muted style={{ textAlign: 'center' }}>
+            {mine ? tr('按右下角的＋新增；要不要出現在書店頁，到 設定 › 公開設定。') : tr('店主公開之後會出現在這裡。')}
+          </AppText>
+        </View>
       ) : (
         items.map((item, index) => {
           const card = <JournalCard item={item} color={color} mine={mine} onToggle={() => toggle(item)} onMore={mine ? () => setMenuFor(item) : undefined} />;
@@ -204,7 +205,7 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
         })
       )}
       {mine && items.length ? (
-        <AppText variant="caption" style={{ color: c.textTertiary }}>{tr('點「⋯」或往左滑可以編輯、移除。想讀、想去要不要出現在書店頁，看「公開設定」。')}</AppText>
+        <AppText variant="caption" style={{ color: c.textTertiary }}>{tr('點「⋯」或往左滑可以編輯、移除。')}</AppText>
       ) : null}
       {mine ? (
         <ActionSheet

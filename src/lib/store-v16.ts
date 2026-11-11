@@ -112,3 +112,12 @@ export function useMarkRead() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['inbox'] }),
   });
 }
+
+/** 書店頁 › 想讀想去 › 積讀（v1.7） */
+export function useStoreTbr(slug: string | undefined) {
+  return useQuery({
+    queryKey: ['store-tbr', slug],
+    enabled: !!slug,
+    queryFn: () => rpcOr<{ book_id: string; title: string; authors: string[]; cover_url: string | null; bought_on: string }[]>('store_tbr', { p_slug: slug }, []),
+  });
+}
