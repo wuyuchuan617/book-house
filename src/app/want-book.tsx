@@ -25,14 +25,14 @@ import { tr } from '@/lib/i18n';
  * 不再有「顯示在書店頁」開關：想讀要不要出現在書店頁，只看公開設定。
  */
 export default function WantBookScreen() {
-  const { bookId } = useLocalSearchParams<{ bookId?: string }>();
+  const { bookId, q } = useLocalSearchParams<{ bookId?: string; q?: string }>();
   const saves = useSavedBooks();
   if (bookId && saves.isLoading) return <ActivityIndicator style={{ marginTop: 48 }} />;
   const existing = bookId ? saves.data?.find((s) => s.book_id === bookId) : undefined;
-  return <WantBookForm key={existing?.book_id ?? 'new'} existing={existing} />;
+  return <WantBookForm key={existing?.book_id ?? 'new'} existing={existing} initialQuery={bookId ? undefined : q} />;
 }
 
-function WantBookForm({ existing }: { existing?: SavedBook }) {
+function WantBookForm({ existing, initialQuery }: { existing?: SavedBook; initialQuery?: string }) {
   const c = useTheme();
   const { data: mine } = useMyStore();
   const { data: saveIds } = useSaveIds();
@@ -40,7 +40,8 @@ function WantBookForm({ existing }: { existing?: SavedBook }) {
   const start = useStartReading();
   const remove = useToggleSave();
   const [book, setBook] = useState<Book | null>(existing?.books ?? null);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  // 從探索搜尋「加入想讀」進來：直接打開搜書，帶入關鍵字
+  const [pickerOpen, setPickerOpen] = useState(!!initialQuery);
   const [note, setNote] = useState(existing?.note ?? '');
   const [source, setSource] = useState(existing?.source_text ?? '');
   const [link, setLink] = useState(existing?.link ?? '');
@@ -164,6 +165,7 @@ function WantBookForm({ existing }: { existing?: SavedBook }) {
         mode="single"
         storeColor={mine?.store.color ?? 'moss'}
         pickedIds={new Set()}
+        initialQuery={initialQuery}
         onClose={() => setPickerOpen(false)}
         onAdd={async (b) => setBook(b)}
       />

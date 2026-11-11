@@ -1,30 +1,32 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
-import { Chip } from '@/components/form';
 import { MonthSheet, monthPillLabel } from '@/components/month-sheet';
-import { PostsExplore } from '@/components/posts-explore';
-import { RxExplore } from '@/components/rx-explore';
+import { FilterBar, FilterSheet, SearchResults, type ActiveFilter, type FilterGroup } from '@/components/explore-filter';
+import { NotificationBell } from '@/components/icon-button';
+import { PostsExplore, usePostFilter } from '@/components/posts-explore';
+import { RX_FILTERS, RxExplore } from '@/components/rx-explore';
 import { FollowButton, StoreAvatar } from '@/components/social';
-import { AppText, Button, Card, EmptyState, Screen } from '@/components/ui';
+import { AppText, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing, StoreColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import {
   EXPLORE_MIN,
   pickFeatured,
-  useExploreFeed,
   useExploreList,
   useExploreMonths,
   usePreviousMonthFeed,
   useSystemTags,
   type ExploreSort,
 } from '@/lib/browse';
+import { locationAvailable } from '@/lib/location';
 import { currentPeriod, monthOf, previousPeriod } from '@/lib/period';
+import { RX_TAGS, rxTagLabel, type RxFilter } from '@/lib/rx';
 import { useMyStore, type ExploreItem } from '@/lib/queries';
 import { tagLabel, tr } from '@/lib/i18n';
 
@@ -34,8 +36,8 @@ type FeedCard = ExploreItem & { visited?: boolean; is_following?: boolean };
 const SORTS = (): [ExploreSort, string][] => [['recommend', tr('推薦')], ['latest', tr('最新')], ['popular', tr('熱門')]];
 
 /**
- * A2 探索：上方「策展／書的地方」分頁；策展可勾「追蹤中」「沒逛過」、月份切換、推薦／最新／熱門、已逛過（標示、可只看沒逛過）、
- * 主題篩選、搜尋（所有月份）；本月不到 6 檔時用上個月補位（S3 無結果）；M10「書的地方」（L2）
+ * A2 探索（v1.6）：策展｜貼文｜處方簽；搜尋列三個分頁共用、一次搜全部（W9）；
+ * 「篩選」按鈕＋外面顯示生效中的條件（W6、W7）；策展多一顆月份（W8）；每個分頁最上面一張主題卡。
  */
 export default function ExploreScreen() {
   const c = useTheme();
@@ -50,6 +52,10 @@ export default function ExploreScreen() {
   const [following, setFollowing] = useState(false);
   const [period, setPeriod] = useState(currentPeriod());
   const [monthOpen, setMonthOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [rxFilter, setRxFilter] = useState<RxFilter>('latest');
+  const [rxTag, setRxTag] = useState<string | undefined>();
+  const postF = usePostFilter();
   const [sort, setSort] = useState<ExploreSort>('recommend');
   const [unvisitedOnly, setUnvisitedOnly] = useState(false);
   const [tag, setTag] = useState<string | undefined>();
@@ -65,41 +71,28 @@ export default function ExploreScreen() {
   }, [input]);
 
   const list = useExploreList({ period: following ? null : period, sort, tag, following, unvisitedOnly });
-  const search = useExploreFeed({ tag, query });
   const isCurrent = period === currentPeriod();
   const fill = !query && !following && isCurrent && !unvisitedOnly && !list.isPending && (list.data?.length ?? 0) < EXPLORE_MIN;
   const { data: previous } = usePreviousMonthFeed({ tag, enabled: fill });
 
   const { first, rest, prevStart } = useMemo(() => {
-    if (query) {
-      const r = (search.data ?? []) as FeedCard[];
-      return { first: undefined, rest: r, prevStart: -1 };
-    }
     const cur = (list.data ?? []) as FeedCard[];
     const prev = fill ? ((previous ?? []) as FeedCard[]).filter((p) => !cur.some((x) => x.curation_id === p.curation_id)) : [];
     const showFeatured = !following && sort === 'recommend' && isCurrent;
     const f = showFeatured ? (pickFeatured(cur.filter((x) => !x.visited)) ?? pickFeatured(cur) ?? prev[0]) : undefined;
     const all = [...cur, ...prev].filter((x) => x.curation_id !== f?.curation_id);
     return { first: f, rest: all, prevStart: all.findIndex((x) => prev.includes(x)) };
-  }, [query, search.data, list.data, previous, fill, following, sort, isCurrent]);
+  }, [list.data, previous, fill, following, sort, isCurrent]);
 
-  const loading = query ? search.isPending : list.isPending && list.fetchStatus !== 'idle';
-  const paused = (query ? search.fetchStatus : list.fetchStatus) === 'paused';
-  const refetch = () => void (query ? search.refetch() : list.refetch());
+  const loading = list.isPending && list.fetchStatus !== 'idle';
+  const paused = list.fetchStatus === 'paused';
+  const refetch = () => void list.refetch();
 
   const tagRow = tags?.find((t) => t.slug === tag);
   const tagName = tagRow ? tagLabel(tagRow) : undefined;
-  const suggest = tags?.find((t) => t.slug !== tag);
-  const count = query ? (search.data?.length ?? 0) : (list.data?.length ?? 0);
+  const count = list.data?.length ?? 0;
 
-  const empty = query ? (
-    <View style={{ paddingTop: 48, alignItems: 'center', gap: Spacing.sm }}>
-      <AppText variant="heading" style={{ textAlign: 'center' }}>{tr('找不到「{query}」', { query })}</AppText>
-      <AppText muted style={{ textAlign: 'center' }}>{tr('{p0}目前還沒有書店策展這本書。\n試試其他關鍵字，或看看熱門主題。', { p0: tagName ? tr('「{tagName}」主題裡', { tagName }) : '' })}</AppText>
-      {suggest ? <Button label={tr('看看{name}主題', { name: tagLabel(suggest) })} style={{ alignSelf: 'stretch', marginTop: Spacing.lg }} onPress={() => { setInput(''); setQuery(''); setTag(suggest.slug); }} /> : null}
-      <Button kind="link" label={tr('清除搜尋')} onPress={() => { setInput(''); setQuery(''); }} />
-    </View>
-  ) : following && !session ? (
+  const empty = following && !session ? (
     <EmptyState title={tr('登入後看追蹤中的書店')} body={tr('追蹤喜歡的店主，新策展上架時會出現在這裡。')} actionLabel={tr('登入')} onAction={() => requireAuth(() => {})} />
   ) : following ? (
     <EmptyState title={unvisitedOnly ? tr('追蹤的書店都逛過了') : tr('還沒有追蹤的書店')} body={unvisitedOnly ? tr('有新策展上架時會出現在這裡。') : tr('在書店頁按「追蹤」，他們的策展會集中在這裡。')} actionLabel={tr('看全部策展')} onAction={() => setFollowing(false)} />
@@ -121,26 +114,72 @@ export default function ExploreScreen() {
     </View>
   );
 
-  if (tab === 'posts' || tab === 'rx') {
-    return (
-      <Screen>
-        <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-          <View style={styles.header}>
-            <AppText variant="title">{tr('探索')}</AppText>
-          </View>
-          {segment}
-          {tab === 'posts' ? <PostsExplore /> : <RxExplore />}
-        </SafeAreaView>
-      </Screen>
-    );
-  }
+  // W6 篩選：每個分頁各自的條件；外面顯示生效中的（點 ✕ 清掉）
+  const sortLabel = (x: ExploreSort) => SORTS().find(([k]) => k === x)?.[1] ?? '';
+  const rxLabel = (x: RxFilter) => RX_FILTERS().find(([k]) => k === x)?.[1] ?? '';
+  const active: ActiveFilter[] =
+    tab === 'curations'
+      ? [
+          ...(following ? [{ key: 'following', label: tr('追蹤中'), clear: () => setFollowing(false) }] : []),
+          ...(tag ? [{ key: 'tag', label: tagName ?? tag, clear: () => setTag(undefined) }] : []),
+          ...(sort !== 'recommend' ? [{ key: 'sort', label: sortLabel(sort), clear: () => setSort('recommend') }] : []),
+          ...(unvisitedOnly ? [{ key: 'unvisited', label: tr('沒逛過'), clear: () => setUnvisitedOnly(false) }] : []),
+        ]
+      : tab === 'posts'
+        ? postF.filter !== 'all'
+          ? [{ key: 'pf', label: postF.filter === 'following' ? tr('追蹤中') : tr('附近'), clear: () => postF.pick('all') }]
+          : []
+        : [
+            ...(rxFilter !== 'latest' ? [{ key: 'rxf', label: rxLabel(rxFilter), clear: () => setRxFilter('latest') }] : []),
+            ...(rxTag ? [{ key: 'rxt', label: rxTagLabel(rxTag), clear: () => setRxTag(undefined) }] : []),
+          ];
+  const groups: FilterGroup[] =
+    tab === 'curations'
+      ? [
+          { title: tr('看誰的'), options: [
+            { key: 'all', label: tr('全部'), selected: !following, onPress: () => setFollowing(false) },
+            { key: 'following', label: tr('追蹤中'), selected: following, onPress: () => requireAuth(() => setFollowing(true)) },
+          ] },
+          { title: tr('排序'), options: SORTS().map(([k, label]) => ({ key: k, label, selected: sort === k, onPress: () => setSort(k) })) },
+          { title: tr('主題'), options: (tags ?? []).map((t) => ({ key: t.slug, label: tagLabel(t), selected: tag === t.slug, onPress: () => setTag(tag === t.slug ? undefined : t.slug) })) },
+          { title: tr('其他'), options: [{ key: 'unvisited', label: tr('只看沒逛過'), selected: unvisitedOnly, onPress: () => setUnvisitedOnly(!unvisitedOnly) }] },
+        ]
+      : tab === 'posts'
+        ? [
+            { title: tr('看誰的'), options: [
+              { key: 'all', label: tr('全部'), selected: postF.filter === 'all', onPress: () => postF.pick('all') },
+              { key: 'following', label: tr('追蹤中'), selected: postF.filter === 'following', onPress: () => postF.pick('following') },
+              ...(locationAvailable() ? [{ key: 'near', label: tr('附近'), selected: postF.filter === 'near', onPress: () => postF.pick('near') }] : []),
+            ] },
+          ]
+        : [
+            { title: tr('排序'), options: RX_FILTERS().map(([k, label]) => ({ key: k, label, selected: rxFilter === k, onPress: () => setRxFilter(k) })) },
+            { title: tr('標籤'), note: tr('常用的'), options: RX_TAGS.map((t) => ({ key: t, label: rxTagLabel(t), selected: rxTag === t, onPress: () => setRxTag(rxTag === t ? undefined : t) })) },
+          ];
+  const clearAll = () => {
+    if (tab === 'curations') {
+      setFollowing(false);
+      setTag(undefined);
+      setSort('recommend');
+      setUnvisitedOnly(false);
+    } else if (tab === 'posts') postF.pick('all');
+    else {
+      setRxFilter('latest');
+      setRxTag(undefined);
+    }
+  };
+  const resultLabel = tab === 'curations' ? tr('看 {n} 檔策展', { n: count }) : tab === 'posts' ? tr('看貼文') : tr('看處方簽');
+  const clearSearch = () => {
+    setInput('');
+    setQuery('');
+  };
 
   return (
     <Screen>
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         <View style={styles.header}>
           <AppText variant="title">{tr('探索')}</AppText>
-          {following || query ? <AppText variant="caption" muted>{query ? tr('{count} 檔符合（所有月份）', { count }) : tr('{count} 檔', { count })}</AppText> : null}
+          <NotificationBell />
         </View>
 
         {segment}
@@ -148,8 +187,8 @@ export default function ExploreScreen() {
         <View style={[styles.search, { backgroundColor: c.surface, borderColor: c.border }]}>
           <Feather name="search" size={18} color={c.textSecondary} />
           <TextInput
-            accessibilityLabel={tr('搜尋策展、書店或書名')}
-            placeholder={tr('搜尋策展、書店或書名')}
+            accessibilityLabel={tr('搜尋策展、貼文、處方簽、書名')}
+            placeholder={tr('搜尋策展、貼文、處方簽、書名')}
             placeholderTextColor={c.textTertiary}
             value={input}
             onChangeText={setInput}
@@ -158,84 +197,85 @@ export default function ExploreScreen() {
             style={[styles.searchInput, { color: c.text }]}
           />
           {input ? (
-            <Pressable accessibilityRole="button" accessibilityLabel={tr('清除搜尋')} onPress={() => { setInput(''); setQuery(''); }} style={styles.clear}>
+            <Pressable accessibilityRole="button" accessibilityLabel={tr('清除搜尋')} onPress={clearSearch} style={styles.clear}>
               <Feather name="x-circle" size={18} color={c.textTertiary} />
             </Pressable>
           ) : null}
         </View>
 
-        <View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tags}>
-            {!following && !query ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={tr('選月份，目前 {label}', { label: monthPillLabel(period) })}
-                onPress={() => setMonthOpen(true)}
-                style={[styles.month, { backgroundColor: c.surface, borderColor: c.border }]}>
-                <AppText variant="caption" style={{ fontWeight: '700' }}>{monthPillLabel(period)}</AppText>
-                <Feather name="chevron-down" size={16} color={c.text} />
-              </Pressable>
-            ) : null}
-            <Chip label={tr('全部主題')} selected={!tag} onPress={() => setTag(undefined)} />
-            {tags?.map((t) => <Chip key={t.slug} label={tagLabel(t)} selected={tag === t.slug} onPress={() => setTag(tag === t.slug ? undefined : t.slug)} />)}
-          </ScrollView>
-        </View>
-
-        {!query ? (
-          <View style={styles.sortRow}>
-            <View style={{ flexDirection: 'row', gap: Spacing.md }} accessibilityRole="radiogroup">
-              {SORTS().map(([s, label]) => (
-                <Pressable key={s} accessibilityRole="radio" accessibilityState={{ selected: sort === s }} onPress={() => setSort(s)} hitSlop={8} style={styles.sortItem}>
-                  <AppText variant="caption" style={{ fontWeight: sort === s ? '700' : '500', color: sort === s ? c.primary : c.textSecondary }}>{label}</AppText>
-                </Pressable>
-              ))}
-            </View>
-            <View style={{ flexDirection: 'row', gap: Spacing.md }}>
-              <Pressable accessibilityRole="switch" accessibilityState={{ checked: following }} onPress={() => requireAuth(() => setFollowing(!following))} hitSlop={8} style={styles.sortItem}>
-                <Feather name={following ? 'check-square' : 'square'} size={16} color={following ? c.primary : c.textSecondary} />
-                <AppText variant="caption" style={{ color: following ? c.primary : c.textSecondary, fontWeight: '600' }}>{tr('追蹤中')}</AppText>
-              </Pressable>
-              <Pressable accessibilityRole="switch" accessibilityState={{ checked: unvisitedOnly }} onPress={() => setUnvisitedOnly(!unvisitedOnly)} hitSlop={8} style={styles.sortItem}>
-                <Feather name={unvisitedOnly ? 'check-square' : 'square'} size={16} color={unvisitedOnly ? c.primary : c.textSecondary} />
-                <AppText variant="caption" style={{ color: unvisitedOnly ? c.primary : c.textSecondary, fontWeight: '600' }}>{tr('沒逛過')}</AppText>
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
-
-        {loading ? (
-          <ActivityIndicator style={{ marginTop: 48 }} />
-        ) : paused ? (
-          <EmptyState title={tr('目前沒有網路連線')} body={tr('連上網路後會自動重新載入。')} actionLabel={tr('重試')} onAction={refetch} />
-        ) : (query ? search.error : list.error) ? (
-          <EmptyState title={tr('沒有載入成功')} body={tr('檢查網路後再試一次。')} actionLabel={tr('重試')} onAction={refetch} />
-        ) : (
-          <FlatList
-            data={rest}
-            keyExtractor={(item) => item.curation_id}
-            contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: 96, gap: Spacing.md, flexGrow: 1 }}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            refreshControl={<RefreshControl refreshing={list.isRefetching || search.isRefetching} onRefresh={refetch} />}
-            ListHeaderComponent={
-              first ? (
-                <View style={{ gap: Spacing.md }}>
-                  <FeaturedCard item={first} ownStoreId={mine?.store.id} />
-                  {rest.length && prevStart !== 0 ? <AppText variant="label" style={{ marginTop: Spacing.md }}>{tr('更多 {p0} 月策展', { p0: monthOf(period) })}</AppText> : null}
-                </View>
-              ) : undefined
-            }
-            renderItem={({ item, index }) => (
-              <>
-                {index === prevStart ? <AppText variant="label" style={{ marginTop: Spacing.md }}>{tr('{p0} 月的策展', { p0: monthOf(previousPeriod()) })}</AppText> : null}
-                <CompactCard item={item} showMonth={!!query || following} />
-              </>
-            )}
-            ListEmptyComponent={first ? undefined : empty}
+        {query ? (
+          <SearchResults
+            query={query}
+            onClear={clearSearch}
+            onSeeCurations={() => setTab('curations')}
+            renderCuration={(i) => <CompactCard item={i} showMonth />}
           />
+        ) : (
+          <>
+            <View>
+              <FilterBar
+                active={active}
+                onOpen={() => setFilterOpen(true)}
+                lead={
+                  tab === 'curations' && !following ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={tr('選月份，目前 {label}', { label: monthPillLabel(period) })}
+                      onPress={() => setMonthOpen(true)}
+                      style={[styles.month, { backgroundColor: c.surface, borderColor: c.border }]}>
+                      <AppText variant="caption" style={{ fontWeight: '700' }}>{monthPillLabel(period)}</AppText>
+                      <Feather name="chevron-down" size={16} color={c.text} />
+                    </Pressable>
+                  ) : undefined
+                }
+              />
+            </View>
+
+            {tab === 'posts' ? (
+              <PostsExplore filter={postF.filter} near={postF.near} onReset={() => postF.pick('all')} />
+            ) : tab === 'rx' ? (
+              <RxExplore filter={rxFilter} tag={rxTag} />
+            ) : loading ? (
+              <ActivityIndicator style={{ marginTop: 48 }} />
+            ) : paused ? (
+              <EmptyState title={tr('目前沒有網路連線')} body={tr('連上網路後會自動重新載入。')} actionLabel={tr('重試')} onAction={refetch} />
+            ) : list.error ? (
+              <EmptyState title={tr('沒有載入成功')} body={tr('檢查網路後再試一次。')} actionLabel={tr('重試')} onAction={refetch} />
+            ) : (
+              <FlatList
+                data={rest}
+                keyExtractor={(item) => item.curation_id}
+                contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingTop: Spacing.sm, paddingBottom: 96, gap: Spacing.md, flexGrow: 1 }}
+                refreshControl={<RefreshControl refreshing={list.isRefetching} onRefresh={refetch} />}
+                ListHeaderComponent={
+                  first ? (
+                    <View style={{ gap: Spacing.md }}>
+                      <FeaturedCard item={first} ownStoreId={mine?.store.id} />
+                      {rest.length && prevStart !== 0 ? <AppText variant="label" style={{ marginTop: Spacing.md }}>{tr('更多 {p0} 月策展', { p0: monthOf(period) })}</AppText> : null}
+                    </View>
+                  ) : undefined
+                }
+                renderItem={({ item, index }) => (
+                  <>
+                    {index === prevStart ? <AppText variant="label" style={{ marginTop: Spacing.md }}>{tr('{p0} 月的策展', { p0: monthOf(previousPeriod()) })}</AppText> : null}
+                    <CompactCard item={item} showMonth={following} />
+                  </>
+                )}
+                ListEmptyComponent={first ? undefined : empty}
+              />
+            )}
+          </>
         )}
       </SafeAreaView>
       <MonthSheet visible={monthOpen} value={period} months={months} onPick={setPeriod} onClose={() => setMonthOpen(false)} />
+      <FilterSheet
+        visible={filterOpen}
+        title={tab === 'curations' ? tr('篩選 · 策展') : tab === 'posts' ? tr('篩選 · 貼文') : tr('篩選 · 處方簽')}
+        groups={groups}
+        onClear={clearAll}
+        onClose={() => setFilterOpen(false)}
+        resultLabel={resultLabel}
+      />
     </Screen>
   );
 }

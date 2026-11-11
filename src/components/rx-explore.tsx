@@ -1,10 +1,8 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { BookCover } from '@/components/book-cover';
-import { Chip } from '@/components/form';
 import { AppText, Card, EmptyState } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -12,57 +10,74 @@ import { useAuth } from '@/lib/auth';
 import { tr } from '@/lib/i18n';
 import { timeAgo } from '@/lib/period';
 import { useStoreRx } from '@/lib/store-v16';
-import { authorName, daysLeft, RX_TAGS, rxTagLabel, useRxList, type RxFilter, type RxListItem } from '@/lib/rx';
+import { authorName, daysLeft, rxTagLabel, useRxList, type RxFilter, type RxListItem } from '@/lib/rx';
 
 export const RX_PURPLE = '#5A4B8A';
 
-/** X1 探索 › 處方簽：最新／還沒人開／最多處方＋標籤；右上「我的處方簽」 */
-export function RxExplore() {
-  const c = useTheme();
+export const RX_FILTERS = (): [RxFilter, string][] => [
+  ['latest', tr('最新')],
+  ['unanswered', tr('還沒人開')],
+  ['popular', tr('最多處方')],
+];
+
+/**
+ * X1 探索 › 處方簽（v1.6）：排序與標籤由上面的「篩選」決定；
+ * 最上面一張主題卡＝最需要人開的（開放中、處方最少）。
+ */
+export function RxExplore({ filter, tag }: { filter: RxFilter; tag?: string }) {
   const { requireAuth } = useAuth();
-  const [filter, setFilter] = useState<RxFilter>('latest');
-  const [tag, setTag] = useState<string | undefined>();
   const list = useRxList(filter, tag);
-  const FILTERS: [RxFilter, string][] = [
-    ['latest', tr('最新')],
-    ['unanswered', tr('還沒人開')],
-    ['popular', tr('最多處方')],
-  ];
+  const data = list.data ?? [];
+  const need = filter === 'latest' && !tag ? [...data].filter((r) => r.is_open && !r.is_mine && !r.my_replied).sort((a, b) => a.reply_count - b.reply_count)[0] : undefined;
+  const rest = need ? data.filter((r) => r.id !== need.id) : data;
 
   return (
     <View style={{ flex: 1 }}>
-      <View style={styles.head}>
-        <AppText variant="caption" muted style={{ flex: 1 }}>{tr('說出你的狀況，大家各開一本書。')}</AppText>
-      </View>
-      <View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-          {FILTERS.map(([f, label]) => <Chip key={f} label={label} selected={filter === f} onPress={() => setFilter(f)} />)}
-          <View style={[styles.sep, { backgroundColor: c.border }]} />
-          {RX_TAGS.map((t) => <Chip key={t} label={rxTagLabel(t)} selected={tag === t} onPress={() => setTag(tag === t ? undefined : t)} />)}
-        </ScrollView>
-      </View>
       {list.isPending ? (
         <ActivityIndicator style={{ marginTop: 48 }} />
       ) : list.error ? (
         <EmptyState title={tr('沒有載入成功')} body={tr('檢查網路後再試一次。')} actionLabel={tr('重試')} onAction={() => void list.refetch()} />
       ) : (
         <FlatList
-          data={list.data}
+          data={rest}
           keyExtractor={(r) => r.id}
           contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.sm, gap: Spacing.md, flexGrow: 1, paddingBottom: 96 }}
           refreshControl={<RefreshControl refreshing={list.isRefetching} onRefresh={() => void list.refetch()} />}
+          ListHeaderComponent={need ? <NeedCard item={need} /> : undefined}
           ListEmptyComponent={
-            <EmptyState
-              title={filter === 'unanswered' ? tr('每一張都有人開了') : tr('還沒有處方簽')}
-              body={tr('說說你最近的狀況或想找什麼書，請大家各開一本。')}
-              actionLabel={tr('發起閱讀處方簽')}
-              onAction={() => requireAuth(() => router.push('/rx/new'))}
-            />
+            need ? undefined : (
+              <EmptyState
+                title={filter === 'unanswered' ? tr('每一張都有人開了') : tr('還沒有處方簽')}
+                body={tr('說說你最近的狀況或想找什麼書，請大家各開一本。')}
+                actionLabel={tr('發起閱讀處方簽')}
+                onAction={() => requireAuth(() => router.push('/rx/new'))}
+              />
+            )
           }
           renderItem={({ item }) => <RxCard item={item} />}
         />
       )}
     </View>
+  );
+}
+
+/** 主題卡：最需要人開的處方簽（深紫底） */
+function NeedCard({ item }: { item: RxListItem }) {
+  const { requireAuth } = useAuth();
+  return (
+    <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/rx/[id]', params: { id: item.id } })} style={styles.need}>
+      <AppText variant="caption" style={{ color: 'rgba(255,255,255,0.8)', fontWeight: '700' }}>{tr('最需要人開的')}</AppText>
+      <AppText style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '700', lineHeight: 26 }}>{`℞ ${item.title}`}</AppText>
+      <AppText variant="caption" style={{ color: 'rgba(255,255,255,0.75)' }}>
+        {`${authorName(item.author)} · ${item.reply_count ? tr('{n} 張處方', { n: item.reply_count }) : tr('還沒有人開')}`}
+      </AppText>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => requireAuth(() => router.push({ pathname: '/rx/reply', params: { id: item.id } }))}
+        style={styles.needBtn}>
+        <AppText style={{ color: '#3F3566', fontWeight: '700' }}>{tr('℞ 開一張處方')}</AppText>
+      </Pressable>
+    </Pressable>
   );
 }
 
@@ -118,4 +133,6 @@ const styles = StyleSheet.create({
   chips: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm, gap: Spacing.sm, alignItems: 'center' },
   sep: { width: 1, height: 20, marginHorizontal: 2 },
   tag: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radius.sm },
+  need: { backgroundColor: '#3F3566', borderRadius: 18, padding: Spacing.lg, gap: 6, marginBottom: Spacing.xs },
+  needBtn: { alignSelf: 'flex-start', backgroundColor: '#FFFFFF', borderRadius: Radius.pill, paddingHorizontal: 14, minHeight: 36, justifyContent: 'center', marginTop: 4 },
 });

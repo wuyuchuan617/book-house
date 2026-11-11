@@ -13,18 +13,18 @@ import { RX_BODY_MAX, RX_DURATIONS, RX_TAGS, RX_TITLE_MAX, rxError, rxTagLabel, 
 
 /** X2 發起閱讀處方簽：狀況（必填）、想多說一點、標籤（最多 3）、身分（書店／匿名）、開放多久；帶 id = 編輯（還沒有人開才行） */
 export default function NewRxScreen() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, title } = useLocalSearchParams<{ id?: string; title?: string }>();
   const { data, isLoading } = useRx(id);
   if (id && isLoading) return <ActivityIndicator style={{ marginTop: 48 }} />;
-  return <RxForm existing={id ? data ?? undefined : undefined} />;
+  return <RxForm existing={id ? data ?? undefined : undefined} initialTitle={title} />;
 }
 
-function RxForm({ existing }: { existing?: RxDetail }) {
+function RxForm({ existing, initialTitle }: { existing?: RxDetail; initialTitle?: string }) {
   const c = useTheme();
   const { data: mine } = useMyStore();
   const create = useCreateRx();
   const update = useUpdateRx();
-  const [title, setTitle] = useState(existing?.title ?? '');
+  const [title, setTitle] = useState(existing?.title ?? (initialTitle ?? '').slice(0, RX_TITLE_MAX));
   const [body, setBody] = useState(existing?.body ?? '');
   const [tags, setTags] = useState<string[]>(existing?.tags ?? []);
   const [adding, setAdding] = useState(false);

@@ -5,7 +5,6 @@ import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleShe
 
 import { BookLine, DiaryPhotos } from '@/components/diary';
 import { KindChip, NotePhotos } from '@/components/note-card';
-import { Chip, chipRow } from '@/components/form';
 import { PlacesExplore } from '@/components/places-explore';
 import { ActionSheet } from '@/components/sheet';
 import { StoreAvatar } from '@/components/social';
@@ -16,25 +15,15 @@ import { useAuth } from '@/lib/auth';
 import { useSaveIds, useToggleSave } from '@/lib/browse';
 import { diaryError, useExplorePosts, useReportCheckin, useSavePlace, type PostFilter, type PublicPost } from '@/lib/diary';
 import { tr } from '@/lib/i18n';
-import { approximateLocation, locationAvailable, type Coords } from '@/lib/location';
+import { approximateLocation, type Coords } from '@/lib/location';
 import { timeAgo } from '@/lib/period';
 import { REPORT_REASONS } from '@/lib/safety';
 
-/**
- * E1 探索 › 貼文：公開的日記貼文（含打卡、正在讀）；全部／追蹤中／附近。
- * 右上切「貼文／地點」：地點就是原本的「書的地方」（E2）。
- */
-export function PostsExplore() {
-  const c = useTheme();
+/** 探索 › 貼文的「看誰的」：全部／追蹤中／附近（附近要先拿到大概位置） */
+export function usePostFilter() {
   const { session, requireAuth } = useAuth();
-  const [view, setView] = useState<'posts' | 'places'>('posts');
   const [filter, setFilter] = useState<PostFilter>('all');
   const [near, setNear] = useState<Coords | null>(null);
-  const [menuFor, setMenuFor] = useState<PublicPost | null>(null);
-  const [reportFor, setReportFor] = useState<PublicPost | null>(null);
-  const list = useExplorePosts(filter, near);
-  const report = useReportCheckin();
-
   const pick = (f: PostFilter) => {
     if (f === 'following' && !session) return requireAuth(() => setFilter('following'));
     if (f === 'near' && !near) {
@@ -48,6 +37,24 @@ export function PostsExplore() {
     }
     setFilter(f);
   };
+  return { filter, near, pick, session };
+}
+
+/**
+ * E1 探索 › 貼文（v1.6）：公開的日記貼文＋書公開的心得；看誰的（全部／追蹤中／附近）由上面的「篩選」決定。
+ * 最上面一張主題卡＝最新一則有照片的貼文；右上切「貼文／地點」：地點就是原本的「書的地方」（E2）。
+ */
+export function PostsExplore({ filter, near, onReset }: { filter: PostFilter; near: Coords | null; onReset: () => void }) {
+  const c = useTheme();
+  const { requireAuth } = useAuth();
+  const [view, setView] = useState<'posts' | 'places'>('posts');
+  const [menuFor, setMenuFor] = useState<PublicPost | null>(null);
+  const [reportFor, setReportFor] = useState<PublicPost | null>(null);
+  const list = useExplorePosts(filter, near);
+  const report = useReportCheckin();
+  const data = list.data ?? [];
+  const themeIndex = filter === 'all' ? data.findIndex((p) => p.photo_paths.length > 0) : -1;
+  const ordered = themeIndex > 0 ? [data[themeIndex], ...data.slice(0, themeIndex), ...data.slice(themeIndex + 1)] : data;
 
   const toggle = (
     <View style={[styles.toggle, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
@@ -63,15 +70,7 @@ export function PostsExplore() {
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.bar}>
-        {view === 'posts' ? (
-          <View style={chipRow}>
-            <Chip label={tr('全部')} selected={filter === 'all'} onPress={() => pick('all')} />
-            <Chip label={tr('追蹤中')} selected={filter === 'following'} onPress={() => pick('following')} />
-            {locationAvailable() ? <Chip label={tr('附近')} selected={filter === 'near'} onPress={() => pick('near')} /> : null}
-          </View>
-        ) : (
-          <View />
-        )}
+        <AppText variant="caption" muted style={{ flex: 1 }}>{view === 'posts' ? tr('公開的日記、打卡和心得') : tr('大家打卡過的書店、圖書館')}</AppText>
         {toggle}
       </View>
 
@@ -83,20 +82,20 @@ export function PostsExplore() {
         <EmptyState title={tr('沒有載入成功')} body={tr('檢查網路後再試一次。')} actionLabel={tr('重試')} onAction={() => void list.refetch()} />
       ) : (
         <FlatList
-          data={list.data}
+          data={ordered}
           keyExtractor={(p) => p.id}
           contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.sm, gap: Spacing.md, flexGrow: 1, paddingBottom: 96 }}
           refreshControl={<RefreshControl refreshing={list.isRefetching} onRefresh={() => void list.refetch()} />}
           ListEmptyComponent={
             filter === 'following' ? (
-              <EmptyState title={tr('追蹤的書店還沒有公開貼文')} body={tr('追蹤更多書店，或看看全部的貼文。')} actionLabel={tr('看全部')} onAction={() => setFilter('all')} />
+              <EmptyState title={tr('追蹤的書店還沒有公開貼文')} body={tr('追蹤更多書店，或看看全部的貼文。')} actionLabel={tr('看全部')} onAction={onReset} />
             ) : filter === 'near' ? (
-              <EmptyState title={tr('附近還沒有公開貼文')} body={tr('在有書的地方打卡、設成公開，就會出現在這裡。')} actionLabel={tr('看全部')} onAction={() => setFilter('all')} />
+              <EmptyState title={tr('附近還沒有公開貼文')} body={tr('在有書的地方打卡、設成公開，就會出現在這裡。')} actionLabel={tr('看全部')} onAction={onReset} />
             ) : (
               <EmptyState title={tr('還沒有公開貼文')} body={tr('寫日記時選「公開」，就會出現在這裡。')} />
             )
           }
-          renderItem={({ item }) => <PostCard post={item} onMore={item.is_mine || item.source === 'note' ? undefined : () => requireAuth(() => setMenuFor(item))} />}
+          renderItem={({ item, index }) => <PostCard post={item} theme={index === 0 && themeIndex >= 0} onMore={item.is_mine || item.source === 'note' ? undefined : () => requireAuth(() => setMenuFor(item))} />}
         />
       )}
 
@@ -141,7 +140,7 @@ export function PostsExplore() {
   );
 }
 
-function PostCard({ post, onMore }: { post: PublicPost; onMore?: () => void }) {
+export function PostCard({ post, onMore, theme }: { post: PublicPost; onMore?: () => void; theme?: boolean }) {
   const c = useTheme();
   const { requireAuth } = useAuth();
   const color = (post.author_store_color ?? 'moss') as StoreColor;
@@ -160,7 +159,8 @@ function PostCard({ post, onMore }: { post: PublicPost; onMore?: () => void }) {
   const wantBook = () => requireAuth(() => toggleSave.mutate({ bookId: post.book_id!, save: !bookSaved, sourceText: bookSaved ? null : tr('貼文：{name}', { name: post.author_name }).slice(0, 60) }));
 
   return (
-    <Card style={{ gap: Spacing.sm }}>
+    <Card style={[{ gap: Spacing.sm }, theme && { borderWidth: 1.5, borderColor: c.primary }]}>
+      {theme ? <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('最新的照片貼文')}</AppText> : null}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
         <Pressable
           accessibilityRole={post.author_store_slug ? 'link' : undefined}

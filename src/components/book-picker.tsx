@@ -28,7 +28,7 @@ const bookMeta = (b: Pick<Book, 'authors' | 'published_year' | 'publisher'>) =>
 // ---------------------------------------------------------------------------
 // 搜尋面板：O4 直接嵌在頁面裡，C3 放在 BookPicker 彈出面板裡
 // ---------------------------------------------------------------------------
-export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, busyId, autoFocus, header, suggestions }: {
+export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, busyId, autoFocus, header, suggestions, initialQuery }: {
   storeColor: StoreColor;
   mode: 'multi' | 'single';
   isPicked: (book: Book) => boolean;
@@ -39,9 +39,11 @@ export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, 
   header?: React.ReactNode;
   /** 還沒輸入時的快速選項（R3「最近在你的策展裡」） */
   suggestions?: { label: string; books: Book[] };
+  /** v1.6：從探索搜尋「加入想讀」進來時，直接帶入關鍵字 */
+  initialQuery?: string;
 }) {
   const c = useTheme();
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery ?? '');
   const [scanning, setScanning] = useState(false);
   const q = useDebounced(query);
   const { data, isFetching, error, refetch } = useBookSearch(q);
@@ -242,7 +244,7 @@ export function NoteForm({ book, storeColor, caption, prompts = NOTE_PROMPTS(), 
 // ---------------------------------------------------------------------------
 type Step = { kind: 'search' } | { kind: 'manual'; query: string } | { kind: 'note'; book: Book };
 
-export function BookPicker({ visible, mode, storeColor, pickedIds, askNote, shelfCount = 0, onAdd, onClose, suggestions }: {
+export function BookPicker({ visible, mode, storeColor, pickedIds, askNote, shelfCount = 0, onAdd, onClose, suggestions, initialQuery }: {
   visible: boolean;
   mode: 'multi' | 'single';
   storeColor: StoreColor;
@@ -253,6 +255,7 @@ export function BookPicker({ visible, mode, storeColor, pickedIds, askNote, shel
   onAdd: (book: Book, note: string | null) => Promise<void>;
   onClose: () => void;
   suggestions?: { label: string; books: Book[] };
+  initialQuery?: string;
 }) {
   const c = useTheme();
   const [step, setStep] = useState<Step>({ kind: 'search' });
@@ -310,6 +313,7 @@ export function BookPicker({ visible, mode, storeColor, pickedIds, askNote, shel
             <ScrollView contentContainerStyle={{ padding: Spacing.xl }} keyboardShouldPersistTaps="handled">
               {step.kind === 'search' ? (
                 <BookSearchPanel
+                  initialQuery={initialQuery}
                   storeColor={storeColor}
                   mode={mode}
                   isPicked={(b) => pickedIds.has(b.id)}
