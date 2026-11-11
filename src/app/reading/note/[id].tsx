@@ -9,7 +9,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { noteTime } from '@/lib/period';
 import { tr } from '@/lib/i18n';
 import { useMyStore } from '@/lib/queries';
-import { readingError, useDeleteNote, useMyReading } from '@/lib/readings';
+import { confirmDeleteNote, readingError, useDeleteNote, useMyReading } from '@/lib/readings';
 
 
 /** R10 心得詳情（店主）：全文、大圖；右上編輯，最下面刪除 */
@@ -25,14 +25,9 @@ export default function NoteDetailScreen() {
   if (!r || !note || !store) return <EmptyState title={tr('找不到這則心得')} body={tr('它可能已經被刪除了。')} />;
 
   const remove = () =>
-    Alert.alert(tr('刪除這則心得？'), tr('刪除後無法復原。'), [
-      { text: tr('取消'), style: 'cancel' },
-      {
-        text: tr('刪除'),
-        style: 'destructive',
-        onPress: () => del.mutate({ id: note.id, photoPaths: note.photo_paths }, { onSuccess: () => router.back(), onError: (e) => Alert.alert(tr('沒有成功'), readingError(e.message)) }),
-      },
-    ]);
+    void confirmDeleteNote(note.id, (withPost) =>
+      del.mutate({ id: note.id, photoPaths: note.photo_paths, withPost }, { onSuccess: () => router.back(), onError: (e) => Alert.alert(tr('沒有成功'), readingError(e.message)) }),
+    );
 
   return (
     <Screen>

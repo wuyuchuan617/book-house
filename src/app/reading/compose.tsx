@@ -7,7 +7,8 @@ import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, Sc
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
-import { TextField } from '@/components/form';
+import { BookPicker } from '@/components/book-picker';
+import { Chip, TextField } from '@/components/form';
 import { kindLabel, NOTE_KINDS } from '@/components/note-card';
 import { NoteScanSheet } from '@/components/note-scan';
 import { AppText, Button, EmptyState, Screen } from '@/components/ui';
@@ -23,9 +24,12 @@ import {
   NOTE_TITLE_MAX,
   QUOTE_SOFT_MAX,
   readingError,
+  useAddReading,
   useMyReading,
+  useMyReadings,
   useNoteImageUrls,
   useSaveNote,
+  useUpdateReading,
   type NotePhoto,
 } from '@/lib/readings';
 import { scanAvailable } from '@/lib/text-scan';
@@ -33,15 +37,72 @@ import { scanAvailable } from '@/lib/text-scan';
 const ICON: Record<NoteKind, React.ComponentProps<typeof Feather>['name']> = { quote: 'bookmark', reflection: 'edit-3', thought: 'zap' };
 
 /**
- * R8 寫心得／編輯心得（整頁）。類型 → 內容 → 頁碼、標題 → 圖片 → 底部儲存。
- * 摘句可以「掃描書頁」把文字節錄進來（R9）。
+ * R8 寫心得／編輯心得（整頁）＝ v1.7 Y7 ＋ › 正在讀（同一張表單）。
+ * 沒帶 readingId 時先選書（正在讀的書或其他書），多一排「進度」：還在讀／讀完了。
+ * 只存一則心得；書公開時，這則心得也會出現在書店頁和探索的貼文。
  */
 export default function ComposeNoteScreen() {
-  const { readingId, noteId } = useLocalSearchParams<{ readingId: string; noteId?: string }>();
+  const params = useLocalSearchParams<{ readingId?: string; noteId?: string }>();
+  const [picked, setPicked] = useState<string | null>(null);
+  const readingId = params.readingId ?? picked;
+  if (!readingId) return <PickReading onPick={setPicked} />;
+  return <ComposeNote readingId={readingId} noteId={params.noteId} progress={!params.readingId} />;
+}
+
+/** 正在讀：先選一本（正在讀的書排前面；其他書會順便加入「正在讀」） */
+function PickReading({ onPick }: { onPick: (id: string) => void }) {
+  const c = useTheme();
+  const { data: store } = useMyStore();
+  const { data: readings, isLoading } = useMyReadings();
+  const add = useAddReading();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const nowReading = (readings ?? []).filter((r) => r.status === 'reading');
+  if (isLoading || !store) return <ActivityIndicator style={{ marginTop: 48 }} />;
+  return (
+    <Screen>
+      <Stack.Screen options={{ title: tr('正在讀') }} />
+      <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.md }}>
+        <AppText variant="label">{tr('今天讀哪一本')}</AppText>
+        {nowReading.map((r) => (
+          <Pressable key={r.id} accessibilityRole="button" onPress={() => onPick(r.id)} style={({ pressed }) => [styles.pick, { backgroundColor: c.surface, opacity: pressed ? 0.8 : 1 }]}>
+            <BookCover title={r.books.title} url={r.books.cover_url} color={store.store.color} size="sm" />
+            <View style={{ flex: 1 }}>
+              <AppText variant="label">{r.books.title}</AppText>
+              <AppText variant="caption" muted>{r.reading_notes.length ? tr('{n} 則心得', { n: r.reading_notes.length }) : tr('還沒有心得')}</AppText>
+            </View>
+            <Feather name="chevron-right" size={18} color={c.textTertiary} />
+          </Pressable>
+        ))}
+        <Pressable accessibilityRole="button" onPress={() => setPickerOpen(true)} style={[styles.pick, styles.other, { borderColor: c.border }]}>
+          <Feather name="plus" size={20} color={c.primary} />
+          <AppText style={{ color: c.primary, fontWeight: '700' }}>{tr('其他書')}</AppText>
+        </Pressable>
+        {!nowReading.length ? <AppText variant="caption" muted>{tr('選一本書，會順便加入「正在讀」。')}</AppText> : null}
+      </ScrollView>
+      <BookPicker
+        visible={pickerOpen}
+        mode="single"
+        storeColor={store.store.color}
+        pickedIds={new Set()}
+        onClose={() => setPickerOpen(false)}
+        onAdd={async (b) => {
+          const existing = readings?.find((r) => r.books.id === b.id);
+          if (existing) return onPick(existing.id);
+          const r = await add.mutateAsync({ bookId: b.id, status: 'reading', isPublic: store.store.reading_public_default });
+          onPick(r.id);
+        }}
+      />
+    </Screen>
+  );
+}
+
+function ComposeNote({ readingId, noteId, progress }: { readingId: string; noteId?: string; progress: boolean }) {
   const c = useTheme();
   const { data: r, isLoading } = useMyReading(readingId);
   const { data: store } = useMyStore();
   const save = useSaveNote();
+  const updateReading = useUpdateReading();
+  const [finished, setFinished] = useState(false);
   const existing = r?.reading_notes.find((n) => n.id === noteId);
 
   const [kind, setKind] = useState<NoteKind>('reflection');
@@ -106,6 +167,7 @@ export default function ComposeNoteScreen() {
         { readingId: r.id, noteId: existing?.id, previousPaths: existing?.photo_paths, input: { kind, title, body, pageRef, photos, fromScan } },
         {
           onSuccess: () => {
+            if (progress && finished && r.status !== 'finished') updateReading.mutate({ id: r.id, status: 'finished' });
             setDone(true);
             setTimeout(() => router.back(), 0);
           },
@@ -128,7 +190,7 @@ export default function ComposeNoteScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: existing ? tr('編輯心得') : tr('寫心得') }} />
+      <Stack.Screen options={{ title: existing ? tr('編輯心得') : progress ? tr('正在讀') : tr('寫心得') }} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={90}>
         <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
@@ -162,11 +224,17 @@ export default function ComposeNoteScreen() {
             ) : null}
           </View>
 
-          {kind === 'quote' ? (
-            <View style={{ width: '40%' }}>
-              <TextField label={tr('頁碼')} optional max={NOTE_PAGE_MAX} value={pageRef} onChangeText={setPageRef} placeholder="p.128" />
+          <View style={{ flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-end' }}>
+            <View style={{ flex: 1 }}>
+              <TextField label={progress ? tr('讀到第幾頁') : tr('頁碼')} optional max={NOTE_PAGE_MAX} value={pageRef} onChangeText={setPageRef} placeholder="p.128" />
             </View>
-          ) : null}
+            {progress ? (
+              <View style={{ flexDirection: 'row', gap: Spacing.sm, paddingBottom: 6 }}>
+                <Chip label={tr('還在讀')} selected={!finished} onPress={() => setFinished(false)} />
+                <Chip label={tr('讀完了')} selected={finished} onPress={() => setFinished(true)} />
+              </View>
+            ) : null}
+          </View>
 
           <View style={{ gap: Spacing.sm }}>
             <AppText variant="label">
@@ -217,6 +285,8 @@ export default function ComposeNoteScreen() {
 }
 
 const styles = StyleSheet.create({
+  pick: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.lg, minHeight: 64 },
+  other: { borderWidth: 1.5, borderStyle: 'dashed', justifyContent: 'center' },
   segment: { flexDirection: 'row', borderRadius: Radius.md, padding: 3 },
   segmentItem: { flex: 1, minHeight: MinTouch - 4, borderRadius: Radius.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   scan: { minHeight: MinTouch + 4, borderRadius: Radius.md, borderWidth: 1.5, borderStyle: 'dashed', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },

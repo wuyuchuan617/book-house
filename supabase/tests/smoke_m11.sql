@@ -28,7 +28,7 @@ select public.add_reading((select id from public.books where title = '心得之�
 insert into public.reading_notes (reading_id, kind, title, body, page_ref, photo_paths, from_scan)
 select id, 'quote', '金句', '星星的光要走幾百年才到這裡。', 'p.128', array['x/y/0.jpg'], true from public.readings where bookstore_id = public.my_bookstore_id();
 insert into public.reading_notes (reading_id, kind, body) select id, 'thought', '想放進下個月策展' from public.readings where bookstore_id = public.my_bookstore_id();
-select pg_temp.expect_error($q$insert into public.reading_notes (reading_id, kind, body, page_ref) select id, 'thought', 'x', 'p.1' from public.readings where bookstore_id = public.my_bookstore_id()$q$, 'page_ref only for quote');
+-- v1.7：每一種心得都可以記頁數（原本只有摘句）
 select pg_temp.expect_error($q$insert into public.reading_notes (reading_id, kind, body) select id, 'question', 'x' from public.readings where bookstore_id = public.my_bookstore_id()$q$, 'unknown kind');
 select pg_temp.expect_error($q$insert into public.reading_notes (reading_id, body, title) select id, 'x', '幹你娘' from public.readings where bookstore_id = public.my_bookstore_id()$q$, 'title filtered');
 select pg_temp.expect_error($q$insert into public.reading_notes (reading_id, body, photo_paths) select id, 'x', array['a','b','c','d'] from public.readings where bookstore_id = public.my_bookstore_id()$q$, 'max 3 photos');

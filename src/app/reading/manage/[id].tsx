@@ -14,7 +14,7 @@ import { useTheme } from '@/hooks/use-theme';
 import type { NoteKind, ReadingNote } from '@/lib/browse';
 import { tr } from '@/lib/i18n';
 import { useMyStore } from '@/lib/queries';
-import { readingError, useDeleteNote, useDeleteReading, useMyReading, useUpdateReading } from '@/lib/readings';
+import { confirmDeleteNote, readingError, useDeleteNote, useDeleteReading, useMyReading, useUpdateReading } from '@/lib/readings';
 
 const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
 
@@ -52,10 +52,7 @@ export default function ReadingBookScreen() {
     ]);
 
   const confirmDelete = (n: ReadingNote) =>
-    Alert.alert(tr('刪除這則心得？'), tr('刪除後無法復原。'), [
-      { text: tr('取消'), style: 'cancel' },
-      { text: tr('刪除'), style: 'destructive', onPress: () => deleteNote.mutate({ id: n.id, photoPaths: n.photo_paths }, { onError: fail }) },
-    ]);
+    void confirmDeleteNote(n.id, (withPost) => deleteNote.mutate({ id: n.id, photoPaths: n.photo_paths, withPost }, { onError: fail }));
 
   const compose = (noteId?: string) => router.push({ pathname: '/reading/compose', params: noteId ? { readingId: r.id, noteId } : { readingId: r.id } });
 

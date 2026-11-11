@@ -1,4 +1,5 @@
 /** M4 店主閱讀（R1–R7、O8）與書店設定（M2 編輯書店、M9 刪除書店） */
+import { Alert } from 'react-native';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
 import type { StoreColor } from '@/constants/theme';
@@ -177,7 +178,7 @@ export function useSaveNote() {
         kind: input.kind,
         title: clean(input.title),
         body: input.body.trim(),
-        page_ref: input.kind === 'quote' ? clean(input.pageRef) : null,
+        page_ref: clean(input.pageRef),
         ...(noteId ? {} : { from_scan: !!input.fromScan }),
       };
       let id = noteId;
@@ -214,13 +215,48 @@ export function useSaveNote() {
 export function useDeleteNote() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, photoPaths = [] }: { id: string; photoPaths?: string[] }) => {
+    mutationFn: async ({ id, photoPaths = [], withPost = false }: { id: string; photoPaths?: string[]; withPost?: boolean }) => {
+      // v1.7 Y8：舊資料「也存成心得」的日記貼文連著這則心得；選了一起刪就先刪貼文
+      if (withPost) {
+        const posts = await supabase.from('diary_entries').select('id, photo_paths').eq('reading_note_id', id);
+        for (const p of (posts.data ?? []) as { id: string; photo_paths: string[] }[]) {
+          await supabase.from('diary_entries').delete().eq('id', p.id);
+          if (p.photo_paths.length) await supabase.storage.from('diary').remove(p.photo_paths).then(() => {}, () => {});
+        }
+      }
       const res = await supabase.from('reading_notes').delete().eq('id', id);
       if (res.error) throw new Error(res.error.message);
       if (photoPaths.length) await supabase.storage.from(NOTE_BUCKET).remove(photoPaths).then(() => {}, () => {});
     },
-    onSuccess: () => invalidateReadings(qc),
+    onSuccess: () => {
+      invalidateReadings(qc);
+      qc.invalidateQueries({ queryKey: ['diary'] });
+      qc.invalidateQueries({ queryKey: ['store-journal'] });
+    },
   });
+}
+
+/** v1.7 Y8：刪心得前確認；連著日記貼文時問「只刪心得／一起刪」 */
+export async function confirmDeleteNote(noteId: string, onDelete: (withPost: boolean) => void) {
+  const linked = await hasLinkedPost(noteId).catch(() => false);
+  if (!linked) {
+    Alert.alert(tr('刪除這則心得？'), tr('刪除後無法復原。'), [
+      { text: tr('取消'), style: 'cancel' },
+      { text: tr('刪除'), style: 'destructive', onPress: () => onDelete(false) },
+    ]);
+    return;
+  }
+  Alert.alert(tr('刪除這則心得？'), tr('這則心得當天也存成了一則日記貼文。'), [
+    { text: tr('取消'), style: 'cancel' },
+    { text: tr('只刪心得'), style: 'destructive', onPress: () => onDelete(false) },
+    { text: tr('心得和貼文一起刪'), style: 'destructive', onPress: () => onDelete(true) },
+  ]);
+}
+
+/** 這則心得有沒有連著一則日記貼文（v1.6 以前「也存成心得」留下的） */
+export async function hasLinkedPost(noteId: string) {
+  const res = await supabase.from('diary_entries').select('id', { count: 'exact', head: true }).eq('reading_note_id', noteId);
+  return (res.count ?? 0) > 0;
 }
 
 /** 心得圖片（非公開 bucket）→ 1 小時有效的網址；看不到的會是 null */

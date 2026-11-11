@@ -234,12 +234,22 @@ export function useSaveEntry() {
 export function useDeleteEntry() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, photoPaths = [] }: { id: string; photoPaths?: string[] }) => {
+    mutationFn: async ({ id, photoPaths = [], withNoteId }: { id: string; photoPaths?: string[]; withNoteId?: string | null }) => {
       const res = await supabase.from('diary_entries').delete().eq('id', id);
       if (res.error) throw new Error(res.error.message);
       if (photoPaths.length) await supabase.storage.from(DIARY_BUCKET).remove(photoPaths).then(() => {}, () => {});
+      // v1.7 Y8：連著的心得一起刪
+      if (withNoteId) {
+        const n = await supabase.from('reading_notes').delete().eq('id', withNoteId).select('photo_paths');
+        const paths = ((n.data ?? []) as { photo_paths: string[] }[]).flatMap((x) => x.photo_paths);
+        if (paths.length) await supabase.storage.from('note-images').remove(paths).then(() => {}, () => {});
+      }
     },
-    onSuccess: () => invalidateDiary(qc),
+    onSuccess: () => {
+      invalidateDiary(qc);
+      qc.invalidateQueries({ queryKey: ['my-readings'] });
+      qc.invalidateQueries({ queryKey: ['readings'] });
+    },
   });
 }
 

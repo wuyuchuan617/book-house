@@ -41,10 +41,16 @@ export function DiaryTimeline({ items, isToday, color }: { items: DiaryItem[]; i
       icon: 'trash-2' as const,
       destructive: true,
       onPress: () =>
-        Alert.alert(tr('刪除這筆日記？'), e.is_public ? tr('公開的打卡也會一起從地點頁移除，無法復原。') : tr('刪除後無法復原。'), [
-          { text: tr('取消'), style: 'cancel' },
-          { text: tr('刪除'), style: 'destructive', onPress: () => del.mutate({ id: e.id, photoPaths: e.photo_paths }, { onError: fail }) },
-        ]),
+        e.reading_note_id
+          ? Alert.alert(tr('刪除這筆日記？'), tr('這則日記也存成了這本書的心得。'), [
+              { text: tr('取消'), style: 'cancel' },
+              { text: tr('只刪日記'), style: 'destructive', onPress: () => del.mutate({ id: e.id, photoPaths: e.photo_paths }, { onError: fail }) },
+              { text: tr('日記和心得一起刪'), style: 'destructive', onPress: () => del.mutate({ id: e.id, photoPaths: e.photo_paths, withNoteId: e.reading_note_id }, { onError: fail }) },
+            ])
+          : Alert.alert(tr('刪除這筆日記？'), e.is_public ? tr('公開的打卡也會一起從地點頁移除，無法復原。') : tr('刪除後無法復原。'), [
+              { text: tr('取消'), style: 'cancel' },
+              { text: tr('刪除'), style: 'destructive', onPress: () => del.mutate({ id: e.id, photoPaths: e.photo_paths }, { onError: fail }) },
+            ]),
     },
   ];
 

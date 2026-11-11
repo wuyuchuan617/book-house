@@ -202,3 +202,8 @@ returns jsonb language sql stable security definer set search_path = '' as $$
   )
 $$;
 grant execute on function public.book_mentions(uuid) to anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 4. 正在讀＝寫心得同一張表單：每一種心得都可以記頁數
+-- ---------------------------------------------------------------------------
+alter table public.reading_notes drop constraint if exists reading_notes_page_ref_quote;
