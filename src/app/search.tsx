@@ -99,7 +99,7 @@ export default function SearchScreen() {
             <AppText style={{ color: c.primary, fontWeight: '700' }}>{tr('取消')}</AppText>
           </Pressable>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cats} keyboardShouldPersistTaps="handled">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={styles.cats} keyboardShouldPersistTaps="handled">
           {CATS.map(([k, label]) => <Chip key={k} label={label} selected={cat === k} onPress={() => setCat(k)} />)}
         </ScrollView>
 
