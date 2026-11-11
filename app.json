@@ -49,7 +49,7 @@
         "expo-image-picker",
         {
           "photosPermission": "允許書棲讀取照片，才能更換書店的頭貼與背景圖，或在心得、日記裡加入圖片。",
-          "cameraPermission": false,
+          "cameraPermission": "允許書棲使用相機，掃描書背條碼找書、拍下書頁節錄文字，或在心得、日記裡加入照片。",
           "microphonePermission": false
         }
       ],
