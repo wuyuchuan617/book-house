@@ -17,7 +17,13 @@ export function CurationSection() {
   const { data, isLoading } = useMyCurations();
   const { data: suggested } = useSuggestedPeriod();
   const create = useCreateCuration();
-  const [menuFor, setMenuFor] = useState<MyCurationRow | null>(null);
+  // 選單關掉時保留最後一筆，讓選單裡的動作（等選單收合後才執行）和刪除確認還在
+  const [menuFor, setMenuItem] = useState<MyCurationRow | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const setMenuFor = (r: MyCurationRow) => {
+    setMenuItem(r);
+    setMenuOpen(true);
+  };
 
   if (isLoading || !data) return <ActivityIndicator style={{ marginTop: 24 }} />;
 
@@ -70,7 +76,7 @@ export function CurationSection() {
         </>
       ) : null}
       {menuFor ? (
-        <CurationActions curation={menuFor} visible onClose={() => setMenuFor(null)} />
+        <CurationActions curation={menuFor} visible={menuOpen} onClose={() => setMenuOpen(false)} />
       ) : null}
     </View>
   );

@@ -71,7 +71,13 @@ export function ReadingSection({ readings, color, loading, removal }: {
 }) {
   const c = useTheme();
   const [filter, setFilter] = useState<Filter>('reading');
-  const [menuFor, setMenuFor] = useState<MyReading | null>(null);
+  // 選單關掉時保留最後一筆，讓選單裡的動作（等選單收合後才執行）和刪除確認還在
+  const [menuFor, setMenuItem] = useState<MyReading | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const setMenuFor = (r: MyReading) => {
+    setMenuItem(r);
+    setMenuOpen(true);
+  };
   const { pending, remove } = removal;
 
   if (loading || !readings) return <ActivityIndicator style={{ marginTop: 24 }} />;
@@ -147,7 +153,7 @@ export function ReadingSection({ readings, color, loading, removal }: {
       {shown.length === 0 ? <AppText muted style={{ textAlign: 'center', marginTop: Spacing.lg }}>{filter === 'reading' ? tr('目前沒有在讀的書') : tr('還沒有讀完的書')}</AppText> : null}
 
       {menuFor ? (
-        <ReadingActions reading={menuFor} visible onClose={() => setMenuFor(null)} onRemove={() => remove(menuFor)} />
+        <ReadingActions reading={menuFor} visible={menuOpen} onClose={() => setMenuOpen(false)} onRemove={() => remove(menuFor)} />
       ) : null}
     </View>
   );
