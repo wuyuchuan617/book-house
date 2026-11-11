@@ -32,7 +32,7 @@ export function PlacesShelf() {
 
   const meta = (p: MyPlace) =>
     kind === 'want'
-      ? p.note ?? (p.checkin_count ? tr('{n} 則打卡', { n: p.checkin_count }) : tr('還沒去過'))
+      ? (p.note ? tr('「{note}」', { note: p.note }) : null) ?? (p.checkin_count ? tr('{n} 則打卡', { n: p.checkin_count }) : tr('還沒去過'))
       : [tr('你來過 {n} 次', { n: p.my_checkins }), p.last_visit ? tr('最近 {date}', { date: md(p.last_visit) }) : null].filter(Boolean).join(' · ');
 
   return (
@@ -77,12 +77,7 @@ export function PlacesShelf() {
             return (
               <View style={{ borderRadius: Radius.xl, overflow: 'hidden' }} {...swipeA11y(actions)}>
                 <SwipeRow actions={actions} hint={index === 0}>
-                  <View>
-                    <PlaceRow place={item} isIndie={item.is_indie} meta={meta(item)} />
-                    <View style={styles.more}>
-                      <MoreButton onPress={() => setMenuFor(item)} label={tr('{name}的更多動作', { name: item.name })} />
-                    </View>
-                  </View>
+                  <PlaceRow place={item} isIndie={item.is_indie} meta={meta(item)} right={<MoreButton onPress={() => setMenuFor(item)} label={tr('{name}的更多動作', { name: item.name })} />} />
                 </SwipeRow>
               </View>
             );

@@ -1,31 +1,35 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { NotificationBell, SearchButton } from '@/components/icon-button';
 import { BookCover } from '@/components/book-cover';
 import { PlacesShelf } from '@/components/places-shelf';
+import { TbrShelf } from '@/components/tbr-shelf';
 import { UndoToast } from '@/components/social';
 import { AppText, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
-import { useSavedBooks, useToggleSave, wantSource, type SavedBook } from '@/lib/browse';
+import { useSavedBooks, useStartReading, useToggleSave, wantSource, type SavedBook } from '@/lib/browse';
+import { userMessage } from '@/lib/errors';
+import { useMyPurchases } from '@/lib/purchases';
 import { useMyPlaces } from '@/lib/diary';
 import { ActionSheet } from '@/components/sheet';
 import { MoreButton, SwipeRow, swipeA11y } from '@/components/swipe-row';
 import { LinkLine } from '@/components/link-line';
 import { tr } from '@/lib/i18n';
 
-type Tab = 'books' | 'places';
+type Tab = 'books' | 'tbr' | 'places';
 
 /** 書櫃（v1.6）：只留想讀（預設）、地點；追蹤的書店移到我的書店的「追蹤中」，處方簽移到我的書店的「處方簽」分頁 */
 export default function SavedScreen() {
   const c = useTheme();
   const { session, requireAuth } = useAuth();
   const params = useLocalSearchParams<{ tab?: string }>();
-  const fromParam = (t?: string): Tab => (t === 'places' ? 'places' : 'books');
+  const fromParam = (t?: string): Tab => (t === 'places' ? 'places' : t === 'tbr' ? 'tbr' : 'books');
+  const purchases = useMyPurchases();
   const [tab, setTab] = useState<Tab>(fromParam(params.tab));
   const [lastParam, setLastParam] = useState(params.tab);
   if (params.tab !== lastParam) {
@@ -69,9 +73,9 @@ export default function SavedScreen() {
           </View>
         </View>
         <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
-          {(['books', 'places'] as Tab[]).map((t) => {
+          {(['books', 'tbr', 'places'] as Tab[]).map((t) => {
             const selected = tab === t;
-            const count = t === 'places' ? places.data?.length : books.data?.length;
+            const count = t === 'places' ? places.data?.length : t === 'tbr' ? purchases.data?.unread : books.data?.length;
             return (
               <Pressable
                 key={t}
@@ -80,14 +84,16 @@ export default function SavedScreen() {
                 onPress={() => setTab(t)}
                 style={[styles.segmentItem, selected && { backgroundColor: c.surface }]}>
                 <AppText variant="caption" style={{ fontWeight: '700', color: selected ? c.text : c.textSecondary }}>
-                  {`${t === 'places' ? tr('地點') : tr('想讀')} · ${count ?? 0}`}
+                  {`${t === 'places' ? tr('地點') : t === 'tbr' ? tr('積讀') : tr('想讀')} · ${count ?? 0}`}
                 </AppText>
               </Pressable>
             );
           })}
         </View>
 
-        {tab === 'places' ? (
+        {tab === 'tbr' ? (
+          <TbrShelf />
+        ) : tab === 'places' ? (
           <PlacesShelf />
         ) : books.isLoading ? (
           <ActivityIndicator style={{ marginTop: 48 }} />
@@ -103,7 +109,7 @@ export default function SavedScreen() {
             ListEmptyComponent={
               <EmptyState title={tr('還沒有想讀的書')} body={tr('在書店頁按書旁邊的書籤，\n或在店主閱讀按「＋」加入想讀。')} actionLabel={tr('去探索書店')} onAction={() => router.navigate('/')} />
             }
-            renderItem={({ item, index }) => <BookRow item={item} hint={index === 0} onOpen={() => router.push({ pathname: '/want-book', params: { bookId: item.book_id } })} onUnsave={() => unsave(item)} />}
+            renderItem={({ item, index }) => <BookRow item={item} hint={index === 0} onUnsave={() => unsave(item)} />}
           />
         )}
         <UndoToast message={undo ? tr('已從想讀移除「{title}」', { title: undo.books.title }) : null} onUndo={restore} onHide={hideToast} />
@@ -112,11 +118,23 @@ export default function SavedScreen() {
   );
 }
 
-function BookRow({ item, hint, onOpen, onUnsave }: { item: SavedBook; hint?: boolean; onOpen: () => void; onUnsave: () => void }) {
+/** Y4 想讀卡片：點卡片進書的單頁；「⋯」裡有編輯、開始讀、買了、移除（我的書店的想讀也一樣） */
+function BookRow({ item, hint, onUnsave }: { item: SavedBook; hint?: boolean; onUnsave: () => void }) {
   const c = useTheme();
   const from = wantSource(item);
+  const start = useStartReading();
   const actions = [
-    { label: tr('編輯'), icon: 'edit-2' as const, onPress: onOpen },
+    { label: tr('編輯'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/want-book', params: { bookId: item.book_id } }) },
+    {
+      label: tr('開始讀'),
+      icon: 'book-open' as const,
+      onPress: () =>
+        start.mutate(item.book_id, {
+          onSuccess: () => Alert.alert(tr('已移到「正在讀」'), tr('可以在我的書店 › 店主閱讀繼續寫心得。')),
+          onError: (e) => Alert.alert(tr('沒有成功'), userMessage(e)),
+        }),
+    },
+    { label: tr('買了'), sub: tr('移到積讀，記在哪買'), icon: 'shopping-bag' as const, onPress: () => router.push({ pathname: '/purchase', params: { bookId: item.book_id } }) },
     { label: tr('移除'), sub: tr('6 秒內可以復原'), icon: 'trash-2' as const, destructive: true, onPress: onUnsave },
   ];
   const [menu, setMenu] = useState(false);
@@ -124,7 +142,7 @@ function BookRow({ item, hint, onOpen, onUnsave }: { item: SavedBook; hint?: boo
     <Card style={{ padding: 0, overflow: 'hidden' }}>
       <SwipeRow actions={actions} hint={hint}>
       <View style={[styles.row, { padding: Spacing.lg }]}>
-      <Pressable accessibilityRole="button" accessibilityHint={tr('編輯為什麼想讀、在哪看到')} {...swipeA11y(actions)} onPress={onOpen} style={[styles.row, { flex: 1 }]}>
+      <Pressable accessibilityRole="link" {...swipeA11y(actions)} onPress={() => router.push({ pathname: '/book/[id]', params: { id: item.book_id } })} style={[styles.row, { flex: 1 }]}>
         <BookCover title={item.books.title} url={item.books.cover_url} color={item.bookstores?.color ?? 'moss'} />
         <View style={{ flex: 1, gap: 2 }}>
           <AppText variant="label">{item.books.title}</AppText>

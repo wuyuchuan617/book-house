@@ -20,6 +20,7 @@ export type EventName =
   | 'rx_shared'
   | 'fab_item'
   | 'want_book_saved'
+  | 'book_purchased'
   | 'journal_visibility_changed'
   | 'onboarding_step_skipped'
   | 'curation_published'

@@ -254,11 +254,14 @@ export function PlaceRow({
   meta,
   onPress,
   isIndie,
+  right,
 }: {
   place: { id: string; name: string; address: string | null; category: string | null; photo_paths: string[]; distance_m?: number | null; saved?: boolean; is_indie?: boolean };
   meta: string;
   onPress?: () => void;
   isIndie?: boolean;
+  /** v1.7 Y4：書櫃的地點卡片右邊只放「⋯」（不放書籤和箭頭） */
+  right?: React.ReactNode;
 }) {
   const c = useTheme();
   const { data: urls } = useDiaryImageUrls(place.photo_paths.slice(0, 1));
@@ -275,12 +278,12 @@ export function PlaceRow({
         <View style={{ flex: 1, gap: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <AppText variant="label" numberOfLines={1} style={{ flexShrink: 1, fontSize: 16 }}>{place.name}</AppText>
-            {place.saved ? <Feather name="bookmark" size={14} color={c.primary} /> : null}
+            {place.saved && !right ? <Feather name="bookmark" size={14} color={c.primary} /> : null}
           </View>
-          <AppText variant="caption" muted numberOfLines={1}>{[categoryLabel(place.category, isIndie ?? place.is_indie), distance, place.address].filter(Boolean).join(' · ')}</AppText>
-          <AppText variant="caption" style={{ color: c.textTertiary }}>{meta}</AppText>
+          <AppText variant="caption" muted numberOfLines={1}>{[categoryLabel(place.category, isIndie ?? place.is_indie), distance, right ? null : place.address].filter(Boolean).join(' · ')}</AppText>
+          <AppText variant="caption" style={{ color: right ? c.text : c.textTertiary }} numberOfLines={2}>{meta}</AppText>
         </View>
-        <Feather name="chevron-right" size={18} color={c.textTertiary} />
+        {right ?? <Feather name="chevron-right" size={18} color={c.textTertiary} />}
       </Card>
     </Pressable>
   );
