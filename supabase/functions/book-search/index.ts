@@ -70,6 +70,8 @@ Deno.serve(async (req) => {
   if (local.error) console.error('search_local_books', local.error.message);
   // Google 失敗（沒金鑰時常見 429 配額用完）或查無結果 → 改查 Open Library
   const remote = google.length > 0 ? google : await searchOpenLibrary(isbn ? `isbn:${isbn}` : q);
+  // 用 ISBN 查到的那一筆常常沒有書封（Google 同一本書有好幾個版本）：用書名＋作者再查一次，借有書封的那一版
+  if (isbn && remote.length > 0 && !remote[0].cover_url) await borrowCover(remote[0], isbn);
 
   let saved: Book[] = [];
   if (remote.length > 0) {
@@ -97,6 +99,33 @@ Deno.serve(async (req) => {
   }
   return json({ books, source: google.length > 0 ? 'google_books' : remote.length > 0 ? 'open_library' : 'local' });
 });
+
+type RemoteBook = { title: string; authors: string[]; isbn13: string | null; cover_url: string | null; publisher: string | null; published_year: string | null };
+
+const norm = (t: string) => t.replace(/[：:（(].*$/, '').replace(/\s+/g, '').toLowerCase();
+
+async function borrowCover(book: RemoteBook, isbn: string) {
+  const title = book.title.split('：')[0];
+  const author = book.authors[0] && book.authors[0] !== '佚名' ? ` inauthor:${book.authors[0]}` : '';
+  const more = await searchGoogle(`intitle:${title}${author}`);
+  const hit =
+    more.find((b) => b.cover_url && b.isbn13 === isbn) ??
+    more.find((b) => b.cover_url && norm(b.title) === norm(book.title)) ??
+    more.find((b) => b.cover_url && norm(b.title).startsWith(norm(title)));
+  if (hit) {
+    book.cover_url = hit.cover_url;
+    book.publisher = book.publisher ?? hit.publisher;
+    book.published_year = book.published_year ?? hit.published_year;
+    return;
+  }
+  // 最後試 Open Library 的書封（沒有就回 404，不用）
+  try {
+    const res = await fetch(`https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg?default=false`, { method: 'HEAD', signal: AbortSignal.timeout(3000) });
+    if (res.ok) book.cover_url = `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`;
+  } catch {
+    // 忽略
+  }
+}
 
 async function searchGoogle(q: string) {
   const params = new URLSearchParams({ q, maxResults: String(LIMIT), printType: 'books', country: 'TW' });

@@ -17,6 +17,7 @@ export function BottomSheet({
   style,
   surface = 'background',
   handle = true,
+  onHidden,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -26,6 +27,8 @@ export function BottomSheet({
   /** 米色底（預設，跟設定頁同一種）或白底 */
   surface?: 'background' | 'surface';
   handle?: boolean;
+  /** 收合動畫結束、Modal 拿掉之後（要接著開另一個 Modal 時用，iOS 不能疊在收合中的 Modal 上） */
+  onHidden?: () => void;
 }) {
   const c = useTheme();
   const insets = useSafeAreaInsets();
@@ -46,6 +49,14 @@ export function BottomSheet({
       });
     }
   }, [visible, progress, drag]);
+  const [hiddenCb, setHiddenCb] = useState<(() => void) | undefined>(undefined);
+  if (hiddenCb !== onHidden) setHiddenCb(() => onHidden);
+  useEffect(() => {
+    if (!shown && hiddenCb) {
+      const t = setTimeout(hiddenCb, 60);
+      return () => clearTimeout(t);
+    }
+  }, [shown, hiddenCb]);
 
   const pan = useMemo(
     () =>

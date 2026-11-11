@@ -1,5 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
-import type { ComponentProps, ReactNode } from 'react';
+import { useState, type ComponentProps, type ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { BottomSheet } from '@/components/bottom-sheet';
@@ -32,6 +32,8 @@ export function ActionSheet({ visible, title, subtitle, badge, actions, onClose 
   onClose: () => void;
 }) {
   const c = useTheme();
+  // 選了動作先收起選單，等 Modal 真的拿掉再執行（動作常會再開一個對話框，iOS 不能疊在收合中的 Modal 上）
+  const [pending, setPending] = useState<(() => void) | null>(null);
   const normal = actions.filter((a) => !a.destructive);
   const danger = actions.filter((a) => a.destructive);
   const group = (list: SheetAction[]) =>
@@ -48,8 +50,8 @@ export function ActionSheet({ visible, title, subtitle, badge, actions, onClose 
               accessibilityState={{ disabled: !!a.disabled }}
               disabled={a.disabled}
               onPress={() => {
+                setPending(() => a.onPress);
                 onClose();
-                a.onPress();
               }}
               style={({ pressed }) => [
                 styles.item,
@@ -70,7 +72,15 @@ export function ActionSheet({ visible, title, subtitle, badge, actions, onClose 
       </View>
     ) : null;
   return (
-    <BottomSheet visible={visible} onClose={onClose} style={{ paddingHorizontal: Spacing.lg, gap: 10 }}>
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      onHidden={() => {
+        const run = pending;
+        setPending(null);
+        run?.();
+      }}
+      style={{ paddingHorizontal: Spacing.lg, gap: 10 }}>
       {title || badge ? (
         <View style={styles.head}>
           {badge}
