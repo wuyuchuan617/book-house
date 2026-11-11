@@ -326,10 +326,10 @@ export function useBook(id: string | undefined) {
     enabled: !!id,
     queryFn: async () => {
       const [book, apps] = await Promise.all([
-        supabase.from('books').select(BOOK_COLS).eq('id', id!).maybeSingle(),
+        supabase.from('books').select(`${BOOK_COLS}, isbn13`).eq('id', id!).maybeSingle(),
         supabase.from('book_appearances').select('*').eq('book_id', id!).order('at', { ascending: false }).limit(50),
       ]);
-      return { book: unwrap<Book | null>(book), appearances: unwrap<Appearance[]>(apps) };
+      return { book: unwrap<(Book & { isbn13?: string | null }) | null>(book), appearances: unwrap<Appearance[]>(apps) };
     },
   });
 }

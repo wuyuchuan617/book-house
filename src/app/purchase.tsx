@@ -24,7 +24,7 @@ const COMMON_STORES = () => [tr('博客來'), tr('誠品'), tr('金石堂'), tr(
 
 function useBook(id: string | undefined) {
   return useQuery({
-    queryKey: ['book', id],
+    queryKey: ['book-row', id],
     enabled: !!id,
     queryFn: async () => unwrap<Book | null>(await supabase.from('books').select('id, source, title, authors, cover_url, published_year, publisher').eq('id', id!).maybeSingle()),
   });

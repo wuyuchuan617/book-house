@@ -121,3 +121,19 @@ export function useStoreTbr(slug: string | undefined) {
     queryFn: () => rpcOr<{ book_id: string; title: string; authors: string[]; cover_url: string | null; bought_on: string }[]>('store_tbr', { p_slug: slug }, []),
   });
 }
+
+export type BookMentions = {
+  rx: { id: string; title: string; is_open: boolean; count: number }[];
+  posts: { id: string; source: 'diary' | 'note'; body: string | null; created_at: string; author_name: string; author_store_slug: string | null }[];
+  mine: { want: boolean; purchase: { status: string; bought_on: string } | null; reading: { id: string; status: 'reading' | 'finished' } | null };
+};
+
+/** v1.7 Y6 書的單頁：處方簽、貼文、我的狀態 */
+export function useBookMentions(bookId: string | undefined) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ['book-mentions', bookId, session?.user.id ?? 'anon'],
+    enabled: !!bookId,
+    queryFn: () => rpcOr<BookMentions | null>('book_mentions', { p_book_id: bookId }, null),
+  });
+}
