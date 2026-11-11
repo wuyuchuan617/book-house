@@ -1,42 +1,43 @@
 import Feather from '@expo/vector-icons/Feather';
-import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
 import { NoteSnippet } from '@/components/note-card';
 import { CurationView } from '@/components/curation-view';
 import { IconButton } from '@/components/icon-button';
-import { FollowButton, StoreAvatar } from '@/components/social';
+import { FollowButton } from '@/components/social';
+import { CountLink, StoreHeader } from '@/components/store-header';
 import { UnderlineTabs } from '@/components/underline-tabs';
 import { StoreMenu } from '@/components/store-menu';
 import { AppText, Card, EmptyState, Screen } from '@/components/ui';
-import { MinTouch, Radius, Spacing, StoreColors, type StoreColor } from '@/constants/theme';
+import { MinTouch, Radius, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useStoreReadings, type PublicReading } from '@/lib/browse';
 import { currentPeriod, monthOf } from '@/lib/period';
 import { recordVisit, useMyStore, usePublicStore } from '@/lib/queries';
-import { storageUrl } from '@/lib/uploads';
 import { shareStore } from '@/lib/links';
 import { useStoreTbr } from '@/lib/store-v16';
 import { tr } from '@/lib/i18n';
 import { StoreRxTab } from '@/components/rx-explore';
 import { StoreJournal } from '@/components/store-journal';
 
-type Tab = 'curation' | 'reading' | 'journal' | 'lists' | 'rx';
+type Tab = 'curation' | 'reading' | 'journal' | 'want' | 'place' | 'rx';
 
 const openBook = (id: string) => router.push({ pathname: '/book/[id]', params: { id } });
 
-/** A3 書店頁（策展）、A4 書店頁（店主閱讀）、A6 更多操作（分享、複製連結、檢舉、封鎖） */
+/**
+ * A3 書店頁（策展）、A4 書店頁（店主閱讀）、A6 更多操作（分享、複製連結、檢舉、封鎖）。
+ * v1.7.2 AA5：跟我的書店同一套精簡資訊與固定分頁；想讀（想讀＋積讀）、想去分開；店主沒公開的分頁不顯示。
+ */
 export default function StoreScreen() {
-  const { slug, tab: initialTab } = useLocalSearchParams<{ slug: string; tab?: Tab }>();
+  const { slug, tab: tabParam } = useLocalSearchParams<{ slug: string; tab?: string }>();
+  const initialTab = (tabParam === 'lists' ? 'want' : tabParam) as Tab | undefined;
   const c = useTheme();
   const { data, isLoading } = usePublicStore(slug);
   const { data: mine } = useMyStore();
-  const [tab, setTab] = useState<Tab>(initialTab && ['reading', 'journal', 'lists', 'rx'].includes(initialTab) ? initialTab : 'curation');
-  const insets = useSafeAreaInsets();
+  const [tab, setTab] = useState<Tab>(initialTab && ['reading', 'journal', 'want', 'place', 'rx'].includes(initialTab) ? initialTab : 'curation');
   const [index, setIndex] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const current = data?.curations[index];
@@ -51,47 +52,40 @@ export default function StoreScreen() {
 
   const { store, curations } = data;
   const isMine = mine?.store.id === store.id;
-  const banner = storageUrl('banner', store.banner_path);
   // 公開設定把「正在讀／讀過」關掉 → 不顯示店主閱讀分頁
   const tabs: Tab[] = [
     'curation',
     ...(store.show_reading === false ? [] : (['reading'] as Tab[])),
     ...(store.show_post ? (['journal'] as Tab[]) : []),
-    ...(store.show_want || store.show_place || store.show_owned ? (['lists'] as Tab[]) : []),
+    ...(store.show_want || store.show_owned ? (['want'] as Tab[]) : []),
+    ...(store.show_place ? (['place'] as Tab[]) : []),
     ...(store.show_rx ? (['rx'] as Tab[]) : []),
   ];
-  const LABEL: Record<Tab, string> = { curation: tr('策展'), reading: tr('店主閱讀'), journal: tr('手記'), lists: tr('想讀想去'), rx: tr('處方簽') };
+  const LABEL: Record<Tab, string> = { curation: tr('策展'), reading: tr('閱讀'), journal: tr('手記'), want: tr('想讀'), place: tr('想去'), rx: tr('處方簽') };
   const shown: Tab = tabs.includes(tab) ? tab : 'curation';
 
   return (
     <Screen>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} stickyHeaderIndices={[2]}>
-        {/* Y3 背景圖從螢幕最上方開始；返回、分享、⋯ 是白色圓底按鈕 */}
-        <View style={[styles.banner, { height: 120 + insets.top, backgroundColor: StoreColors[store.color].hex }]}>
-          {banner ? <Image source={{ uri: banner }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityIgnoresInvertColors /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.12)' }]} />}
-          <View style={styles.bannerShade} />
-          <View style={[styles.topRow, { top: insets.top + 8 }]}>
-            <IconButton icon="chevron-left" label={tr('返回')} onImage onPress={() => (router.canGoBack() ? router.back() : router.navigate('/'))} />
-            <View style={{ flex: 1 }} />
-            <IconButton icon="share" label={tr('分享書店')} onImage onPress={() => shareStore(store.name, store.slug)} />
-            <IconButton icon="more-horizontal" label={tr('更多操作')} onImage onPress={() => setMenuOpen(true)} />
-          </View>
-          <View style={styles.identity}>
-            <View style={[styles.avatarRing, { borderColor: c.background }]}>
-              <StoreAvatar name={store.name} color={store.color} size={56} path={store.avatar_path} />
-            </View>
-            <AppText numberOfLines={1} style={styles.name}>{store.name}</AppText>
-          </View>
-        </View>
-
-        <View style={{ paddingHorizontal: Spacing.xl, paddingTop: 34, paddingBottom: Spacing.sm, gap: Spacing.sm }}>
-          {store.tagline ? <AppText variant="caption" muted>{store.tagline}</AppText> : null}
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <AppText variant="caption" muted style={{ flex: 1 }}>{tr('店主 {owner_name} · {follower_count} 人追蹤', { owner_name: store.owner_name, follower_count: store.follower_count })}</AppText>
-            {isMine ? null : <FollowButton bookstoreId={store.id} storeName={store.name} />}
-          </View>
-        </View>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} stickyHeaderIndices={[1]}>
+        <StoreHeader
+          store={store}
+          buttons={
+            <>
+              <IconButton icon="chevron-left" label={tr('返回')} onImage onPress={() => (router.canGoBack() ? router.back() : router.navigate('/'))} />
+              <View style={{ flex: 1 }} />
+              <IconButton icon="share" label={tr('分享書店')} onImage onPress={() => shareStore(store.name, store.slug)} />
+              <IconButton icon="more-horizontal" label={tr('更多操作')} onImage onPress={() => setMenuOpen(true)} />
+            </>
+          }
+          meta={
+            <>
+              <CountLink n={store.follower_count} label={tr('追蹤者')} />
+              <AppText variant="caption" muted numberOfLines={1} style={{ flexShrink: 1 }}>{tr('店主 {name}', { name: store.owner_name })}</AppText>
+            </>
+          }
+          actions={isMine ? null : <FollowButton bookstoreId={store.id} storeName={store.name} />}
+        />
 
         <UnderlineTabs tabs={tabs.map((t) => [t, LABEL[t]] as [Tab, string])} value={shown} onChange={setTab} />
 
@@ -131,10 +125,14 @@ export default function StoreScreen() {
           <View style={{ padding: Spacing.xl }}>
             <StoreJournal bookstoreId={store.id} color={store.color} scope="posts" />
           </View>
-        ) : shown === 'lists' ? (
+        ) : shown === 'want' ? (
           <View style={{ padding: Spacing.xl, gap: Spacing.lg }}>
-            {store.show_want || store.show_place ? <StoreJournal bookstoreId={store.id} color={store.color} scope="lists" /> : null}
+            {store.show_want ? <StoreJournal bookstoreId={store.id} color={store.color} scope="want" /> : null}
             {store.show_owned ? <StoreTbr slug={store.slug} color={store.color} /> : null}
+          </View>
+        ) : shown === 'place' ? (
+          <View style={{ padding: Spacing.xl }}>
+            <StoreJournal bookstoreId={store.id} color={store.color} scope="place" />
           </View>
         ) : (
           <View style={{ padding: Spacing.xl }}>
@@ -212,7 +210,7 @@ function Centered({ children }: { children: React.ReactNode }) {
   return <View style={{ minHeight: 360, justifyContent: 'center' }}>{children}</View>;
 }
 
-/** 書店頁 › 想讀想去 › 積讀（店主公開設定打開才有；不顯示金額、在哪買） */
+/** 書店頁 › 想讀 › 積讀（店主公開設定打開才有；不顯示金額、在哪買） */
 function StoreTbr({ slug, color }: { slug: string; color: StoreColor }) {
   const { data } = useStoreTbr(slug);
   if (!data?.length) return null;
@@ -232,12 +230,6 @@ function StoreTbr({ slug, color }: { slug: string; color: StoreColor }) {
 }
 
 const styles = StyleSheet.create({
-  banner: { position: 'relative', zIndex: 2 },
-  bannerShade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 60, backgroundColor: 'rgba(0,0,0,0.18)' },
-  topRow: { position: 'absolute', left: 12, right: 12, flexDirection: 'row', gap: 8 },
-  identity: { position: 'absolute', left: Spacing.xl, right: Spacing.xl, bottom: -24, flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
-  avatarRing: { borderWidth: 3, borderRadius: 18 },
-  name: { flex: 1, color: '#FFFFFF', fontSize: 20, fontWeight: '700', marginBottom: 30, textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 6 },
   pill: { minHeight: MinTouch, paddingHorizontal: 14, borderRadius: Radius.pill, borderWidth: 1, justifyContent: 'center' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
   more: { width: 80, height: 120, borderRadius: 3, alignItems: 'center', justifyContent: 'center' },

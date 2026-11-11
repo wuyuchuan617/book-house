@@ -116,10 +116,7 @@ export const EN: Record<string, Entry> = {
 
   // ---------------------------------------------------------------- 我的書店
   '讀者視角': 'Reader view',
-  '策展 · {p0}': 'Curations · {p0}',
-  '店主閱讀 · {readingCount}': 'Reading · {readingCount}',
   '策展': 'Curation',
-  '店主閱讀': 'Reading',
   '讀者在你發布前看不到你的書店。\n挑一個主題，放上一本書就能發布。': 'Readers can’t see your store until you publish.\nPick a theme and add one book to publish.',
   '新增 {p0} 月策展': (v) => `New ${M(v.p0)} curation`,
   '看看別人怎麼策展': 'See how others curate',
@@ -166,7 +163,6 @@ export const EN: Record<string, Entry> = {
   '找不到這間書店': 'Bookstore not found',
   '它可能暫停營業或已經關閉。': 'It may be paused or closed.',
   '回探索': 'Back to Explore',
-  '店主 {owner_name} · {follower_count} 人追蹤': (v) => `By ${v.owner_name} · ${s(v.follower_count, 'follower')}`,
   '這間書店還沒有策展': 'No curations yet',
   '追蹤後，新策展上架時會通知你。': 'Follow to get notified when a new curation goes live.',
   '店主還沒有公開的閱讀紀錄': 'No public reading yet',
@@ -1233,7 +1229,6 @@ export const EN: Record<string, Entry> = {
   '匿名・書店頁看不到': 'Anonymous · not on your bookstore',
   '看地點': 'Places view',
   '顯示': 'Show',
-  '想讀想去': 'Want lists',
   '積讀': 'To be read',
   '買了': 'Bought it',
   '移到積讀，記在哪買': 'Move to To be read and note where you bought it',
@@ -1373,4 +1368,11 @@ export const EN: Record<string, Entry> = {
   '上個月': 'Previous month',
   '{y} 年 {m} 月': '{y}-{m}',
   '已想讀': 'Want to read ✓',
+  '閱讀': 'Reading',
+  '讀者看不到「{what}」': 'Readers can\'t see “{what}”',
+  '公開設定 ›': 'Visibility ›',
+  '管理 ›': 'Manage ›',
+  '讀者看不到積讀；到公開設定可以打開（不會顯示金額和在哪買）。': 'Readers can\'t see your TBR pile. Turn it on in Visibility (price and store stay private).',
+  '店主 {name}': 'Run by {name}',
+  '日記貼文 · {n}': 'Diary posts · {n}',
 };

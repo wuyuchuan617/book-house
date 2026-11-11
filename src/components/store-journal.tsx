@@ -6,7 +6,6 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-nat
 
 import { BookCover } from '@/components/book-cover';
 import { BookLine, VisibilityBadge } from '@/components/diary';
-import { Chip, chipRow } from '@/components/form';
 import { ActionSheet } from '@/components/sheet';
 import { MoreButton, SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
 import { AppText, Card } from '@/components/ui';
@@ -25,10 +24,11 @@ type Filter = 'all' | 'want' | 'place' | 'post';
  * 店主手記：想讀、想去、日記貼文依時間混在一起（v1.6：處方簽獨立成書店的「處方簽」分頁）。
  * mine（G2）：自己看全部，每一則標出書店頁看不看得到；每一則右邊「⋯」＋往左滑；讀者（G4）：只看公開的。
  */
-export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bookstoreId: string; color: StoreColor; mine?: boolean; scope?: 'posts' | 'lists' }) {
+export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bookstoreId: string; color: StoreColor; mine?: boolean; scope?: 'posts' | 'want' | 'place' }) {
   const c = useTheme();
   const { data, isLoading, error, refetch } = useStoreJournal(bookstoreId);
-  const [filter, setFilter] = useState<Filter>(scope === 'lists' ? 'want' : 'post');
+  // v1.7.2：想讀、想去各自一個分頁
+  const filter: Filter = scope === 'posts' ? 'post' : scope;
   const setPublic = useSetJournalPublic();
   const toggleSave = useToggleSave();
   const savePlace = useSavePlace();
@@ -54,9 +54,8 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bo
       </Card>
     );
   if (isLoading || !data) return <ActivityIndicator style={{ marginTop: 32 }} />;
-  // v1.7：手記只放日記貼文；想讀、想去在「想讀想去」分頁
+  // v1.7：手記只放日記貼文；v1.7.2：想讀、想去各一個分頁
   const items = data.filter((i) => i.type === filter);
-  const count = (t: Filter) => data.filter((i) => i.type === t).length;
 
   const toggle = (item: JournalItem) => {
     // v1.6：想讀、想去不再一則一則選，只看公開設定
@@ -163,15 +162,11 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bo
     setUndo(null);
   };
 
-  const FILTERS: [Filter, string][] = scope === 'lists' ? [['want', tr('想讀 · {n}', { n: count('want') })], ['place', tr('想去 · {n}', { n: count('place') })]] : [];
+  const heading = filter === 'want' ? tr('想讀 · {n}', { n: items.length }) : filter === 'place' ? tr('想去 · {n}', { n: items.length }) : tr('日記貼文 · {n}', { n: items.length });
 
   return (
     <View style={{ gap: Spacing.md }}>
-      {FILTERS.length ? (
-        <View style={chipRow}>
-          {FILTERS.map(([f, label]) => <Chip key={f} label={label} selected={filter === f} onPress={() => setFilter(f)} />)}
-        </View>
-      ) : null}
+      {items.length ? <AppText variant="label" style={{ fontSize: 15 }}>{heading}</AppText> : null}
       {undo ? (
         <View style={[styles.undo, { backgroundColor: c.text }]} accessibilityLiveRegion="polite">
           <AppText variant="caption" style={{ color: c.background, flex: 1 }} numberOfLines={1}>

@@ -1,48 +1,46 @@
 import Feather from '@expo/vector-icons/Feather';
-import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BookCover } from '@/components/book-cover';
 import { IconButton, NotificationBell, SearchButton } from '@/components/icon-button';
 import { OwnerRx } from '@/components/rx-mine';
-import { StoreAvatar } from '@/components/social';
+import { CountLink, SmallButton, StoreHeader } from '@/components/store-header';
 import { UnderlineTabs } from '@/components/underline-tabs';
 import { StoreJournal } from '@/components/store-journal';
 import { StoreSetupSheet } from '@/components/store-setup';
 import { AppText, EmptyState, Screen } from '@/components/ui';
-import { MinTouch, Radius, Spacing, StoreColors } from '@/constants/theme';
+import { Radius, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { CurationSection } from '@/components/my-curations';
 import { ReadingRemovalToast, ReadingSection, useReadingRemoval } from '@/components/my-readings';
-import { useMyCurations } from '@/lib/curations';
 import { useMyReadings } from '@/lib/readings';
-import { useMyStore } from '@/lib/queries';
+import { useMyStore, type StoreShow } from '@/lib/queries';
 import { shareStore } from '@/lib/links';
 import { tr } from '@/lib/i18n';
+import { useMyPurchases } from '@/lib/purchases';
 import { useStoreInsights } from '@/lib/store-v16';
-import { storageUrl } from '@/lib/uploads';
 
-type Tab = 'curation' | 'reading' | 'journal' | 'lists' | 'rx';
+type Tab = 'curation' | 'reading' | 'journal' | 'want' | 'place' | 'rx';
+const TAB_KEYS: Tab[] = ['curation', 'reading', 'journal', 'want', 'place', 'rx'];
 
 /**
- * W1 我的書店（v1.6）：120px 背景橫幅（右上 數據／通知／設定）、追蹤者／追蹤中點得進去、
- * 分頁 策展｜店主閱讀｜手記｜處方簽；第一次進來跳出 G0 設定卡。
+ * W1 我的書店（v1.7.2 AA1–AA4）：精簡的書店資訊（背景圖變矮、名字在圖下面、追蹤數一行字、編輯／讀者視角／分享是小按鈕）；
+ * 固定 6 格分頁 策展｜閱讀｜手記｜想讀｜想去｜處方簽（不放數字，往下捲黏在最上面）。
+ * 自己看得到全部分頁；公開設定沒開的那一類，最上面一條「讀者看不到」。第一次進來跳出 G0 設定卡。
  */
 export default function MyStoreScreen() {
-  const c = useTheme();
   const { session, requireAuth } = useAuth();
   const { data, isLoading } = useMyStore();
-  const { data: curations } = useMyCurations();
   const readings = useMyReadings();
   const removal = useReadingRemoval();
   const params = useLocalSearchParams<{ tab?: string }>();
-  const [tab, setTab] = useState<Tab>((['reading', 'journal', 'lists', 'rx'] as string[]).includes(params.tab ?? '') ? (params.tab as Tab) : 'curation');
+  const initial = params.tab === 'lists' ? 'want' : params.tab;
+  const [tab, setTab] = useState<Tab>(TAB_KEYS.includes(initial as Tab) ? (initial as Tab) : 'curation');
   const insights = useStoreInsights();
-  const insets = useSafeAreaInsets();
-  const readingCount = (readings.data ?? []).filter((r) => r.id !== removal.pending?.id).length;
 
   if (!session) {
     return (
@@ -68,69 +66,72 @@ export default function MyStoreScreen() {
   }
 
   const { store, stats } = data;
-  const banner = storageUrl('banner', store.banner_path);
-  const hex = StoreColors[store.color].hex;
   const followers = insights.data?.followers ?? stats?.follower_count ?? 0;
   const following = insights.data?.following ?? 0;
   const TABS: [Tab, string][] = [
-    ['curation', tr('策展 · {p0}', { p0: curations?.length ?? 0 })],
-    ['reading', tr('店主閱讀 · {readingCount}', { readingCount })],
+    ['curation', tr('策展')],
+    ['reading', tr('閱讀')],
     ['journal', tr('手記')],
-    ['lists', tr('想讀想去')],
+    ['want', tr('想讀')],
+    ['place', tr('想去')],
     ['rx', tr('處方簽')],
   ];
+  // 讀者看不到的分頁（公開設定沒開）
+  const hidden: Partial<Record<Tab, [keyof StoreShow, string]>> = {
+    reading: ['show_reading', tr('閱讀')],
+    journal: ['show_post', tr('手記')],
+    want: ['show_want', tr('想讀')],
+    place: ['show_place', tr('想去')],
+    rx: ['show_rx', tr('處方簽')],
+  };
+  const off = hidden[tab] && store[hidden[tab]![0]] === false ? hidden[tab]![1] : null;
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={{ paddingBottom: 96 }} stickyHeaderIndices={[2]}>
-        {/* W1 120px 背景橫幅：沒有圖就用店面顏色 */}
-        <View style={[styles.banner, { height: 120 + insets.top, backgroundColor: hex }]}>
-          {banner ? (
-            <Image source={{ uri: banner }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityIgnoresInvertColors />
-          ) : (
-            <View style={[StyleSheet.absoluteFill, styles.shade]} />
-          )}
-          <View style={[styles.bannerShade]} />
-          <View style={[styles.topButtons, { top: insets.top + 10 }]}>
-            <SearchButton onImage />
-            <IconButton icon="bar-chart-2" label={tr('數據')} onImage onPress={() => router.push('/store-insights')} />
-            <NotificationBell onImage />
-            <IconButton icon="settings" label={tr('設定')} onImage onPress={() => router.push('/settings')} />
-          </View>
-          <View style={styles.identity}>
-            <View style={[styles.avatarRing, { borderColor: c.background }]}>
-              <StoreAvatar name={store.name} color={store.color} size={56} path={store.avatar_path} />
-            </View>
-            <AppText numberOfLines={1} style={styles.name}>{store.name}</AppText>
-          </View>
-        </View>
+      <ScrollView contentContainerStyle={{ paddingBottom: 110 }} stickyHeaderIndices={[1]}>
+        <StoreHeader
+          store={store}
+          buttons={
+            <>
+              <View style={{ flex: 1 }} />
+              <SearchButton onImage />
+              <IconButton icon="bar-chart-2" label={tr('數據')} onImage onPress={() => router.push('/store-insights')} />
+              <NotificationBell onImage />
+              <IconButton icon="settings" label={tr('設定')} onImage onPress={() => router.push('/settings')} />
+            </>
+          }
+          meta={
+            <>
+              <CountLink n={followers} label={tr('追蹤者')} onPress={() => router.push({ pathname: '/follows', params: { kind: 'followers' } })} />
+              <CountLink n={following} label={tr('追蹤中')} onPress={() => router.push({ pathname: '/follows', params: { kind: 'following' } })} />
+            </>
+          }
+          actions={
+            <>
+              <SmallButton icon="edit-2" label={tr('編輯')} showLabel onPress={() => router.push('/store-edit')} />
+              <SmallButton icon="eye" label={tr('讀者視角')} onPress={() => router.push({ pathname: '/store/[slug]', params: { slug: store.slug } })} />
+              <SmallButton icon="share" label={tr('分享')} onPress={() => shareStore(store.name, store.slug)} />
+            </>
+          }
+        />
 
-        <View style={{ paddingHorizontal: Spacing.xl, paddingTop: 34, gap: Spacing.md }}>
-          {store.tagline ? <AppText variant="caption" muted numberOfLines={2}>{store.tagline}</AppText> : null}
-          <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-            <CountPill n={followers} label={tr('追蹤者')} onPress={() => router.push({ pathname: '/follows', params: { kind: 'followers' } })} />
-            <CountPill n={following} label={tr('追蹤中')} onPress={() => router.push({ pathname: '/follows', params: { kind: 'following' } })} />
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.sm }}>
-            <Pill icon="edit-2" label={tr('編輯')} onPress={() => router.push('/store-edit')} />
-            <Pill icon="eye" label={tr('讀者視角')} onPress={() => router.push({ pathname: '/store/[slug]', params: { slug: store.slug } })} />
-            <Pill icon="share" label={tr('分享')} onPress={() => shareStore(store.name, store.slug)} />
-          </ScrollView>
-        </View>
+        <UnderlineTabs tabs={TABS} value={tab} onChange={setTab} />
 
-        <View style={{ paddingTop: Spacing.sm }}>
-          <UnderlineTabs tabs={TABS} value={tab} onChange={setTab} />
-        </View>
-
-        <View style={{ paddingHorizontal: Spacing.xl, paddingTop: Spacing.md }}>
+        <View style={{ paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, gap: Spacing.md }}>
+          {off ? <HiddenBar what={off} /> : null}
           {tab === 'curation' ? (
             <CurationSection />
           ) : tab === 'reading' ? (
             <ReadingSection readings={readings.data} loading={readings.isLoading} color={store.color} removal={removal} />
           ) : tab === 'journal' ? (
             <StoreJournal bookstoreId={store.id} color={store.color} mine scope="posts" />
-          ) : tab === 'lists' ? (
-            <StoreJournal bookstoreId={store.id} color={store.color} mine scope="lists" />
+          ) : tab === 'want' ? (
+            <>
+              <StoreJournal bookstoreId={store.id} color={store.color} mine scope="want" />
+              <OwnerTbr color={store.color} hiddenFromReaders={store.show_owned === false} />
+            </>
+          ) : tab === 'place' ? (
+            <StoreJournal bookstoreId={store.id} color={store.color} mine scope="place" />
           ) : (
             <OwnerRx />
           )}
@@ -142,47 +143,49 @@ export default function MyStoreScreen() {
   );
 }
 
-/** 追蹤者／追蹤中：淺底＋箭頭，看得出能點 */
-function CountPill({ n, label, onPress }: { n: number; label: string; onPress: () => void }) {
+/** AA4 公開設定沒開：讀者看不到這一類 */
+function HiddenBar({ what }: { what: string }) {
   const c = useTheme();
   return (
-    <Pressable
-      accessibilityRole="link"
-      accessibilityLabel={`${n} ${label}`}
-      onPress={onPress}
-      style={({ pressed }) => [styles.count, { backgroundColor: c.surfaceMuted, opacity: pressed ? 0.8 : 1 }]}>
-      <AppText style={{ fontWeight: '700', fontSize: 15 }}>{String(n)}</AppText>
-      <AppText variant="caption">{label}</AppText>
-      <Feather name="chevron-right" size={14} color={c.textSecondary} />
+    <Pressable accessibilityRole="link" onPress={() => router.push('/store-visibility')} style={[styles.hidden, { backgroundColor: c.surfaceMuted }]}>
+      <Feather name="eye-off" size={15} color={c.textSecondary} />
+      <AppText variant="caption" style={{ flex: 1 }}>{tr('讀者看不到「{what}」', { what })}</AppText>
+      <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('公開設定 ›')}</AppText>
     </Pressable>
   );
 }
 
-/** 頂部的小按鈕：編輯、讀者視角、分享、公開設定 */
-function Pill({ icon, label, onPress }: { icon: React.ComponentProps<typeof Feather>['name']; label: string; onPress: () => void }) {
+/** AA3 想讀分頁的第二段：積讀（買了還沒讀）；完整管理在書櫃 › 積讀 */
+function OwnerTbr({ color, hiddenFromReaders }: { color: StoreColor; hiddenFromReaders: boolean }) {
   const c = useTheme();
+  const { data } = useMyPurchases();
+  const unread = (data?.items ?? []).filter((p) => p.status === 'unread');
+  if (!unread.length) return null;
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.pill, { borderColor: c.border, backgroundColor: c.surface, opacity: pressed ? 0.8 : 1 }]}>
-      <Feather name={icon} size={14} color={c.text} />
-      <AppText variant="caption" style={{ fontWeight: '700' }}>{label}</AppText>
-    </Pressable>
+    <View style={{ gap: Spacing.sm, marginTop: Spacing.sm }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <AppText variant="label" style={{ fontSize: 15, flex: 1 }}>{tr('積讀 · {n}', { n: unread.length })}</AppText>
+        <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.push({ pathname: '/saved', params: { tab: 'tbr' } })}>
+          <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('管理 ›')}</AppText>
+        </Pressable>
+      </View>
+      {hiddenFromReaders ? <AppText variant="caption" muted>{tr('讀者看不到積讀；到公開設定可以打開（不會顯示金額和在哪買）。')}</AppText> : null}
+      {unread.slice(0, 5).map((p) => (
+        <Pressable key={p.id} accessibilityRole="link" onPress={() => router.push({ pathname: '/book/[id]', params: { id: p.book_id } })} style={[styles.tbr, { backgroundColor: c.surface }]}>
+          <BookCover title={p.book.title} url={p.book.cover_url} color={color} size="sm" />
+          <View style={{ flex: 1 }}>
+            <AppText variant="label">{p.book.title}</AppText>
+            <AppText variant="caption" muted numberOfLines={1}>{[p.bought_on.slice(5).replace('-', '/'), p.place_name ?? p.store_label].filter(Boolean).join(' · ')}</AppText>
+          </View>
+          <Feather name="chevron-right" size={16} color={c.textTertiary} />
+        </Pressable>
+      ))}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   titleRow: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg },
-  banner: { position: 'relative', zIndex: 2 },
-  shade: { backgroundColor: 'rgba(0,0,0,0.12)' },
-  bannerShade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 60, backgroundColor: 'rgba(0,0,0,0.18)' },
-  topButtons: { position: 'absolute', right: 12, flexDirection: 'row', gap: 8 },
-  identity: { position: 'absolute', left: Spacing.xl, right: Spacing.xl, bottom: -24, flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
-  avatarRing: { borderWidth: 3, borderRadius: 18 },
-  name: { flex: 1, color: '#FFFFFF', fontSize: 20, fontWeight: '700', marginBottom: 30, textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 6 },
-  count: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 34, paddingLeft: 12, paddingRight: 8, borderRadius: Radius.pill },
-  pill: { minHeight: 36, paddingHorizontal: 10, borderRadius: Radius.pill, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  segment: { flexDirection: 'row', borderRadius: Radius.md, padding: 3 },
-  segmentItem: { flex: 1, minHeight: MinTouch - 4, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },
+  hidden: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: Radius.md, paddingHorizontal: Spacing.md, minHeight: 40 },
+  tbr: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.lg, padding: Spacing.md },
 });
