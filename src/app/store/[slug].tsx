@@ -1,5 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
-import { Image } from 'expo-image';
+import { Image, type ImageStyle } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -58,20 +59,41 @@ export default function StoreScreen() {
         }}
       />
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        {/* A3/A4 Hero 區塊 */}
         <View style={[styles.hero, { backgroundColor: StoreColors[store.color].hex }]}>
-          {banner ? <Image source={{ uri: banner }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityIgnoresInvertColors /> : null}
-          {banner ? <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(31,27,22,0.45)' }]} /> : null}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
+          {banner ? <Image source={{ uri: banner }} style={StyleSheet.absoluteFill as ImageStyle} contentFit="cover" accessibilityIgnoresInvertColors /> : null}
+          {banner ? (
+            <LinearGradient
+              colors={['rgba(31,27,22,0.15)', 'rgba(31,27,22,0.55)', 'rgba(31,27,22,0.7)']}
+              locations={[0, 0.5, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+          ) : null}
+
+          {/* 頭貼 + 店名/店主資訊 */}
+          <View style={styles.heroHeader}>
             <View style={styles.avatarRing}>
-              <StoreAvatar name={store.name} color={store.color} size={52} path={store.avatar_path} />
+              <StoreAvatar name={store.name} color={store.color} size={64} path={store.avatar_path} />
             </View>
-            <View style={{ flex: 1 }}>
-              <AppText variant="heading" style={{ color: '#FFFFFF' }}>{store.name}</AppText>
-              <AppText variant="caption" style={{ color: '#FFFFFF' }}>{tr('店主 {owner_name} · {follower_count} 人追蹤', { owner_name: store.owner_name, follower_count: store.follower_count })}</AppText>
+            <View style={styles.heroInfo}>
+              <AppText variant="title" style={styles.heroTitle}>{store.name}</AppText>
+              <AppText variant="caption" style={styles.heroCaption}>
+                {tr('店主 {owner_name} · {follower_count} 人追蹤', { owner_name: store.owner_name, follower_count: store.follower_count })}
+              </AppText>
             </View>
-            {isMine ? null : <FollowButton bookstoreId={store.id} storeName={store.name} onColor />}
           </View>
-          {store.tagline ? <AppText style={{ color: '#FFFFFF', marginTop: Spacing.md }}>{store.tagline}</AppText> : null}
+
+          {/* 店家介紹 */}
+          {store.tagline ? (
+            <AppText style={styles.heroTagline}>{store.tagline}</AppText>
+          ) : null}
+
+          {/* 追蹤按鈕 */}
+          {isMine ? null : (
+            <View style={styles.heroAction}>
+              <FollowButton bookstoreId={store.id} storeName={store.name} onColor />
+            </View>
+          )}
         </View>
 
         <View style={[styles.tabs, { borderBottomColor: c.border }]} accessibilityRole="tablist">
@@ -191,10 +213,51 @@ function ReadingTab({ readings, color }: { readings: PublicReading[] | undefined
   );
 }
 
+const AVATAR_SIZE = 64;
+const AVATAR_RING_PADDING = 3;
+
 const styles = StyleSheet.create({
   headerBtn: { width: MinTouch, height: MinTouch, alignItems: 'center', justifyContent: 'center' },
-  hero: { padding: Spacing.xl, overflow: 'hidden' },
-  avatarRing: { borderRadius: 18, borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)', padding: 2 },
+
+  hero: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xxl,
+    paddingBottom: Spacing.xl,
+    overflow: 'hidden',
+    gap: Spacing.lg,
+  },
+  heroHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.lg,
+  },
+  avatarRing: {
+    borderRadius: (AVATAR_SIZE + AVATAR_RING_PADDING * 2) * 0.3,
+    borderWidth: 2.5,
+    borderColor: 'rgba(255,255,255,0.7)',
+    padding: AVATAR_RING_PADDING,
+  },
+  heroInfo: {
+    flex: 1,
+    gap: Spacing.xs,
+  },
+  heroTitle: {
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.25)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  heroCaption: {
+    color: 'rgba(255,255,255,0.9)',
+  },
+  heroTagline: {
+    color: '#FFFFFF',
+    lineHeight: 22,
+  },
+  heroAction: {
+    marginTop: Spacing.xs,
+  },
+
   tabs: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: Spacing.xl },
   tab: { minHeight: MinTouch + 4, paddingHorizontal: Spacing.md, justifyContent: 'center', borderBottomWidth: 2.5, marginRight: Spacing.md },
   pill: { minHeight: MinTouch, paddingHorizontal: 14, borderRadius: Radius.pill, borderWidth: 1, justifyContent: 'center' },
