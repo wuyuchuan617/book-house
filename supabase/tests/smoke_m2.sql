@@ -36,7 +36,6 @@ reset role;
 -- 一般使用者不能直接呼叫 upsert_api_books
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000d');
 select pg_temp.expect_error($q$select public.upsert_api_books('[]'::jsonb)$q$, 'upsert_api_books is service-only');
-select pg_temp.expect_error($q$select public.create_curation(public.current_period())$q$, 'create curation without store');
 
 -- C 開店 → O3 第一檔策展（本月草稿）
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');

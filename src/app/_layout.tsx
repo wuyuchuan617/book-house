@@ -108,7 +108,8 @@ function RootStack() {
         <Stack.Screen name="diary/week/[start]" options={{ title: tr('每週回顧') }} />
         <Stack.Screen name="diary/weeks" options={{ title: tr('每週回顧') }} />
         <Stack.Screen name="store-edit" options={{ title: tr('編輯書店資料') }} />
-        <Stack.Screen name="store-delete" options={{ title: tr('刪除書店') }} />
+        <Stack.Screen name="store-delete" options={{ title: tr('重設書店') }} />
+        <Stack.Screen name="store-visibility" options={{ title: tr('公開設定') }} />
         <Stack.Screen name="report/[id]" options={{ title: tr('檢舉書店'), presentation: 'modal' }} />
         <Stack.Screen name="blocked" options={{ title: tr('已封鎖的帳號') }} />
         <Stack.Screen name="help" options={{ title: tr('說明與意見回饋') }} />

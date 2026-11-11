@@ -7,7 +7,7 @@ import { userMessage } from '@/lib/errors';
 import { useAuth } from '@/lib/auth';
 import { NOTE_COLS, type NoteKind, type PublicReading } from '@/lib/browse';
 import type { Book } from '@/lib/curations';
-import { unwrap, useMyStore } from '@/lib/queries';
+import { unwrap, useMyStore, type StoreShow } from '@/lib/queries';
 import { supabase } from '@/lib/supabase';
 import { tr } from '@/lib/i18n';
 
@@ -260,7 +260,7 @@ export function useUpdateStore() {
   const qc = useQueryClient();
   const { session } = useAuth();
   return useMutation({
-    mutationFn: async (patch: Partial<{ name: string; owner_name: string; tagline: string | null; slug: string; color: StoreColor; reading_public_default: boolean }>) => {
+    mutationFn: async (patch: Partial<{ name: string; owner_name: string; tagline: string | null; slug: string; color: StoreColor; reading_public_default: boolean; setup_done: boolean } & StoreShow>) => {
       const res = await supabase.from('bookstores').update(patch).eq('owner_id', session!.user.id);
       if (res.error) throw new Error(res.error.message);
     },

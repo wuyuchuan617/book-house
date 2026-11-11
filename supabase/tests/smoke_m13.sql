@@ -88,7 +88,7 @@ do $$
 begin
   assert (select count(*) from public.weekly_reflections) = 0;
   assert (public.my_week_review()->'counts'->>'active_days')::int = 0;
-  assert public.my_week_review()->'store' = 'null'::jsonb or public.my_week_review()->'store' is null;
+  assert coalesce((public.my_week_review()->'store'->>'visits')::int, 0) = 0, 'auto store has no visits';
 end $$;
 select pg_temp.as_user(null);
 select pg_temp.expect_error($q$select public.my_week_review()$q$, 'anon cannot');

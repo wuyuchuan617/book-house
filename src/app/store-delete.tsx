@@ -12,7 +12,7 @@ import { storeLinkLabel } from '@/lib/links';
 import { userMessage } from '@/lib/errors';
 import { tr } from '@/lib/i18n';
 
-/** M9 刪除書店：輸入店名確認。帳號還在，之後可以重新開店 */
+/** 重設書店（v1.5：每個人都有書店）：輸入店名確認。刪掉內容後馬上開一間新的空書店 */
 export default function StoreDeleteScreen() {
   const c = useTheme();
   const { data } = useMyStore();
@@ -25,11 +25,11 @@ export default function StoreDeleteScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: tr('刪除書店') }} />
+      <Stack.Screen options={{ title: tr('重設書店') }} />
       <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg }} keyboardShouldPersistTaps="handled">
-        <AppText variant="heading">{tr('刪除「{name}」？', { name })}</AppText>
+        <AppText variant="heading">{tr('重設「{name}」？', { name })}</AppText>
         <View style={{ gap: 4 }}>
-          <AppText muted>{tr('刪除後無法復原，以下內容會一起刪除：')}</AppText>
+          <AppText muted>{tr('重設後無法復原，以下內容會清空，然後換成一間新的空書店：')}</AppText>
           <AppText>{tr('• {p0} 檔策展與書架上的書', { p0: impact?.curation_count ?? 0 })}</AppText>
           <AppText>{tr('• {p0} 筆店主閱讀與心得', { p0: impact?.reading_count ?? 0 })}</AppText>
           <AppText>{tr('• {p0} 位追蹤者會收不到你的更新', { p0: impact?.follower_count ?? 0 })}</AppText>
@@ -42,16 +42,16 @@ export default function StoreDeleteScreen() {
         <TextField label={tr('請輸入書店名稱「{name}」以確認', { name })} value={confirm} onChangeText={setConfirm} autoCapitalize="none" />
         <Button
           kind="danger"
-          label={tr('永久刪除書店')}
+          label={tr('重設書店')}
           disabled={confirm.trim() !== name}
           loading={del.isPending}
           onPress={() =>
             del.mutate(undefined, {
               onSuccess: () => {
-                Alert.alert(tr('書店已刪除'), tr('你的帳號還在，之後隨時可以重新開店。'));
+                Alert.alert(tr('書店已重設'), tr('已經幫你開好一間新的空書店，名字和顏色可以再改。'));
                 router.navigate('/my-store');
               },
-              onError: (e) => Alert.alert(tr('沒有刪除成功'), userMessage(e)),
+              onError: (e) => Alert.alert(tr('沒有重設成功'), userMessage(e)),
             })
           }
         />

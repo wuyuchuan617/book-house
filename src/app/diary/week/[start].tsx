@@ -80,7 +80,7 @@ export default function WeekReviewScreen() {
               {week.quotes.length ? <Quotes week={week} /> : null}
               {week.photos.length ? <Photos week={week} /> : null}
               {week.places.length ? <Places week={week} /> : null}
-              {week.store ? <StoreStats store={week.store} /> : null}
+              {week.store && (week.store.visits || week.store.new_followers || week.store.saves) ? <StoreStats store={week.store} /> : null}
             </>
           )}
 

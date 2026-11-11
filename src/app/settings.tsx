@@ -67,6 +67,10 @@ export default function SettingsScreen() {
                 <AppText style={{ flex: 1 }}>{tr('書店資料')}</AppText>
                 <AppText muted>{store.name}</AppText>
               </Pressable>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/store-visibility')} style={[styles.row, { borderBottomColor: c.divider }]}>
+                <AppText style={{ flex: 1 }}>{tr('公開設定')}</AppText>
+                <AppText muted>{tr('書店頁顯示什麼')}</AppText>
+              </Pressable>
               <View style={[styles.row, { borderBottomColor: c.divider }]}>
                 <View style={{ flex: 1 }}>
                   <AppText>{tr('店主閱讀預設公開')}</AppText>
@@ -159,7 +163,7 @@ export default function SettingsScreen() {
         </Card>
         <Button kind="secondary" label={tr('登出')} onPress={async () => { await signOut(); router.navigate('/'); }} />
         <AppText variant="label" style={{ marginTop: Spacing.lg }}>{tr('危險區')}</AppText>
-        {store ? <Button kind="secondary" label={tr('刪除書店')} onPress={() => router.push('/store-delete')} /> : null}
+        {store ? <Button kind="secondary" label={tr('重設書店')} onPress={() => router.push('/store-delete')} /> : null}
         <Button kind="danger" label={tr('刪除帳號')} onPress={requestDeletion} />
       </ScrollView>
     </Screen>

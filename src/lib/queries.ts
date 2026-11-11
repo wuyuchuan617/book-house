@@ -36,9 +36,13 @@ export type PublicStore = {
   avatar_path: string | null;
   banner_path: string | null;
   follower_count: number;
-};
+} & Partial<StoreShow>;
 
-export type MyStore = Omit<PublicStore, 'follower_count'> & { status: 'active' | 'paused' | 'deleted'; reading_public_default: boolean };
+/** 公開設定：書店頁顯示哪幾類（一類關掉 → 書店頁整類看不到） */
+export type StoreShow = { show_reading: boolean; show_want: boolean; show_place: boolean; show_post: boolean; show_rx: boolean };
+
+export type MyStore = Omit<PublicStore, 'follower_count'> &
+  StoreShow & { status: 'active' | 'paused' | 'deleted'; reading_public_default: boolean; auto_created: boolean; setup_done: boolean };
 
 /** 失敗就丟出錯誤；成功回傳 data。T 由呼叫端指定（型別產生前的暫時做法） */
 export function unwrap<T>({ data, error }: { data: unknown; error: { message: string } | null }): T {
@@ -77,10 +81,12 @@ export function useMyStore() {
     queryKey: ['my-store', session?.user.id],
     enabled: !!session,
     queryFn: async () => {
-      const store = unwrap<MyStore | null>(
+      let store = unwrap<MyStore | null>(
         await supabase.from('bookstores').select('*').eq('owner_id', session!.user.id).maybeSingle(),
       );
-      if (!store) return null;
+      // 每個人都有書店：還沒有（舊帳號、重設書店後）就幫他開一間
+      if (!store) store = unwrap<MyStore | null>(await supabase.rpc('ensure_my_bookstore').maybeSingle());
+      if (!store?.id) return null;
       const [stats, curations] = await Promise.all([
         supabase.rpc('my_store_stats').maybeSingle(),
         supabase.from('curations').select('id, period, title, status, published_at').eq('bookstore_id', store.id).order('period', { ascending: false }),

@@ -91,8 +91,8 @@ do $$ begin
   update public.curations set title = 'hack';
   assert (select title from public.curations limit 1) <> 'hack', 'B cannot edit A curation';
 end $$;
-insert into public.follows (follower_id, bookstore_id) select auth.uid(), id from public.public_bookstores;
-do $$ begin assert (select follower_count from public.public_bookstores) = 1; end $$;
+insert into public.follows (follower_id, bookstore_id) select auth.uid(), id from t_store;
+do $$ begin assert (select follower_count from public.public_bookstores where id = (select id from t_store)) = 1; end $$;
 select public.record_visit((select curation_id from public.explore_feed));
 select public.record_visit((select curation_id from public.explore_feed)); -- 同一天不重複
 select pg_temp.expect_error($q$insert into public.curation_visits values (gen_random_uuid(), 'x', current_date)$q$, 'direct visit insert');
@@ -131,7 +131,7 @@ select pg_temp.expect_error($q$insert into public.reports (reporter_id, target_t
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
 select public.request_account_deletion('測試');
 select pg_temp.as_user(null);
-do $$ begin assert (select count(*) from public.public_bookstores) = 0, 'store hidden after delete request'; end $$;
+do $$ begin assert (select count(*) from public.public_bookstores where id = (select id from t_store)) = 0, 'store hidden after delete request'; end $$;
 
 reset role;
 \echo 'ALL SMOKE TESTS PASSED'

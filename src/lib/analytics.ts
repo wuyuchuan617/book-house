@@ -12,6 +12,8 @@ export type EventName =
   | 'login_success'
   | 'login_gate_shown'
   | 'store_created'
+  | 'store_auto_setup'
+  | 'store_visibility_changed'
   | 'onboarding_step_skipped'
   | 'curation_published'
   | 'book_added'

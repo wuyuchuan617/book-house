@@ -44,6 +44,9 @@ export default function StoreScreen() {
   const { store, curations } = data;
   const isMine = mine?.store.id === store.id;
   const banner = storageUrl('banner', store.banner_path);
+  // 公開設定把「正在讀／讀過」關掉 → 不顯示店主閱讀分頁
+  const tabs: Tab[] = store.show_reading === false ? ['curation'] : ['curation', 'reading'];
+  const shown: Tab = tabs.includes(tab) ? tab : 'curation';
 
   return (
     <Screen>
@@ -75,8 +78,8 @@ export default function StoreScreen() {
         </View>
 
         <View style={[styles.tabs, { borderBottomColor: c.border }]} accessibilityRole="tablist">
-          {(['curation', 'reading'] as Tab[]).map((t) => {
-            const selected = tab === t;
+          {tabs.map((t) => {
+            const selected = shown === t;
             return (
               <Pressable
                 key={t}
@@ -92,7 +95,7 @@ export default function StoreScreen() {
           })}
         </View>
 
-        {tab === 'curation' ? (
+        {shown === 'curation' ? (
           curations.length === 0 ? (
             <EmptyState title={tr('這間書店還沒有策展')} body={tr('追蹤後，新策展上架時會通知你。')} />
           ) : (
