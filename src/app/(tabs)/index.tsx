@@ -8,7 +8,7 @@ import { BookCover } from '@/components/book-cover';
 import { MonthSheet, monthPillLabel } from '@/components/month-sheet';
 import { FilterBar, FilterSheet, type ActiveFilter, type FilterGroup } from '@/components/explore-filter';
 import { NotificationBell, SearchButton } from '@/components/icon-button';
-import { PostsExplore, usePostFilter } from '@/components/posts-explore';
+import { PostsExplore, usePostFilter, type PostKindFilter } from '@/components/posts-explore';
 import { RX_FILTERS, RxExplore } from '@/components/rx-explore';
 import { FollowButton, StoreAvatar } from '@/components/social';
 import { AppText, Card, EmptyState, Screen } from '@/components/ui';
@@ -33,6 +33,8 @@ import { tagLabel, tr } from '@/lib/i18n';
 type Tab = 'curations' | 'posts' | 'rx';
 type FeedCard = ExploreItem & { visited?: boolean; is_following?: boolean };
 
+const KIND_LABEL = (): Record<PostKindFilter, string> => ({ all: tr('全部'), diary: tr('日記'), checkin: tr('打卡'), note: tr('心得') });
+
 const SORTS = (): [ExploreSort, string][] => [['recommend', tr('推薦')], ['latest', tr('最新')], ['popular', tr('熱門')]];
 
 /**
@@ -56,6 +58,8 @@ export default function ExploreScreen() {
   const [rxFilter, setRxFilter] = useState<RxFilter>('latest');
   const [rxTag, setRxTag] = useState<string | undefined>();
   const postF = usePostFilter();
+  const [postView, setPostView] = useState<'posts' | 'places'>('posts');
+  const [postKind, setPostKind] = useState<PostKindFilter>('all');
   const [sort, setSort] = useState<ExploreSort>('recommend');
   const [unvisitedOnly, setUnvisitedOnly] = useState(false);
   const [tag, setTag] = useState<string | undefined>();
@@ -120,9 +124,11 @@ export default function ExploreScreen() {
           ...(unvisitedOnly ? [{ key: 'unvisited', label: tr('沒逛過'), clear: () => setUnvisitedOnly(false) }] : []),
         ]
       : tab === 'posts'
-        ? postF.filter !== 'all'
-          ? [{ key: 'pf', label: postF.filter === 'following' ? tr('追蹤中') : tr('附近'), clear: () => postF.pick('all') }]
-          : []
+        ? [
+            ...(postF.filter !== 'all' ? [{ key: 'pf', label: postF.filter === 'following' ? tr('追蹤中') : tr('附近'), clear: () => postF.pick('all') }] : []),
+            ...(postKind !== 'all' ? [{ key: 'pk', label: KIND_LABEL()[postKind], clear: () => setPostKind('all') }] : []),
+            ...(postView === 'places' ? [{ key: 'pv', label: tr('看地點'), clear: () => setPostView('posts') }] : []),
+          ]
         : [
             ...(rxFilter !== 'latest' ? [{ key: 'rxf', label: rxLabel(rxFilter), clear: () => setRxFilter('latest') }] : []),
             ...(rxTag ? [{ key: 'rxt', label: rxTagLabel(rxTag), clear: () => setRxTag(undefined) }] : []),
@@ -145,6 +151,11 @@ export default function ExploreScreen() {
               { key: 'following', label: tr('追蹤中'), selected: postF.filter === 'following', onPress: () => postF.pick('following') },
               ...(locationAvailable() ? [{ key: 'near', label: tr('附近'), selected: postF.filter === 'near', onPress: () => postF.pick('near') }] : []),
             ] },
+            { title: tr('類型'), options: (Object.keys(KIND_LABEL()) as PostKindFilter[]).map((k) => ({ key: k, label: KIND_LABEL()[k], selected: postKind === k, onPress: () => setPostKind(k) })) },
+            { title: tr('顯示'), options: [
+              { key: 'posts', label: tr('貼文'), selected: postView === 'posts', onPress: () => setPostView('posts') },
+              { key: 'places', label: tr('地點'), selected: postView === 'places', onPress: () => setPostView('places') },
+            ] },
           ]
         : [
             { title: tr('排序'), options: RX_FILTERS().map(([k, label]) => ({ key: k, label, selected: rxFilter === k, onPress: () => setRxFilter(k) })) },
@@ -156,7 +167,11 @@ export default function ExploreScreen() {
       setTag(undefined);
       setSort('recommend');
       setUnvisitedOnly(false);
-    } else if (tab === 'posts') postF.pick('all');
+    } else if (tab === 'posts') {
+      postF.pick('all');
+      setPostKind('all');
+      setPostView('posts');
+    }
     else {
       setRxFilter('latest');
       setRxTag(undefined);
@@ -199,7 +214,7 @@ export default function ExploreScreen() {
             </View>
 
             {tab === 'posts' ? (
-              <PostsExplore filter={postF.filter} near={postF.near} onReset={() => postF.pick('all')} />
+              <PostsExplore filter={postF.filter} near={postF.near} onReset={() => postF.pick('all')} view={postView} kind={postKind} />
             ) : tab === 'rx' ? (
               <RxExplore filter={rxFilter} tag={rxTag} />
             ) : loading ? (

@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
-import { BookLine, DiaryPhotos } from '@/components/diary';
+import { DiaryPhotos } from '@/components/diary';
 import { KindChip, NotePhotos } from '@/components/note-card';
 import { PlacesExplore } from '@/components/places-explore';
 import { ActionSheet } from '@/components/sheet';
@@ -44,36 +44,20 @@ export function usePostFilter() {
  * E1 探索 › 貼文（v1.6）：公開的日記貼文＋書公開的心得；看誰的（全部／追蹤中／附近）由上面的「篩選」決定。
  * 最上面一張主題卡＝最新一則有照片的貼文；右上切「貼文／地點」：地點就是原本的「書的地方」（E2）。
  */
-export function PostsExplore({ filter, near, onReset }: { filter: PostFilter; near: Coords | null; onReset: () => void }) {
-  const c = useTheme();
+export function PostsExplore({ filter, near, onReset, view, kind }: { filter: PostFilter; near: Coords | null; onReset: () => void; view: 'posts' | 'places'; kind: PostKindFilter }) {
   const { requireAuth } = useAuth();
-  const [view, setView] = useState<'posts' | 'places'>('posts');
   const [menuFor, setMenuFor] = useState<PublicPost | null>(null);
   const [reportFor, setReportFor] = useState<PublicPost | null>(null);
   const list = useExplorePosts(filter, near);
   const report = useReportCheckin();
-  const data = list.data ?? [];
-  const themeIndex = filter === 'all' ? data.findIndex((p) => p.photo_paths.length > 0) : -1;
-  const ordered = themeIndex > 0 ? [data[themeIndex], ...data.slice(0, themeIndex), ...data.slice(themeIndex + 1)] : data;
-
-  const toggle = (
-    <View style={[styles.toggle, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
-      {(['posts', 'places'] as const).map((v) => (
-        <Pressable key={v} accessibilityRole="tab" accessibilityState={{ selected: view === v }} onPress={() => setView(v)} style={[styles.toggleItem, view === v && { backgroundColor: c.surface }]}>
-          {v === 'places' ? <Feather name="map-pin" size={12} color={view === v ? c.text : c.textSecondary} /> : null}
-          <AppText variant="caption" style={{ fontWeight: '700', color: view === v ? c.text : c.textSecondary }}>{v === 'posts' ? tr('貼文') : tr('地點')}</AppText>
-        </Pressable>
-      ))}
-    </View>
+  const data = (list.data ?? []).filter((p) =>
+    kind === 'all' ? true : kind === 'note' ? p.source === 'note' : kind === 'checkin' ? p.source !== 'note' && (p.kind === 'checkin' || !!p.place_id) : p.source !== 'note' && p.kind !== 'checkin' && !p.place_id,
   );
+  const themeIndex = filter === 'all' && kind === 'all' ? data.findIndex((p) => p.photo_paths.length > 0) : -1;
+  const ordered = themeIndex > 0 ? [data[themeIndex], ...data.slice(0, themeIndex), ...data.slice(themeIndex + 1)] : data;
 
   return (
     <View style={{ flex: 1 }}>
-      <View style={styles.bar}>
-        <AppText variant="caption" muted style={{ flex: 1 }}>{view === 'posts' ? tr('公開的日記、打卡和心得') : tr('大家打卡過的書店、圖書館')}</AppText>
-        {toggle}
-      </View>
-
       {view === 'places' ? (
         <PlacesExplore />
       ) : list.isPending ? (
@@ -140,6 +124,20 @@ export function PostsExplore({ filter, near, onReset }: { filter: PostFilter; ne
   );
 }
 
+/** 類型標籤放右上（日記／打卡／心得／摘句／想法） */
+function PostKind({ post }: { post: PublicPost }) {
+  if (post.source === 'note' && post.note_kind) return <KindChip kind={post.note_kind} />;
+  const checkin = post.kind === 'checkin' || !!post.place_id;
+  const fg = checkin ? '#5A4B8A' : '#6B635A';
+  return (
+    <View style={[styles.kind, { backgroundColor: checkin ? '#ECE8F4' : '#EFE8DE' }]}>
+      <AppText variant="caption" style={{ fontSize: 11, fontWeight: '700', color: fg }}>{checkin ? tr('打卡') : tr('日記')}</AppText>
+    </View>
+  );
+}
+
+export type PostKindFilter = 'all' | 'diary' | 'checkin' | 'note';
+
 export function PostCard({ post, onMore, theme }: { post: PublicPost; onMore?: () => void; theme?: boolean }) {
   const c = useTheme();
   const { requireAuth } = useAuth();
@@ -171,51 +169,44 @@ export function PostCard({ post, onMore, theme }: { post: PublicPost; onMore?: (
           <AppText variant="label" numberOfLines={1} style={{ flexShrink: 1 }}>{post.author_name}</AppText>
           <AppText variant="caption" style={{ color: c.textTertiary }}>{`· ${timeAgo(post.created_at)}`}</AppText>
         </Pressable>
+        <PostKind post={post} />
         {onMore ? (
           <Pressable accessibilityRole="button" accessibilityLabel={tr('更多操作')} hitSlop={10} onPress={onMore}>
             <Feather name="more-horizontal" size={18} color={c.textSecondary} />
           </Pressable>
         ) : null}
       </View>
-      {post.place_id && post.place_name ? (
-        <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/place/[id]', params: { id: post.place_id! } })} style={[styles.place, { backgroundColor: c.surfaceMuted }]}>
-          <Feather name="map-pin" size={12} color={c.primary} />
-          <AppText variant="caption" style={{ fontWeight: '700', color: c.primary }} numberOfLines={1}>{post.place_name}</AppText>
-          {post.distance_m != null ? <AppText variant="caption" muted>{post.distance_m < 1000 ? tr('{n} 公尺', { n: post.distance_m }) : tr('{n} 公里', { n: (post.distance_m / 1000).toFixed(1) })}</AppText> : null}
-        </Pressable>
-      ) : null}
-      {post.source === 'note' ? (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
-          {post.note_kind ? <KindChip kind={post.note_kind} /> : null}
-          {post.title ? <AppText variant="label" style={{ flex: 1 }} numberOfLines={1}>{post.title}</AppText> : null}
-        </View>
-      ) : null}
-      {post.body ? <AppText style={{ lineHeight: 23 }}>{post.source === 'note' && post.note_kind === 'quote' ? tr('「{body}」', { body: post.body }) : post.body}</AppText> : null}
+      {post.source === 'note' && post.title ? <AppText variant="label">{post.title}</AppText> : null}
+      {post.body ? <AppText style={{ lineHeight: 23, fontSize: 15 }}>{post.source === 'note' && post.note_kind === 'quote' ? tr('「{body}」', { body: post.body }) : post.body}</AppText> : null}
       {post.source === 'note' ? <NotePhotos paths={post.photo_paths} /> : <DiaryPhotos paths={post.photo_paths} />}
-      {post.book_id && post.book_title ? (
-        <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/book/[id]', params: { id: post.book_id! } })} style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
-          <View style={{ flex: 1 }}>
-            <BookLine book={{ id: post.book_id, title: post.book_title, cover_url: post.book_cover_url }} color={color} />
-          </View>
-          {post.page_ref ? <AppText variant="caption" muted>{post.page_ref}</AppText> : null}
-        </Pressable>
-      ) : null}
-      {!post.is_mine && (post.place_id || post.book_id) ? (
-        <View style={{ flexDirection: 'row', gap: Spacing.lg }}>
-          {post.place_id ? (
-            <Pressable accessibilityRole="button" onPress={wantPlace} hitSlop={8} style={styles.action}>
-              <Feather name="bookmark" size={14} color={c.textSecondary} />
-              <AppText variant="caption" muted>{tr('我也想去')}</AppText>
-            </Pressable>
-          ) : null}
-          {post.book_id ? (
-            <Pressable accessibilityRole="button" accessibilityState={{ selected: bookSaved }} onPress={wantBook} hitSlop={8} style={styles.action}>
-              <Feather name="bookmark" size={14} color={bookSaved ? c.primary : c.textSecondary} />
-              <AppText variant="caption" style={{ color: bookSaved ? c.primary : c.textSecondary, fontWeight: bookSaved ? '700' : '400' }}>{bookSaved ? tr('已在想讀') : tr('想讀')}</AppText>
-            </Pressable>
-          ) : null}
-        </View>
-      ) : null}
+      {/* Y10：有書不放書封，《書名》、頁數、地點同一行；右邊是想讀／想去 */}
+      <View style={styles.meta}>
+        {post.book_id && post.book_title ? (
+          <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/book/[id]', params: { id: post.book_id! } })} hitSlop={6} style={{ flexShrink: 1 }}>
+            <AppText variant="caption" numberOfLines={1} style={{ color: c.text, fontWeight: '600' }}>{tr('《{title}》', { title: post.book_title })}</AppText>
+          </Pressable>
+        ) : null}
+        {post.page_ref ? <AppText variant="caption" muted>{post.page_ref}</AppText> : null}
+        {post.place_id && post.place_name ? (
+          <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/place/[id]', params: { id: post.place_id! } })} hitSlop={6} style={[styles.action, { flexShrink: 1 }]}>
+            <Feather name="map-pin" size={12} color="#2F5D6B" />
+            <AppText variant="caption" numberOfLines={1} style={{ color: '#2F5D6B', fontWeight: '600', flexShrink: 1 }}>{post.place_name}</AppText>
+            {post.distance_m != null ? <AppText variant="caption" muted>{post.distance_m < 1000 ? tr('{n} 公尺', { n: post.distance_m }) : tr('{n} 公里', { n: (post.distance_m / 1000).toFixed(1) })}</AppText> : null}
+          </Pressable>
+        ) : null}
+        <View style={{ flex: 1 }} />
+        {!post.is_mine && post.book_id ? (
+          <Pressable accessibilityRole="button" accessibilityState={{ selected: bookSaved }} onPress={wantBook} hitSlop={8} style={styles.action}>
+            <Feather name="bookmark" size={13} color={bookSaved ? c.primary : c.textSecondary} />
+            <AppText variant="caption" style={{ color: bookSaved ? c.primary : c.textSecondary, fontWeight: bookSaved ? '700' : '400' }}>{bookSaved ? tr('已在想讀') : tr('想讀')}</AppText>
+          </Pressable>
+        ) : !post.is_mine && post.place_id ? (
+          <Pressable accessibilityRole="button" onPress={wantPlace} hitSlop={8} style={styles.action}>
+            <Feather name="bookmark" size={13} color={c.textSecondary} />
+            <AppText variant="caption" muted>{tr('想去')}</AppText>
+          </Pressable>
+        ) : null}
+      </View>
     </Card>
   );
 }
@@ -226,4 +217,6 @@ const styles = StyleSheet.create({
   toggleItem: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
   place: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: Radius.pill, maxWidth: '100%' },
   action: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, flexWrap: 'wrap' },
+  kind: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radius.sm },
 });
