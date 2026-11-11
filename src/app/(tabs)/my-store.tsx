@@ -1,9 +1,12 @@
 import Feather from '@expo/vector-icons/Feather';
-import { router } from 'expo-router';
+import { Image } from 'expo-image';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { IconButton, NotificationBell } from '@/components/icon-button';
+import { OwnerRx } from '@/components/rx-mine';
 import { StoreAvatar } from '@/components/social';
 import { StoreJournal } from '@/components/store-journal';
 import { StoreSetupSheet } from '@/components/store-setup';
@@ -15,14 +18,17 @@ import { CurationSection } from '@/components/my-curations';
 import { ReadingRemovalToast, ReadingSection, useReadingRemoval } from '@/components/my-readings';
 import { useMyCurations } from '@/lib/curations';
 import { useMyReadings } from '@/lib/readings';
-import { useSavedBooks } from '@/lib/browse';
 import { useMyStore } from '@/lib/queries';
 import { shareStore } from '@/lib/links';
 import { tr } from '@/lib/i18n';
+import { useStoreInsights } from '@/lib/store-v16';
+import { storageUrl } from '@/lib/uploads';
+
+type Tab = 'curation' | 'reading' | 'journal' | 'rx';
 
 /**
- * G1 我的書店（v1.5）：每個人都有書店。頂部縮小（小頭貼＋店名＋一行數字＋4 顆小按鈕），
- * 下面是策展｜店主閱讀；第一次進來跳出 G0 設定卡。
+ * W1 我的書店（v1.6）：120px 背景橫幅（右上 數據／通知／設定）、追蹤者／追蹤中點得進去、
+ * 分頁 策展｜店主閱讀｜手記｜處方簽；第一次進來跳出 G0 設定卡。
  */
 export default function MyStoreScreen() {
   const c = useTheme();
@@ -31,7 +37,10 @@ export default function MyStoreScreen() {
   const { data: curations } = useMyCurations();
   const readings = useMyReadings();
   const removal = useReadingRemoval();
-  const [tab, setTab] = useState<'curation' | 'reading' | 'journal'>('curation');
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState<Tab>(params.tab === 'rx' ? 'rx' : 'curation');
+  const insights = useStoreInsights();
+  const insets = useSafeAreaInsets();
   const readingCount = (readings.data ?? []).filter((r) => r.id !== removal.pending?.id).length;
 
   if (!session) {
@@ -58,63 +67,99 @@ export default function MyStoreScreen() {
   }
 
   const { store, stats } = data;
-  const statsLine = [
-    tr('{n} 追蹤', { n: stats?.follower_count ?? 0 }),
-    tr('本月 {n} 拜訪', { n: stats?.visits_this_month ?? 0 }),
-    tr('{n} 檔策展', { n: stats?.published_curation_count ?? 0 }),
-  ].join(' · ');
+  const banner = storageUrl('banner', store.banner_path);
+  const hex = StoreColors[store.color].hex;
+  const followers = insights.data?.followers ?? stats?.follower_count ?? 0;
+  const following = insights.data?.following ?? 0;
+  const TABS: [Tab, string][] = [
+    ['curation', tr('策展 · {p0}', { p0: curations?.length ?? 0 })],
+    ['reading', tr('店主閱讀 · {readingCount}', { readingCount })],
+    ['journal', tr('手記')],
+    ['rx', tr('處方簽')],
+  ];
 
   return (
     <Screen>
-      <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-        <View style={[styles.band, { backgroundColor: StoreColors[store.color].hex }]} />
-        <ScrollView contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: 96, gap: Spacing.md }} stickyHeaderIndices={[1]}>
-          <View style={{ gap: Spacing.md, paddingTop: Spacing.lg }}>
-            <View style={styles.head}>
-              <StoreAvatar name={store.name} color={store.color} size={48} path={store.avatar_path} />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <AppText variant="heading" numberOfLines={1}>{store.name}</AppText>
-                <AppText variant="caption" muted numberOfLines={1}>{statsLine}</AppText>
-              </View>
-              <Pressable accessibilityRole="button" accessibilityLabel={tr('設定')} onPress={() => router.push('/settings')} style={styles.icon}>
-                <Feather name="settings" size={20} color={c.text} />
-              </Pressable>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.sm }}>
-              <Pill icon="edit-2" label={tr('編輯')} onPress={() => router.push('/store-edit')} />
-              <Pill icon="eye" label={tr('讀者視角')} onPress={() => router.push({ pathname: '/store/[slug]', params: { slug: store.slug } })} />
-              <Pill icon="share" label={tr('分享')} onPress={() => shareStore(store.name, store.slug)} />
-              <Pill icon="globe" label={tr('公開設定')} onPress={() => router.push('/store-visibility')} />
-            </ScrollView>
+      <ScrollView contentContainerStyle={{ paddingBottom: 96 }} stickyHeaderIndices={[2]}>
+        {/* W1 120px 背景橫幅：沒有圖就用店面顏色 */}
+        <View style={[styles.banner, { height: 120 + insets.top, backgroundColor: hex }]}>
+          {banner ? (
+            <Image source={{ uri: banner }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityIgnoresInvertColors />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, styles.shade]} />
+          )}
+          <View style={[styles.bannerShade]} />
+          <View style={[styles.topButtons, { top: insets.top + 10 }]}>
+            <IconButton icon="bar-chart-2" label={tr('數據')} onImage onPress={() => router.push('/store-insights')} />
+            <NotificationBell onImage />
+            <IconButton icon="settings" label={tr('設定')} onImage onPress={() => router.push('/settings')} />
           </View>
-
-          <View style={{ backgroundColor: c.background, paddingVertical: 4 }}>
-            <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
-              {(['curation', 'reading', 'journal'] as const).map((t) => {
-                const selected = tab === t;
-                return (
-                  <Pressable key={t} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => setTab(t)} style={[styles.segmentItem, selected && { backgroundColor: c.surface }]}>
-                    <AppText variant="caption" style={{ fontWeight: '700', color: selected ? c.text : c.textSecondary }}>
-                      {t === 'curation' ? tr('策展 · {p0}', { p0: curations?.length ?? 0 }) : t === 'reading' ? tr('店主閱讀 · {readingCount}', { readingCount }) : tr('店主手記')}
-                    </AppText>
-                  </Pressable>
-                );
-              })}
+          <View style={styles.identity}>
+            <View style={[styles.avatarRing, { borderColor: c.background }]}>
+              <StoreAvatar name={store.name} color={store.color} size={56} path={store.avatar_path} />
             </View>
+            <AppText numberOfLines={1} style={styles.name}>{store.name}</AppText>
           </View>
+        </View>
 
+        <View style={{ paddingHorizontal: Spacing.xl, paddingTop: 34, gap: Spacing.md }}>
+          {store.tagline ? <AppText variant="caption" muted numberOfLines={2}>{store.tagline}</AppText> : null}
+          <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+            <CountPill n={followers} label={tr('追蹤者')} onPress={() => router.push({ pathname: '/follows', params: { kind: 'followers' } })} />
+            <CountPill n={following} label={tr('追蹤中')} onPress={() => router.push({ pathname: '/follows', params: { kind: 'following' } })} />
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.sm }}>
+            <Pill icon="edit-2" label={tr('編輯')} onPress={() => router.push('/store-edit')} />
+            <Pill icon="eye" label={tr('讀者視角')} onPress={() => router.push({ pathname: '/store/[slug]', params: { slug: store.slug } })} />
+            <Pill icon="share" label={tr('分享')} onPress={() => shareStore(store.name, store.slug)} />
+            <Pill icon="globe" label={tr('公開設定')} onPress={() => router.push('/store-visibility')} />
+          </ScrollView>
+        </View>
+
+        <View style={{ backgroundColor: c.background, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.xl }}>
+          <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
+            {TABS.map(([t, label]) => {
+              const selected = tab === t;
+              return (
+                <Pressable key={t} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => setTab(t)} style={[styles.segmentItem, selected && { backgroundColor: c.surface }]}>
+                  <AppText variant="caption" numberOfLines={1} style={{ fontWeight: '700', color: selected ? c.text : c.textSecondary }}>{label}</AppText>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={{ paddingHorizontal: Spacing.xl, paddingTop: Spacing.sm }}>
           {tab === 'curation' ? (
             <CurationSection />
           ) : tab === 'reading' ? (
             <ReadingSection readings={readings.data} loading={readings.isLoading} color={store.color} removal={removal} />
-          ) : (
+          ) : tab === 'journal' ? (
             <StoreJournal bookstoreId={store.id} color={store.color} mine />
+          ) : (
+            <OwnerRx />
           )}
-        </ScrollView>
-        <ReadingRemovalToast removal={removal} />
-        <StoreSetupSheet store={store} />
-      </SafeAreaView>
+        </View>
+      </ScrollView>
+      <ReadingRemovalToast removal={removal} />
+      <StoreSetupSheet store={store} />
     </Screen>
+  );
+}
+
+/** 追蹤者／追蹤中：淺底＋箭頭，看得出能點 */
+function CountPill({ n, label, onPress }: { n: number; label: string; onPress: () => void }) {
+  const c = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={`${n} ${label}`}
+      onPress={onPress}
+      style={({ pressed }) => [styles.count, { backgroundColor: c.surfaceMuted, opacity: pressed ? 0.8 : 1 }]}>
+      <AppText style={{ fontWeight: '700', fontSize: 15 }}>{String(n)}</AppText>
+      <AppText variant="caption">{label}</AppText>
+      <Feather name="chevron-right" size={14} color={c.textSecondary} />
+    </Pressable>
   );
 }
 
@@ -134,9 +179,14 @@ function Pill({ icon, label, onPress }: { icon: React.ComponentProps<typeof Feat
 
 const styles = StyleSheet.create({
   titleRow: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg },
-  band: { height: 5 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  icon: { width: MinTouch, height: MinTouch, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill },
+  banner: { position: 'relative', zIndex: 2 },
+  shade: { backgroundColor: 'rgba(0,0,0,0.12)' },
+  bannerShade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 60, backgroundColor: 'rgba(0,0,0,0.18)' },
+  topButtons: { position: 'absolute', right: 12, flexDirection: 'row', gap: 8 },
+  identity: { position: 'absolute', left: Spacing.xl, right: Spacing.xl, bottom: -24, flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
+  avatarRing: { borderWidth: 3, borderRadius: 18 },
+  name: { flex: 1, color: '#FFFFFF', fontSize: 20, fontWeight: '700', marginBottom: 30, textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 6 },
+  count: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 34, paddingLeft: 12, paddingRight: 8, borderRadius: Radius.pill },
   pill: { minHeight: 36, paddingHorizontal: 10, borderRadius: Radius.pill, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
   segment: { flexDirection: 'row', borderRadius: Radius.md, padding: 3 },
   segmentItem: { flex: 1, minHeight: MinTouch - 4, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },

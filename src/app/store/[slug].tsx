@@ -17,9 +17,10 @@ import { currentPeriod, monthOf } from '@/lib/period';
 import { recordVisit, useMyStore, usePublicStore } from '@/lib/queries';
 import { storageUrl } from '@/lib/uploads';
 import { tr } from '@/lib/i18n';
+import { StoreRxTab } from '@/components/rx-explore';
 import { StoreJournal } from '@/components/store-journal';
 
-type Tab = 'curation' | 'reading' | 'journal';
+type Tab = 'curation' | 'reading' | 'journal' | 'rx';
 
 const openBook = (id: string) => router.push({ pathname: '/book/[id]', params: { id } });
 
@@ -29,7 +30,7 @@ export default function StoreScreen() {
   const c = useTheme();
   const { data, isLoading } = usePublicStore(slug);
   const { data: mine } = useMyStore();
-  const [tab, setTab] = useState<Tab>(initialTab === 'reading' || initialTab === 'journal' ? initialTab : 'curation');
+  const [tab, setTab] = useState<Tab>(initialTab === 'reading' || initialTab === 'journal' || initialTab === 'rx' ? initialTab : 'curation');
   const [index, setIndex] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const current = data?.curations[index];
@@ -49,7 +50,8 @@ export default function StoreScreen() {
   const tabs: Tab[] = [
     'curation',
     ...(store.show_reading === false ? [] : (['reading'] as Tab[])),
-    ...(store.show_want || store.show_place || store.show_post || store.show_rx ? (['journal'] as Tab[]) : []),
+    ...(store.show_want || store.show_place || store.show_post ? (['journal'] as Tab[]) : []),
+    ...(store.show_rx ? (['rx'] as Tab[]) : []),
   ];
   const shown: Tab = tabs.includes(tab) ? tab : 'curation';
 
@@ -93,7 +95,7 @@ export default function StoreScreen() {
                 onPress={() => setTab(t)}
                 style={[styles.tab, { borderBottomColor: selected ? c.primary : 'transparent' }]}>
                 <AppText style={{ fontWeight: selected ? '700' : '500', color: selected ? c.text : c.textSecondary }}>
-                  {t === 'curation' ? tr('策展') : t === 'reading' ? tr('店主閱讀') : tr('店主手記')}
+                  {t === 'curation' ? tr('策展') : t === 'reading' ? tr('店主閱讀') : t === 'journal' ? tr('手記') : tr('處方簽')}
                 </AppText>
               </Pressable>
             );
@@ -132,9 +134,13 @@ export default function StoreScreen() {
           )
         ) : shown === 'reading' ? (
           <ReadingTab readings={readings} color={store.color} />
-        ) : (
+        ) : shown === 'journal' ? (
           <View style={{ padding: Spacing.xl }}>
             <StoreJournal bookstoreId={store.id} color={store.color} />
+          </View>
+        ) : (
+          <View style={{ padding: Spacing.xl }}>
+            <StoreRxTab slug={store.slug} />
           </View>
         )}
       </ScrollView>

@@ -11,6 +11,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { tr } from '@/lib/i18n';
 import { timeAgo } from '@/lib/period';
+import { useStoreRx } from '@/lib/store-v16';
 import { authorName, daysLeft, RX_TAGS, rxTagLabel, useRxList, type RxFilter, type RxListItem } from '@/lib/rx';
 
 export const RX_PURPLE = '#5A4B8A';
@@ -32,9 +33,6 @@ export function RxExplore() {
     <View style={{ flex: 1 }}>
       <View style={styles.head}>
         <AppText variant="caption" muted style={{ flex: 1 }}>{tr('說出你的狀況，大家各開一本書。')}</AppText>
-        <Pressable accessibilityRole="link" hitSlop={8} onPress={() => requireAuth(() => router.push({ pathname: '/saved', params: { tab: 'rx' } }))}>
-          <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('我的處方簽 ›')}</AppText>
-        </Pressable>
       </View>
       <View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
@@ -66,6 +64,14 @@ export function RxExplore() {
       )}
     </View>
   );
+}
+
+/** 書店頁 › 處方簽（v1.6）：這間書店的店主發起的（不含匿名） */
+export function StoreRxTab({ slug }: { slug: string }) {
+  const list = useStoreRx(slug);
+  if (list.isPending) return <ActivityIndicator style={{ marginTop: 24 }} />;
+  if (!list.data?.length) return <EmptyState title={tr('店主還沒有公開的處方簽')} body={tr('店主發起的閱讀處方簽會出現在這裡。')} />;
+  return <View style={{ gap: Spacing.md }}>{list.data.map((r) => <RxCard key={r.id} item={r} />)}</View>;
 }
 
 export function RxCard({ item }: { item: RxListItem }) {

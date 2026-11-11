@@ -3,37 +3,35 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { NotificationBell } from '@/components/icon-button';
 import { BookCover } from '@/components/book-cover';
 import { PlacesShelf } from '@/components/places-shelf';
-import { RxMine } from '@/components/rx-mine';
-import { FollowButton, StoreAvatar, UndoToast } from '@/components/social';
+import { UndoToast } from '@/components/social';
 import { AppText, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
-import { useFollowedStores, useSavedBooks, useToggleSave, wantSource, type FollowedStore, type SavedBook } from '@/lib/browse';
+import { useSavedBooks, useToggleSave, wantSource, type SavedBook } from '@/lib/browse';
 import { useMyPlaces } from '@/lib/diary';
 import { ActionSheet } from '@/components/sheet';
 import { MoreButton, SwipeRow, swipeA11y } from '@/components/swipe-row';
 import { LinkLine } from '@/components/link-line';
-import { currentPeriod, monthOf } from '@/lib/period';
 import { tr } from '@/lib/i18n';
 
-type Tab = 'stores' | 'books' | 'places' | 'rx';
+type Tab = 'books' | 'places';
 
-/** 書櫃：B2 想讀（預設）、B1 追蹤的書店、L3 收藏的地方（M10）；S4 空狀態 */
+/** 書櫃（v1.6）：只留想讀（預設）、地點；追蹤的書店移到我的書店的「追蹤中」，處方簽移到我的書店的「處方簽」分頁 */
 export default function SavedScreen() {
   const c = useTheme();
   const { session, requireAuth } = useAuth();
-  const params = useLocalSearchParams<{ tab?: Tab }>();
-  const [tab, setTab] = useState<Tab>(params.tab ?? 'books');
-  // 從探索 › 處方簽「我的處方簽」或通知進來：切到指定分頁
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const fromParam = (t?: string): Tab => (t === 'places' ? 'places' : 'books');
+  const [tab, setTab] = useState<Tab>(fromParam(params.tab));
   const [lastParam, setLastParam] = useState(params.tab);
   if (params.tab !== lastParam) {
     setLastParam(params.tab);
-    if (params.tab) setTab(params.tab);
+    if (params.tab) setTab(fromParam(params.tab));
   }
-  const stores = useFollowedStores();
   const books = useSavedBooks();
   const places = useMyPlaces('want');
   const toggleSave = useToggleSave();
@@ -63,11 +61,14 @@ export default function SavedScreen() {
   return (
     <Screen>
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-        <AppText variant="title" style={styles.title}>{tr('書櫃')}</AppText>
+        <View style={[styles.title, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+          <AppText variant="title">{tr('書櫃')}</AppText>
+          <NotificationBell />
+        </View>
         <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
-          {(['books', 'stores', 'places', 'rx'] as Tab[]).map((t) => {
+          {(['books', 'places'] as Tab[]).map((t) => {
             const selected = tab === t;
-            const count = t === 'stores' ? stores.data?.length : t === 'places' ? places.data?.length : t === 'rx' ? undefined : books.data?.length;
+            const count = t === 'places' ? places.data?.length : books.data?.length;
             return (
               <Pressable
                 key={t}
@@ -76,32 +77,15 @@ export default function SavedScreen() {
                 onPress={() => setTab(t)}
                 style={[styles.segmentItem, selected && { backgroundColor: c.surface }]}>
                 <AppText variant="caption" style={{ fontWeight: '700', color: selected ? c.text : c.textSecondary }}>
-                  {t === 'rx' ? tr('處方簽') : `${t === 'stores' ? tr('追蹤') : t === 'places' ? tr('地方') : tr('想讀')} · ${count ?? 0}`}
+                  {`${t === 'places' ? tr('地點') : tr('想讀')} · ${count ?? 0}`}
                 </AppText>
               </Pressable>
             );
           })}
         </View>
 
-        {tab === 'rx' ? (
-          <RxMine />
-        ) : tab === 'places' ? (
+        {tab === 'places' ? (
           <PlacesShelf />
-        ) : tab === 'stores' ? (
-          stores.isLoading ? (
-            <ActivityIndicator style={{ marginTop: 48 }} />
-          ) : (
-            <FlatList
-              data={stores.data}
-              keyExtractor={(s) => s.id}
-              contentContainerStyle={styles.list}
-              refreshControl={<RefreshControl refreshing={stores.isRefetching} onRefresh={() => void stores.refetch()} />}
-              ListEmptyComponent={
-                <EmptyState title={tr('還沒有追蹤的書店')} body={tr('追蹤喜歡的店主，\n每月新策展上架時第一個知道。')} actionLabel={tr('去探索書店')} onAction={() => router.navigate('/')} />
-              }
-              renderItem={({ item }) => <StoreRow store={item} />}
-            />
-          )
         ) : books.isLoading ? (
           <ActivityIndicator style={{ marginTop: 48 }} />
         ) : books.error ? (
@@ -122,39 +106,6 @@ export default function SavedScreen() {
         <UndoToast message={undo ? tr('已從想讀移除「{title}」', { title: undo.books.title }) : null} onUndo={restore} onHide={hideToast} />
       </SafeAreaView>
     </Screen>
-  );
-}
-
-function StoreRow({ store }: { store: FollowedStore }) {
-  const c = useTheme();
-  const isNew = store.latest?.period === currentPeriod();
-  return (
-    <Card style={{ gap: Spacing.sm }}>
-      <View style={styles.row}>
-        <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/store/[slug]', params: { slug: store.slug } })} style={[styles.row, { flex: 1 }]}>
-          <StoreAvatar name={store.name} color={store.color} size={44} />
-          <View style={{ flex: 1 }}>
-            <AppText variant="label" style={{ fontSize: 16 }}>{store.name}</AppText>
-            <AppText variant="caption" muted>{tr('{owner_name} · {follower_count} 人追蹤', { owner_name: store.owner_name, follower_count: store.follower_count })}</AppText>
-          </View>
-        </Pressable>
-        <FollowButton bookstoreId={store.id} storeName={store.name} />
-      </View>
-      {store.latest ? (
-        <View style={[styles.latest, { backgroundColor: isNew ? c.successSurface : c.background }]}>
-          {isNew ? (
-            <>
-              <AppText variant="caption" style={{ color: c.success, fontWeight: '700' }}>{tr('{p0} 月新策展', { p0: monthOf(store.latest.period) })}</AppText>
-              <AppText variant="caption">{tr('「{title}」已上架', { title: store.latest.title })}</AppText>
-            </>
-          ) : (
-            <AppText variant="caption" muted>{tr('最近策展：{title} · {book_count} 本書', { title: store.latest.title, book_count: store.latest.book_count })}</AppText>
-          )}
-        </View>
-      ) : (
-        <AppText variant="caption" muted>{tr('還沒有發布策展')}</AppText>
-      )}
-    </Card>
   );
 }
 

@@ -4,6 +4,7 @@ import { useCallback, useMemo } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { IconButton, NotificationBell } from '@/components/icon-button';
 import { StreakCard } from '@/components/diary';
 import { DiaryTimeline } from '@/components/diary-timeline';
 import { WeekCard } from '@/components/week-card';
@@ -43,13 +44,10 @@ export default function DiaryScreen() {
     <View style={styles.header}>
       <AppText variant="title">{tr('日記')}</AppText>
       {session ? (
-        <View style={{ flexDirection: 'row' }}>
-          <Pressable accessibilityRole="button" accessibilityLabel={tr('每週回顧')} onPress={() => router.push('/diary/weeks')} style={styles.icon}>
-            <Feather name="bar-chart-2" size={22} color={c.text} />
-          </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={tr('日記月曆')} onPress={() => router.push('/diary/calendar')} style={styles.icon}>
-            <Feather name="calendar" size={22} color={c.text} />
-          </Pressable>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <IconButton icon="bar-chart-2" label={tr('每週回顧')} onPress={() => router.push('/diary/weeks')} />
+          <IconButton icon="calendar" label={tr('日記月曆')} onPress={() => router.push('/diary/calendar')} />
+          <NotificationBell />
         </View>
       ) : null}
     </View>
