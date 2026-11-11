@@ -179,6 +179,21 @@ export function useRxWithdraw() {
   });
 }
 
+/** 發起後改「匿名／顯示書店名稱」（匿名的不會出現在書店頁） */
+export function useRxSetAnonymous() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, anonymous }: { id: string; anonymous: boolean }) => {
+      const res = await supabase.from('prescriptions').update({ anonymous }).eq('id', id);
+      if (res.error) throw new Error(res.error.message);
+    },
+    onSuccess: () => {
+      invalidate(qc);
+      qc.invalidateQueries({ queryKey: ['store-rx'] });
+    },
+  });
+}
+
 export function useRxAction() {
   const qc = useQueryClient();
   return useMutation({

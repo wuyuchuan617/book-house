@@ -12,7 +12,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { tr } from '@/lib/i18n';
 import { shareRx } from '@/lib/links';
 import { taipeiDate } from '@/lib/period';
-import { daysLeft, rxError, useRxAction, useRxMine, useRxWithdraw, type RxMineReplied, type RxMineStarted } from '@/lib/rx';
+import { daysLeft, rxError, useRxAction, useRxMine, useRxSetAnonymous, useRxWithdraw, type RxMineReplied, type RxMineStarted } from '@/lib/rx';
 
 type Item = RxMineStarted | RxMineReplied;
 
@@ -28,6 +28,7 @@ export function OwnerRx() {
   const [menuFor, setMenuFor] = useState<Item | null>(null);
   const action = useRxAction();
   const withdraw = useRxWithdraw();
+  const setAnon = useRxSetAnonymous();
   const fail = (e: Error) => Alert.alert(tr('沒有成功'), rxError(e.message));
   const confirm = (title: string, body: string, label: string, run: () => void) =>
     Alert.alert(title, body, [
@@ -51,6 +52,9 @@ export function OwnerRx() {
     }
     return [
       ...(item.is_open && item.reply_count === 0 ? [{ label: tr('編輯'), sub: tr('還沒有人開處方時可以改'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/rx/new', params: { id: item.id } }) }] : []),
+      item.anonymous
+        ? { label: tr('改成顯示書店名稱'), sub: tr('會出現在你的書店頁「處方簽」'), icon: 'eye' as const, onPress: () => setAnon.mutate({ id: item.id, anonymous: false }, { onError: fail }) }
+        : { label: tr('改成匿名'), sub: tr('從你的書店頁拿掉，別人看不到是誰發起的'), icon: 'eye-off' as const, onPress: () => setAnon.mutate({ id: item.id, anonymous: true }, { onError: fail }) },
       ...(item.is_open ? [{ label: tr('結案'), sub: tr('不再收新的處方'), icon: 'check-circle' as const, onPress: () => action.mutate({ id: item.id, action: 'close' }, { onError: fail }) }] : []),
       { label: tr('分享'), icon: 'share' as const, onPress: () => shareRx(item.id, item.title, { afterModal: true }) },
       {
@@ -128,7 +132,7 @@ export function RxMineCard({ item, onMore }: { item: Item; onMore?: () => void }
               tr('{n} 張處方', { n: item.reply_count }),
               item.wanted_count ? tr('加入想讀 {n} 本', { n: item.wanted_count }) : null,
               item.is_open ? tr('還有 {n} 天', { n: daysLeft(item.closes_at, true) ?? 0 }) : tr('{date} 結案', { date: taipeiDate(item.closed_at ?? item.closes_at).md }),
-              item.anonymous ? tr('匿名') : null,
+              item.anonymous ? tr('匿名・書店頁看不到') : null,
             ]
               .filter(Boolean)
               .join(' · ')}

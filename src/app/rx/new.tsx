@@ -29,7 +29,8 @@ function RxForm({ existing, initialTitle }: { existing?: RxDetail; initialTitle?
   const [tags, setTags] = useState<string[]>(existing?.tags ?? []);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
-  const [anonymous, setAnonymous] = useState(true);
+  // v1.6：預設用書店名稱發起，才會出現在書店頁的處方簽分頁；想匿名再切
+  const [anonymous, setAnonymous] = useState(false);
   const [duration, setDuration] = useState<RxDuration>(14);
 
   const toggleTag = (t: string) => setTags((ts) => (ts.includes(t) ? ts.filter((x) => x !== t) : ts.length >= 3 ? ts : [...ts, t]));

@@ -1114,7 +1114,6 @@ export const EN: Record<string, Entry> = {
   '你開了《{title}》 · {n} 人參與': 'You prescribed “{title}” · {n} prescriptions',
   '加入想讀 {n} 本': '{n} added to want-to-read',
   '{date} 結案': 'Closed {date}',
-  '匿名': 'Anonymous',
   '發起處方簽': 'Asked',
   '開了處方': 'Prescribed',
   '幫我開一本書：「{title}」 在書棲打開：{url}': 'Prescribe me a book: “{title}” Open in Bookhaus: {url}',
@@ -1263,4 +1262,9 @@ export const EN: Record<string, Entry> = {
   '大家打卡過的書店、圖書館': 'Bookstores and libraries people checked in to',
   '最新的照片貼文': 'Latest photo post',
   '最需要人開的': 'Needs a prescription most',
+  '改成顯示書店名稱': 'Show my bookstore name',
+  '會出現在你的書店頁「處方簽」': 'Shows under Prescriptions on your bookstore',
+  '改成匿名': 'Make anonymous',
+  '從你的書店頁拿掉，別人看不到是誰發起的': 'Removes it from your bookstore; no one sees who asked',
+  '匿名・書店頁看不到': 'Anonymous · not on your bookstore',
 };

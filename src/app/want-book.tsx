@@ -68,7 +68,7 @@ function WantBookForm({ existing, initialQuery }: { existing?: SavedBook; initia
   const submit = () => {
     if (!book) return;
     upsert.mutate(
-      { bookId: book.id, note, sourceText: source, link },
+      { bookId: book.id, note, sourceText: source, link, isPublic: true },
       {
         onSuccess: () => {
           track('want_book_saved', { has_note: !!note.trim(), has_source: !!source.trim(), has_link: !!link.trim(), edit: !!existing });
@@ -82,7 +82,7 @@ function WantBookForm({ existing, initialQuery }: { existing?: SavedBook; initia
   const startReading = async () => {
     if (!existing) return;
     try {
-      if (dirty) await upsert.mutateAsync({ bookId: existing.book_id, note, sourceText: source, link });
+      if (dirty) await upsert.mutateAsync({ bookId: existing.book_id, note, sourceText: source, link, isPublic: true });
       await start.mutateAsync(existing.book_id);
       leave();
       Alert.alert(tr('已移到「正在讀」'), tr('可以在我的書店 › 店主閱讀繼續寫心得。'));

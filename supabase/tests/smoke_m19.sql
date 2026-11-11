@@ -38,6 +38,10 @@ begin
   assert jsonb_array_length(public.store_rx(slug)) = 2, 'owner sees all own';
 end $$;
 
+-- 發起後可以改匿名／顯示書店名稱
+update public.prescriptions set anonymous = false where title = '匿名的那張';
+update public.prescriptions set anonymous = true where title = '匿名的那張';
+
 -- 3. 公開的書：心得出現在探索貼文（標 note）；被日記貼文帶出的不重複
 insert into public.readings (bookstore_id, book_id) select public.my_bookstore_id(), id from public.books where title = '一六在讀';
 insert into public.reading_notes (reading_id, kind, title, body) select id, 'quote', '一句', '星星的光要走幾百年才到這裡。' from public.readings where bookstore_id = public.my_bookstore_id();
