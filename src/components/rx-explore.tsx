@@ -85,7 +85,12 @@ function NeedCard({ item }: { item: RxListItem }) {
 export function StoreRxTab({ slug }: { slug: string }) {
   const list = useStoreRx(slug);
   if (list.isPending) return <ActivityIndicator style={{ marginTop: 24 }} />;
-  if (!list.data?.length) return <EmptyState title={tr('店主還沒有公開的處方簽')} body={tr('店主發起的閱讀處方簽會出現在這裡。')} />;
+  if (!list.data?.length)
+    return (
+      <View style={{ minHeight: 360, justifyContent: 'center' }}>
+        <EmptyState title={tr('店主還沒有公開的處方簽')} body={tr('店主發起的閱讀處方簽會出現在這裡。')} />
+      </View>
+    );
   return <View style={{ gap: Spacing.md }}>{list.data.map((r) => <RxCard key={r.id} item={r} />)}</View>;
 }
 

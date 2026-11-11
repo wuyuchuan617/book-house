@@ -183,7 +183,7 @@ export function PostCard({ post, onMore, theme }: { post: PublicPost; onMore?: (
       <View style={styles.meta}>
         {post.book_id && post.book_title ? (
           <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/book/[id]', params: { id: post.book_id! } })} hitSlop={6} style={{ flexShrink: 1 }}>
-            <AppText variant="caption" numberOfLines={1} style={{ color: c.text, fontWeight: '600' }}>{tr('《{title}》', { title: post.book_title })}</AppText>
+            <AppText variant="caption" style={{ color: c.text, fontWeight: '600' }}>{tr('《{title}》', { title: post.book_title })}</AppText>
           </Pressable>
         ) : null}
         {post.page_ref ? <AppText variant="caption" muted>{post.page_ref}</AppText> : null}

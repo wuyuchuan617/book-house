@@ -183,7 +183,7 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bo
         </View>
       ) : null}
       {items.length === 0 ? (
-        <View style={{ alignItems: 'center', gap: 6, paddingVertical: 48, paddingHorizontal: Spacing.xl }}>
+        <View style={{ alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: mine ? 200 : 320, paddingHorizontal: Spacing.xl }}>
           <AppText variant="label">
             {filter === 'want' ? (mine ? tr('還沒有想讀的書') : tr('店主還沒有公開的想讀')) : filter === 'place' ? (mine ? tr('還沒有想去的地點') : tr('店主還沒有公開的想去')) : mine ? tr('還沒有日記貼文') : tr('店主還沒有公開的日記')}
           </AppText>
