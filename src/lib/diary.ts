@@ -430,6 +430,23 @@ function invalidatePlace(qc: QueryClient, placeId: string) {
 }
 
 /** 存成想去（可以寫一句為什麼想去）／移除；type = 順便選這個地點的類型 */
+/** 自己存的某個想去（編輯時帶入原因、連結、公開）；伺服器還沒更新時沒有 link／is_public */
+export function useMyPlaceSave(placeId: string | undefined) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ['place-save', session?.user.id, placeId],
+    enabled: !!session && !!placeId,
+    queryFn: async () => {
+      const res = await supabase.from('place_saves').select('note, link, is_public').eq('place_id', placeId!).maybeSingle();
+      if (res.error && /link|is_public/i.test(res.error.message)) {
+        const r2 = unwrap<{ note: string | null } | null>(await supabase.from('place_saves').select('note').eq('place_id', placeId!).maybeSingle());
+        return r2 ? { note: r2.note, link: null, is_public: false } : null;
+      }
+      return unwrap<{ note: string | null; link: string | null; is_public: boolean } | null>(res);
+    },
+  });
+}
+
 /** 連結：空白 → null；沒寫 http 就補 https:// */
 export function normalizeLink(link: string | null | undefined) {
   const t = link?.trim();

@@ -26,6 +26,7 @@ import {
   useDiaryImageUrls,
   PLACE_CATEGORIES,
   PLACE_NOTE_MAX,
+  useMyPlaceSave,
   useSaveEntry,
   useSavePlace,
   useSetPlaceType,
@@ -67,10 +68,13 @@ type Params = {
 export default function DiaryComposeScreen() {
   const params = useLocalSearchParams<Params>();
   const day = useDiaryDay();
+  const editingWant = params.kind === 'want' && params.saved === '1' && !!params.placeId;
+  const wantRow = useMyPlaceSave(editingWant ? params.placeId : undefined);
+  if (editingWant && wantRow.isLoading) return <ActivityIndicator style={{ marginTop: 48 }} />;
   const existing = params.entryId ? (day.data?.items.find((i) => (i.type === 'note' || i.type === 'checkin') && i.id === params.entryId) as DiaryEntry | undefined) : undefined;
   if (params.entryId && day.isLoading) return <ActivityIndicator style={{ marginTop: 48 }} />;
   if (params.entryId && !existing) return <EmptyState title={tr('只能編輯今天的日記')} body={tr('過了當天的日記可以刪除，但不能修改。')} />;
-  return <ComposeForm params={params} existing={existing} />;
+  return <ComposeForm params={params} existing={existing} wantRow={wantRow.data ?? undefined} />;
 }
 
 function initialPlace(params: Params, e?: DiaryEntry): PlaceChoice | null {
@@ -90,7 +94,7 @@ function initialKind(params: Params, e?: DiaryEntry): Kind {
   return 'post';
 }
 
-function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEntry }) {
+function ComposeForm({ params, existing, wantRow }: { params: Params; existing?: DiaryEntry; wantRow?: { note: string | null; link: string | null; is_public: boolean } }) {
   const c = useTheme();
   const today = taipeiToday();
   const { data: store } = useMyStore();
@@ -109,15 +113,16 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
   const [body, setBody] = useState(existing?.body ?? '');
   const [pageRef, setPageRef] = useState(existing?.page_ref ?? '');
   const [photos, setPhotos] = useState<DiaryPhoto[]>(() => (existing?.photo_paths ?? []).map((path) => ({ path })));
-  const [isPublic, setIsPublic] = useState<boolean | null>(existing ? existing.is_public : null);
+  const [isPublic, setIsPublic] = useState<boolean | null>(existing ? existing.is_public : wantRow ? wantRow.is_public : null);
   const [placeOpen, setPlaceOpen] = useState(false);
   const [bookOpen, setBookOpen] = useState(false);
   const [done, setDone] = useState(false);
-  const [alsoNote, setAlsoNote] = useState(false);
+  // 正在讀：預設也存成這本書的心得（不想要再取消）
+  const [alsoNote, setAlsoNote] = useState(true);
   const [finished, setFinished] = useState(false);
   const [placeType, setPlaceTypeState] = useState<PlaceCategory | null>(params.type ?? null);
-  const [wantNote, setWantNote] = useState(params.note ?? '');
-  const [wantLink, setWantLink] = useState<string | null>(null);
+  const [wantNote, setWantNote] = useState(wantRow?.note ?? params.note ?? '');
+  const [wantLink, setWantLink] = useState<string | null>(wantRow?.link ?? null);
   const editingWant = kind === 'want' && params.saved === '1';
   const autoOpened = useRef(false);
 

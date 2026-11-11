@@ -142,6 +142,17 @@ export function useCreateRx() {
   });
 }
 
+export function useUpdateRx() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { id: string; title: string; body: string; tags: RxTag[] }) => {
+      const res = await supabase.from('prescriptions').update({ title: input.title.trim(), body: input.body.trim() || null, tags: input.tags }).eq('id', input.id);
+      if (res.error) throw new Error(res.error.message);
+    },
+    onSuccess: () => invalidate(qc),
+  });
+}
+
 export function useRxReply() {
   const qc = useQueryClient();
   return useMutation({
@@ -199,6 +210,7 @@ export function rxError(message: string) {
   if (message.includes('cannot reply to your own')) return tr('不能開處方給自己發起的處方簽。');
   if (message.includes('is closed')) return tr('這張處方簽已經結案了。');
   if (message.includes('cannot extend')) return tr('每張處方簽只能延長一次。');
+  if (message.includes('already has replies')) return tr('已經有人開處方了，不能再改內容。');
   if (message.includes('already reported')) return tr('你已經檢舉過了，我們會盡快處理。');
   if (message.includes('prescription_replies_reason_check')) return tr('理由要 {min}–{max} 字。', { min: RX_REASON_MIN, max: RX_REASON_MAX });
   if (message.includes('prescriptions_title_check')) return tr('狀況要寫 1–{max} 字。', { max: RX_TITLE_MAX });

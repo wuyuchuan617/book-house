@@ -36,6 +36,10 @@ create temp table t_rx as select id from public.prescriptions where title like '
 grant select on t_rx to anon, authenticated;
 select pg_temp.expect_error($q$select public.rx_reply((select id from t_rx), (select id from public.books where title = '山茶花文具店'), '自己開給自己的處方')$q$, 'owner cannot reply');
 
+-- 還沒有人開：可以改內容
+update public.prescriptions set title = '第二張（改）' where title = '第二張';
+do $$ begin assert exists (select 1 from public.prescriptions where title = '第二張（改）'); end $$;
+
 -- 開處方：每人每張一次（再開會變成修改），理由 10 字以上
 select pg_temp.as_user('00000000-0000-0000-0000-0000000001c2');
 select pg_temp.expect_error($q$select public.rx_reply((select id from t_rx), (select id from public.books where title = '山茶花文具店'), '太短')$q$, 'reason too short');
@@ -47,6 +51,10 @@ do $$ begin
 end $$;
 select pg_temp.as_user('00000000-0000-0000-0000-0000000001c3');
 select public.rx_reply((select id from t_rx), (select id from public.books where title = '山茶花文具店'), '很溫柔，讀完會想寫信給朋友。');
+
+-- 有人開了就不能改內容
+select pg_temp.as_user('00000000-0000-0000-0000-0000000001c1');
+select pg_temp.expect_error($q$update public.prescriptions set title = '改題目' where id = (select id from t_rx)$q$, 'locked after replies');
 
 -- 詳情：同一本書合併、依人數；匿名發起看不到是誰；列表數字
 select pg_temp.as_user(null);
@@ -109,7 +117,7 @@ end $$;
 
 -- 快結案提醒：沒人開的處方剩 3 天內 → 提醒一次
 reset role;
-update public.prescriptions set closes_at = now() + interval '2 days' where title = '第二張';
+update public.prescriptions set closes_at = now() + interval '2 days' where title = '第二張（改）';
 do $$ begin
   assert public.enqueue_rx_reminders() = 1;
   assert public.enqueue_rx_reminders() = 0, 'only once';

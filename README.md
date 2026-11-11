@@ -205,6 +205,8 @@ eas submit --platform ios
 - 店主手記與公開設定多「閱讀處方簽」：你開過的處方、用書店身分發起的處方簽（匿名的不會出現）。
 - 資料表 `prescriptions`、`prescription_replies`；讀取都走 `rx_list`／`rx_detail`／`rx_mine`（匿名時不外洩發起人）；寫入 `rx_reply`／`rx_close`／`rx_extend`／`rx_report`。
 - migration `20261125000001_prescriptions.sql`；測試 `supabase/tests/smoke_m18.sql`。
+- 店主手記（我的書店）每一則往左滑：想讀／想去＝編輯、移除（可復原）；日記貼文＝今天的編輯、改私人、刪除，過去的改私人、刪除；我開的處方＝修改、撤回；我發起的處方簽＝結案、刪除，沒人開過才能編輯（`20261126000001_journal_edit.sql`）。
+- 正在讀的「也存成這本書的心得」預設打勾。
 
 ## v1.5 ③（探索：策展｜貼文，書的地方收進貼文）
 

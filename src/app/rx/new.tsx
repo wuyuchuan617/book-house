@@ -1,6 +1,6 @@
-import { router, Stack } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Chip, chipRow, TextField } from '@/components/form';
@@ -9,22 +9,32 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { tr } from '@/lib/i18n';
 import { useMyStore } from '@/lib/queries';
-import { RX_BODY_MAX, RX_DURATIONS, RX_TAGS, RX_TITLE_MAX, rxError, rxTagLabel, useCreateRx, type RxDuration, type RxTag } from '@/lib/rx';
+import { RX_BODY_MAX, RX_DURATIONS, RX_TAGS, RX_TITLE_MAX, rxError, rxTagLabel, useCreateRx, useRx, useUpdateRx, type RxDetail, type RxDuration, type RxTag } from '@/lib/rx';
 
-/** X2 發起閱讀處方簽：狀況（必填）、想多說一點、標籤（最多 3）、身分（書店／匿名）、開放多久 */
+/** X2 發起閱讀處方簽：狀況（必填）、想多說一點、標籤（最多 3）、身分（書店／匿名）、開放多久；帶 id = 編輯（還沒有人開才行） */
 export default function NewRxScreen() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { data, isLoading } = useRx(id);
+  if (id && isLoading) return <ActivityIndicator style={{ marginTop: 48 }} />;
+  return <RxForm existing={id ? data ?? undefined : undefined} />;
+}
+
+function RxForm({ existing }: { existing?: RxDetail }) {
   const c = useTheme();
   const { data: mine } = useMyStore();
   const create = useCreateRx();
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-  const [tags, setTags] = useState<RxTag[]>([]);
+  const update = useUpdateRx();
+  const [title, setTitle] = useState(existing?.title ?? '');
+  const [body, setBody] = useState(existing?.body ?? '');
+  const [tags, setTags] = useState<RxTag[]>((existing?.tags ?? []) as RxTag[]);
   const [anonymous, setAnonymous] = useState(true);
   const [duration, setDuration] = useState<RxDuration>(14);
 
   const toggleTag = (t: RxTag) => setTags((ts) => (ts.includes(t) ? ts.filter((x) => x !== t) : ts.length >= 3 ? ts : [...ts, t]));
   const submit = () =>
-    create.mutate(
+    existing
+      ? update.mutate({ id: existing.id, title, body, tags }, { onSuccess: () => router.back(), onError: (e) => Alert.alert(tr('沒有儲存成功'), rxError(e.message)) })
+      : create.mutate(
       { title, body, tags, anonymous, duration },
       {
         onSuccess: (r) => router.replace({ pathname: '/rx/[id]', params: { id: r.id } }),
@@ -34,7 +44,7 @@ export default function NewRxScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: tr('發起閱讀處方簽') }} />
+      <Stack.Screen options={{ title: existing ? tr('編輯處方簽') : tr('發起閱讀處方簽') }} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={90}>
         <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg }} keyboardShouldPersistTaps="handled">
           <AppText muted style={{ lineHeight: 22 }}>{tr('說說你現在的狀況或想找什麼書，大家會各開一本給你。')}</AppText>
@@ -49,6 +59,8 @@ export default function NewRxScreen() {
               {RX_TAGS.map((t) => <Chip key={t} label={rxTagLabel(t)} selected={tags.includes(t)} onPress={() => toggleTag(t)} />)}
             </View>
           </View>
+          {!existing ? (
+          <>
           <View style={{ gap: Spacing.sm }}>
             <AppText variant="label">{tr('用什麼身分')}</AppText>
             <View style={chipRow}>
@@ -64,13 +76,17 @@ export default function NewRxScreen() {
             </View>
             <AppText variant="caption" muted>{tr('時間到自動結案，之後只能看；也可以提早結案、或延長一次。')}</AppText>
           </View>
+          </>
+          ) : (
+            <AppText variant="caption" muted>{tr('還沒有人開處方，可以修改內容；身分和開放天數不能改。')}</AppText>
+          )}
           <Card style={{ backgroundColor: c.surfaceMuted }}>
             <AppText variant="caption" muted style={{ lineHeight: 19 }}>{tr('有人開處方會通知你。每個人只能開一本，所以不會被洗版。')}</AppText>
           </Card>
         </ScrollView>
       </KeyboardAvoidingView>
       <SafeAreaView edges={['bottom']} style={[styles.footer, { backgroundColor: c.surface, borderTopColor: c.border }]}>
-        <Button label={tr('發起')} disabled={!title.trim()} loading={create.isPending} onPress={submit} />
+        <Button label={existing ? tr('儲存') : tr('發起')} disabled={!title.trim()} loading={create.isPending || update.isPending} onPress={submit} />
       </SafeAreaView>
     </Screen>
   );

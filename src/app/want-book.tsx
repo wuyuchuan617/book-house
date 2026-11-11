@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
@@ -12,27 +12,34 @@ import { AppText, Button, Screen } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { track } from '@/lib/analytics';
-import { useSaveIds, useUpsertWant } from '@/lib/browse';
+import { useSavedBooks, useSaveIds, useUpsertWant, type SavedBook } from '@/lib/browse';
 import type { Book } from '@/lib/curations';
 import { useMyStore } from '@/lib/queries';
 import { readingError } from '@/lib/readings';
 import { tr } from '@/lib/i18n';
 
-/** F3 想讀的書（＋選單）：書、為什麼想讀、在哪看到、連結（只有自己看得到）、顯示在書店頁 */
+/** F3 想讀的書（＋選單）：書、為什麼想讀、在哪看到、連結（只有自己看得到）、顯示在書店頁；帶 bookId = 編輯 */
 export default function WantBookScreen() {
+  const { bookId } = useLocalSearchParams<{ bookId?: string }>();
+  const saves = useSavedBooks();
+  if (bookId && saves.isLoading) return <ActivityIndicator style={{ marginTop: 48 }} />;
+  return <WantBookForm existing={bookId ? saves.data?.find((s) => s.book_id === bookId) : undefined} />;
+}
+
+function WantBookForm({ existing }: { existing?: SavedBook }) {
   const c = useTheme();
   const { data: mine } = useMyStore();
   const { data: saveIds } = useSaveIds();
   const upsert = useUpsertWant();
-  const [book, setBook] = useState<Book | null>(null);
+  const [book, setBook] = useState<Book | null>(existing?.books ?? null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [note, setNote] = useState('');
-  const [source, setSource] = useState('');
-  const [link, setLink] = useState('');
-  const [isPublic, setIsPublic] = useState<boolean | null>(null);
+  const [note, setNote] = useState(existing?.note ?? '');
+  const [source, setSource] = useState(existing?.source_text ?? '');
+  const [link, setLink] = useState(existing?.link ?? '');
+  const [isPublic, setIsPublic] = useState<boolean | null>(existing?.is_public ?? null);
   const showWant = mine?.store.show_want ?? false;
   const publicValue = isPublic ?? showWant;
-  const already = !!book && !!saveIds?.has(book.id);
+  const already = !existing && !!book && !!saveIds?.has(book.id);
 
   const submit = () => {
     if (!book) return;
@@ -50,7 +57,7 @@ export default function WantBookScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: tr('想讀的書') }} />
+      <Stack.Screen options={{ title: existing ? tr('編輯想讀') : tr('想讀的書') }} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={90}>
         <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg }} keyboardShouldPersistTaps="handled">
           <View style={{ gap: 6 }}>
@@ -58,6 +65,7 @@ export default function WantBookScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={book ? tr('已選：{title}，點兩下換一本', { title: book.title }) : tr('選一本書')}
+              disabled={!!existing}
               onPress={() => setPickerOpen(true)}
               style={[styles.bookField, { borderColor: book ? c.border : c.primary, backgroundColor: c.surface }]}>
               {book ? (
@@ -67,7 +75,7 @@ export default function WantBookScreen() {
                     <AppText variant="label">{book.title}</AppText>
                     <AppText variant="caption" muted>{book.authors.join(tr('、'))}</AppText>
                   </View>
-                  <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('換一本')}</AppText>
+                  {!existing ? <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('換一本')}</AppText> : null}
                 </>
               ) : (
                 <>
@@ -110,7 +118,7 @@ export default function WantBookScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
       <SafeAreaView edges={['bottom']} style={[styles.footer, { backgroundColor: c.surface, borderTopColor: c.border }]}>
-        <Button label={already ? tr('儲存') : tr('加入想讀')} disabled={!book} loading={upsert.isPending} onPress={submit} />
+        <Button label={already || existing ? tr('儲存') : tr('加入想讀')} disabled={!book} loading={upsert.isPending} onPress={submit} />
       </SafeAreaView>
 
       <BookPicker

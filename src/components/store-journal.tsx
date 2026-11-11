@@ -1,18 +1,21 @@
 import Feather from '@expo/vector-icons/Feather';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { BookCover } from '@/components/book-cover';
 import { BookLine, VisibilityBadge } from '@/components/diary';
 import { Chip, chipRow } from '@/components/form';
+import { SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
 import { AppText, Card } from '@/components/ui';
 import { Radius, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { track } from '@/lib/analytics';
-import { categoryLabel, diaryError, useDiaryImageUrls, useSetJournalPublic, useStoreJournal, type JournalItem } from '@/lib/diary';
-import { taipeiDate } from '@/lib/period';
+import { useToggleSave } from '@/lib/browse';
+import { categoryLabel, diaryError, useDeleteEntry, useDiaryImageUrls, useSavePlace, useSetJournalPublic, useStoreJournal, type JournalItem } from '@/lib/diary';
+import { rxError, useRxAction, useRxWithdraw } from '@/lib/rx';
+import { taipeiDate, taipeiToday } from '@/lib/period';
 import { tr } from '@/lib/i18n';
 
 type Filter = 'all' | 'want' | 'place' | 'post' | 'rx';
@@ -26,6 +29,18 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
   const { data, isLoading, error, refetch } = useStoreJournal(bookstoreId);
   const [filter, setFilter] = useState<Filter>('all');
   const setPublic = useSetJournalPublic();
+  const toggleSave = useToggleSave();
+  const savePlace = useSavePlace();
+  const delEntry = useDeleteEntry();
+  const rxAction = useRxAction();
+  const withdraw = useRxWithdraw();
+  const [undo, setUndo] = useState<Extract<JournalItem, { type: 'want' | 'place' }> | null>(null);
+  // 移除後 6 秒內可以復原（列表在捲動區裡，所以用列表上方的提示，不用浮動的 toast）
+  useEffect(() => {
+    if (!undo) return;
+    const t = setTimeout(() => setUndo(null), 6000);
+    return () => clearTimeout(t);
+  }, [undo]);
 
   if (error)
     return (
@@ -61,6 +76,79 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
     );
   };
 
+  const fail = (e: Error) => Alert.alert(tr('沒有成功'), item_error(e.message));
+  const confirm = (title: string, body: string, label: string, run: () => void) =>
+    Alert.alert(title, body, [
+      { text: tr('取消'), style: 'cancel' },
+      { text: label, style: 'destructive', onPress: run },
+    ]);
+
+  // 往左滑：想讀、想去＝編輯／移除（可復原）；日記貼文＝今天的編輯／改私人／刪除，過去的改私人／刪除；
+  // 我開的處方＝修改／撤回；我發起的處方簽＝（沒人開才有）編輯／結案／刪除
+  const actionsFor = (item: JournalItem): SwipeAction[] => {
+    switch (item.type) {
+      case 'want':
+        return [
+          { label: tr('編輯'), icon: 'edit-2', onPress: () => router.push({ pathname: '/want-book', params: { bookId: item.id } }) },
+          { label: tr('移除'), icon: 'trash-2', destructive: true, onPress: () => toggleSave.mutate({ bookId: item.id, save: false }, { onSuccess: () => setUndo(item), onError: fail }) },
+        ];
+      case 'place':
+        return [
+          {
+            label: tr('編輯'),
+            icon: 'edit-2',
+            onPress: () =>
+              router.push({ pathname: '/diary/compose', params: { kind: 'want', placeId: item.place.id, placeName: item.place.name, googlePlaceId: 'saved', publicOk: item.public_ok ? '1' : '0', saved: '1', note: item.note ?? '' } }),
+          },
+          { label: tr('移除'), icon: 'trash-2', destructive: true, onPress: () => savePlace.mutate({ placeId: item.place.id, save: false }, { onSuccess: () => setUndo(item), onError: fail }) },
+        ];
+      case 'post': {
+        const today = item.entry_date === taipeiToday();
+        return [
+          ...(today ? [{ label: tr('編輯'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/diary/compose', params: { entryId: item.id } }) }] : []),
+          ...(item.is_public ? [{ label: tr('改成私人'), icon: 'eye-off' as const, onPress: () => setPublic.mutate({ item, value: false }, { onError: fail }) }] : []),
+          {
+            label: tr('刪除'),
+            icon: 'trash-2',
+            destructive: true,
+            onPress: () =>
+              confirm(tr('刪除這筆日記？'), item.is_public ? tr('公開的貼文也會一起從探索和地點頁移除，無法復原。') : tr('刪除後無法復原。'), tr('刪除'), () =>
+                delEntry.mutate({ id: item.id, photoPaths: item.photo_paths }, { onError: fail }),
+              ),
+          },
+        ];
+      }
+      case 'rx_reply':
+        return [
+          { label: tr('修改'), icon: 'edit-2', onPress: () => router.push({ pathname: '/rx/reply', params: { id: item.prescription.id } }) },
+          {
+            label: tr('撤回'),
+            icon: 'rotate-ccw',
+            destructive: true,
+            onPress: () => confirm(tr('撤回這張處方？'), tr('撤回後可以再開一次。'), tr('撤回'), () => withdraw.mutate(item.prescription.id, { onError: fail })),
+          },
+        ];
+      case 'rx':
+        return [
+          ...(item.is_open && item.reply_count === 0 ? [{ label: tr('編輯'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/rx/new', params: { id: item.id } }) }] : []),
+          ...(item.is_open ? [{ label: tr('結案'), icon: 'check-circle' as const, onPress: () => rxAction.mutate({ id: item.id, action: 'close' }, { onError: fail }) }] : []),
+          {
+            label: tr('刪除'),
+            icon: 'trash-2',
+            destructive: true,
+            onPress: () => confirm(tr('刪除這張處方簽？'), tr('大家開的處方會一起刪除，無法復原。'), tr('刪除'), () => rxAction.mutate({ id: item.id, action: 'delete' }, { onError: fail })),
+          },
+        ];
+    }
+  };
+
+  const restore = () => {
+    if (!undo) return;
+    if (undo.type === 'want') toggleSave.mutate({ bookId: undo.id, save: true, note: undo.note, sourceText: undo.source_text });
+    else savePlace.mutate({ placeId: undo.place.id, save: true, note: undo.note });
+    setUndo(null);
+  };
+
   const FILTERS: [Filter, string][] = [
     ['all', tr('全部')],
     ['want', tr('想讀')],
@@ -74,6 +162,16 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
       <View style={chipRow}>
         {FILTERS.map(([f, label]) => <Chip key={f} label={label} selected={filter === f} onPress={() => setFilter(f)} />)}
       </View>
+      {undo ? (
+        <View style={[styles.undo, { backgroundColor: c.text }]} accessibilityLiveRegion="polite">
+          <AppText variant="caption" style={{ color: c.background, flex: 1 }} numberOfLines={1}>
+            {undo.type === 'want' ? tr('已從想讀移除「{title}」', { title: undo.book.title }) : tr('已從想去移除「{name}」', { name: undo.place.name })}
+          </AppText>
+          <Pressable accessibilityRole="button" onPress={restore} hitSlop={8}>
+            <AppText variant="caption" style={{ color: c.background, fontWeight: '700' }}>{tr('復原')}</AppText>
+          </Pressable>
+        </View>
+      ) : null}
       {items.length === 0 ? (
         <Card style={{ alignItems: 'center', gap: 6, paddingVertical: 24 }}>
           <AppText variant="label">{mine ? tr('這裡還沒有東西') : tr('店主還沒有公開的手記')}</AppText>
@@ -82,14 +180,28 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
           </AppText>
         </Card>
       ) : (
-        items.map((item) => <JournalCard key={`${item.type}-${item.id}`} item={item} color={color} mine={mine} onToggle={() => toggle(item)} />)
+        items.map((item) => {
+          const card = <JournalCard item={item} color={color} mine={mine} onToggle={() => toggle(item)} />;
+          if (!mine) return <View key={`${item.type}-${item.id}`}>{card}</View>;
+          const actions = actionsFor(item);
+          return (
+            <View key={`${item.type}-${item.id}`} style={{ borderRadius: Radius.xl, overflow: 'hidden' }} {...swipeA11y(actions)}>
+              <SwipeRow actions={actions} background={c.background}>
+                {card}
+              </SwipeRow>
+            </View>
+          );
+        })
       )}
       {mine && items.length ? (
-        <AppText variant="caption" style={{ color: c.textTertiary }}>{tr('點右上角的標籤可以切換「書店頁／只有自己」。哪幾類會顯示，看上方的「公開設定」。')}</AppText>
+        <AppText variant="caption" style={{ color: c.textTertiary }}>{tr('往左滑可以編輯、移除；點右上角的標籤切換「書店頁／只有自己」。哪幾類會顯示，看上方的「公開設定」。')}</AppText>
       ) : null}
+
     </View>
   );
 }
+
+const item_error = (m: string) => (/prescription|處方/.test(m) ? rxError(m) : diaryError(m));
 
 function JournalCard({ item, color, mine, onToggle }: { item: JournalItem; color: StoreColor; mine?: boolean; onToggle: () => void }) {
   const c = useTheme();
@@ -186,5 +298,6 @@ function PostBody({ item, color }: { item: Extract<JournalItem, { type: 'post' }
 
 const styles = StyleSheet.create({
   card: { borderRadius: Radius.xl, padding: Spacing.lg, gap: Spacing.sm },
+  undo: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, minHeight: 44 },
   photo: { width: 96, height: 72, borderRadius: 10 },
 });
