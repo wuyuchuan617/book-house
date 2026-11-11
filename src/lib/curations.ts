@@ -348,6 +348,8 @@ export function useDeleteCuration() {
 /** 把伺服器錯誤換成給店主看的中文 */
 export function friendlyError(message: string) {
   if (message.includes('title is required')) return tr('先取一個策展標題才能發布。');
+  if (message.includes('every book needs a note')) return tr('每本書都要寫推薦理由才能發布。');
+  if (message.includes('cannot clear a note')) return tr('發布中的策展不能把推薦理由清空。');
   if (message.includes('at least 1 book to publish')) return tr('書架上至少要有 1 本書才能發布。');
   if (message.includes('already has a published')) return tr('這個月已經有一檔發布中的策展了。');
   if (message.includes('needs at least 1 book')) return tr('發布中的策展至少要留 1 本書。想清空書架請先取消發布。');

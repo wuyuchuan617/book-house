@@ -9,6 +9,7 @@ import { BookPicker, NoteForm } from '@/components/book-picker';
 import { CurationActions } from '@/components/curation-actions';
 import { TextField } from '@/components/form';
 import { PublishDateSheet } from '@/components/publish-date-sheet';
+import { ActionSheet } from '@/components/sheet';
 import { SortableList } from '@/components/sortable-list';
 import { SwipeRow, swipeA11y } from '@/components/swipe-row';
 import { TagPicker } from '@/components/tag-picker';
@@ -66,6 +67,7 @@ export default function CurationEditorScreen() {
   const [actionsOpen, setActionsOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
   const [noteFor, setNoteFor] = useState<CurationItem | null>(null);
+  const [reasonsOpen, setReasonsOpen] = useState(false);
   const [justAdded, setJustAdded] = useState<string | null>(null);
   const loadedFor = useRef<string | null>(null);
 
@@ -123,7 +125,10 @@ export default function CurationEditorScreen() {
   const missing: string[] = [];
   if (!title.trim()) missing.push(tr('取一個策展標題'));
   if (items.length === 0) missing.push(tr('放上至少 1 本書'));
-  const canPublish = cur.status === 'draft' && missing.length === 0 && !isPast && !otherLiveSameMonth;
+  // v1.7 Y9：加書時理由可以先空著；發布前每本都要有
+  const noteless = items.filter((it) => !it.note?.trim());
+  if (noteless.length) missing.push(tr('{n} 本書寫推薦理由', { n: noteless.length }));
+  const canPublish = cur.status === 'draft' && !!title.trim() && items.length > 0 && !isPast && !otherLiveSameMonth;
   const publishLabel = isFuture ? tr('選擇上架日期') : tr('發布策展');
 
   const banner = (() => {
@@ -240,6 +245,14 @@ export default function CurationEditorScreen() {
               <AppText variant="label">{items.length ? tr('書架 · {length} 本', { length: items.length }) : tr('書架')}</AppText>
               <AppText variant="caption" muted>{items.length > 1 ? tr('按住 ≡ 拖拉排序 · 往左滑編輯') : tr('建議 3–7 本')}</AppText>
             </View>
+            {items.length ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }} accessible accessibilityLabel={tr('推薦理由 {a}/{b}', { a: items.length - noteless.length, b: items.length })}>
+                <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: c.surfaceMuted }}>
+                  <View style={{ width: `${((items.length - noteless.length) / items.length) * 100}%`, height: 6, borderRadius: 3, backgroundColor: c.success }} />
+                </View>
+                <AppText variant="caption" muted>{tr('推薦理由 {a}/{b}', { a: items.length - noteless.length, b: items.length })}</AppText>
+              </View>
+            ) : null}
             {items.length === 0 ? (
               <Pressable accessibilityRole="button" onPress={() => setPickerOpen(true)} style={[styles.empty, { borderColor: c.border }]}>
                 <Feather name="plus" size={22} color={c.primary} />
@@ -279,7 +292,7 @@ export default function CurationEditorScreen() {
                             {it.note ? (
                               <AppText variant="caption" muted numberOfLines={2}>{tr('理由：{note}', { note: it.note })}</AppText>
                             ) : (
-                              <AppText variant="caption" style={{ color: c.primary }}>{tr('＋ 加上推薦理由')}</AppText>
+                              <AppText variant="caption" style={{ color: c.danger, fontWeight: '700' }}>{tr('＋ 寫推薦理由（發布前要寫）')}</AppText>
                             )}
                           </View>
                           {justAdded === it.books.id ? (
@@ -317,7 +330,7 @@ export default function CurationEditorScreen() {
             <View style={styles.footerRow}>
               <Button kind="secondary" label={tr('預覽')} style={{ flex: 1 }} onPress={() => router.push({ pathname: '/curation/preview/[id]', params: { id: cur.id } })} />
               <Button kind="secondary" label={update.isPending ? tr('儲存中…') : dirty ? tr('儲存') : tr('已儲存')} style={{ flex: 1 }} disabled={!dirty} onPress={onSave} />
-              <Button label={publishLabel} style={{ flex: 2 }} disabled={!canPublish} loading={publish.isPending} onPress={() => setDateOpen(true)} />
+              <Button label={publishLabel} style={{ flex: 2 }} disabled={!canPublish} loading={publish.isPending} onPress={() => (noteless.length ? setReasonsOpen(true) : setDateOpen(true))} />
             </View>
           </>
         ) : dirty ? (
@@ -363,6 +376,13 @@ export default function CurationEditorScreen() {
         onConfirm={onPublish}
       />
 
+      <ActionSheet
+        visible={reasonsOpen}
+        onClose={() => setReasonsOpen(false)}
+        title={tr('還有 {n} 本沒寫推薦理由', { n: noteless.length })}
+        subtitle={tr('每本書都寫好理由才能發布')}
+        actions={noteless.map((it) => ({ label: it.books.title, sub: tr('寫推薦理由'), icon: 'edit-2' as const, onPress: () => setNoteFor(it) }))}
+      />
       <Modal visible={!!noteFor} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setNoteFor(null)}>
         <Screen>
           <SafeAreaView style={{ flex: 1 }}>
