@@ -137,3 +137,12 @@ export function useBookMentions(bookId: string | undefined) {
     queryFn: () => rpcOr<BookMentions | null>('book_mentions', { p_book_id: bookId }, null),
   });
 }
+
+/** 地點頁：在這裡買過幾本（不顯示是誰） */
+export function usePlacePurchaseCount(placeId: string | undefined) {
+  return useQuery({
+    queryKey: ['place-purchases', placeId],
+    enabled: !!placeId,
+    queryFn: () => rpcOr<number>('place_purchase_count', { p_place_id: placeId }, 0),
+  });
+}

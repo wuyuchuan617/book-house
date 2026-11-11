@@ -7,14 +7,15 @@ import { BookCover } from '@/components/book-cover';
 import { CheckinCard } from '@/components/diary';
 import { Chip } from '@/components/form';
 import { ActionSheet } from '@/components/sheet';
-import { AppText, Button, Card, EmptyState, Screen } from '@/components/ui';
+import { AppText, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
-import { categoryIcon, categoryLabel, diaryError, openInGoogleMaps, useAdminCategory, PLACE_CATEGORIES, useSetPlaceType, usePlaceDetail, useReportCheckin, type PublicCheckin } from '@/lib/diary';
+import { categoryIcon, categoryLabel, diaryError, openInGoogleMaps, useAdminCategory, PLACE_CATEGORIES, usePlaceDetail, useReportCheckin, type PublicCheckin } from '@/lib/diary';
 import { useIsAdmin } from '@/lib/admin';
 import { tr } from '@/lib/i18n';
+import { usePlacePurchaseCount } from '@/lib/store-v16';
 import { REPORT_REASONS } from '@/lib/safety';
 
 /**
@@ -26,12 +27,12 @@ export default function PlaceScreen() {
   const c = useTheme();
   const { session, requireAuth } = useAuth();
   const { data, isLoading, refetch, isRefetching } = usePlaceDetail(id);
-  const setType = useSetPlaceType();
   const adminCategory = useAdminCategory();
   const { data: isAdmin } = useIsAdmin();
   const report = useReportCheckin();
   const [menuFor, setMenuFor] = useState<PublicCheckin | null>(null);
   const [reportFor, setReportFor] = useState<PublicCheckin | null>(null);
+  const { data: purchaseCount } = usePlacePurchaseCount(id);
 
   useEffect(() => {
     if (id) track('place_opened', {});
@@ -40,6 +41,7 @@ export default function PlaceScreen() {
   if (isLoading) return <ActivityIndicator style={{ marginTop: 48 }} />;
   if (!data) return <EmptyState title={tr('找不到這個地點')} body={tr('它可能已經被移除了。')} />;
   const { place } = data;
+  const bought = purchaseCount ?? 0;
 
   const fail = (e: Error) => Alert.alert(tr('沒有成功'), diaryError(e.message));
   // 想去：開寫日記頁的「想去」（已存過就是編輯，可以移除）
@@ -58,7 +60,6 @@ export default function PlaceScreen() {
         },
       }),
     );
-  const votes = Object.values(data.type_votes ?? {}).reduce((a, b) => a + (b ?? 0), 0);
   const checkinHere = () =>
     requireAuth(() =>
       router.push({
@@ -82,7 +83,7 @@ export default function PlaceScreen() {
         </View>
 
         <AppText variant="caption" muted>
-          {[tr('{n} 則公開打卡', { n: data.checkin_count }), tr('{n} 人想去', { n: data.save_count }), session && data.my_checkins ? tr('你來過 {n} 次', { n: data.my_checkins }) : null].filter(Boolean).join(' · ')}
+          {[tr('{n} 則公開打卡', { n: data.checkin_count }), tr('{n} 人想去', { n: data.save_count }), bought ? tr('在這裡買過 {n} 本書', { n: bought }) : null, session && data.my_checkins ? tr('你來過 {n} 次', { n: data.my_checkins }) : null].filter(Boolean).join(' · ')}
         </AppText>
 
         <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
@@ -92,14 +93,17 @@ export default function PlaceScreen() {
             onPress={openSave}
             style={[styles.action, { backgroundColor: data.saved ? c.primary : c.surface, borderColor: data.saved ? c.primary : c.border }]}>
             <Feather name="bookmark" size={16} color={data.saved ? c.onPrimary : c.text} />
-            <AppText variant="label" style={{ color: data.saved ? c.onPrimary : c.text }}>{data.saved ? tr('已存想去') : tr('想去')}</AppText>
+            <AppText variant="label" style={{ color: data.saved ? c.onPrimary : c.text }}>{data.saved ? tr('已想去') : tr('想去')}</AppText>
           </Pressable>
-          <Pressable accessibilityRole="link" onPress={() => openInGoogleMaps(place.name, place.google_place_id)} style={[styles.action, { backgroundColor: c.surface, borderColor: c.border, flex: 1.6 }]}>
-            <Feather name="navigation" size={16} color={c.text} />
-            <AppText variant="label">{tr('在 Google 地圖開啟')}</AppText>
+          <Pressable accessibilityRole="link" accessibilityLabel={tr('在 Google 地圖開啟')} onPress={() => openInGoogleMaps(place.name, place.google_place_id)} style={[styles.action, { backgroundColor: c.surface, borderColor: c.border }]}>
+            <Feather name="external-link" size={16} color={c.text} />
+            <AppText variant="label">{tr('Google 地圖')}</AppText>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={checkinHere} style={[styles.action, { backgroundColor: c.primary, borderColor: c.primary }]}>
+            <Feather name="map-pin" size={16} color={c.onPrimary} />
+            <AppText variant="label" style={{ color: c.onPrimary }}>{tr('打卡')}</AppText>
           </Pressable>
         </View>
-        <Button label={tr('在這裡打卡')} onPress={checkinHere} />
 
         {data.saved && data.my_note ? (
           <Pressable accessibilityRole="button" onPress={openSave} style={[styles.note, { backgroundColor: c.surface }]}>
@@ -109,28 +113,6 @@ export default function PlaceScreen() {
           </Pressable>
         ) : null}
 
-        {session ? (
-          <View style={[styles.typeBox, { backgroundColor: c.surface }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: Spacing.sm }}>
-              <AppText variant="label">{tr('類型')}</AppText>
-              <AppText variant="caption" muted style={{ flex: 1 }}>
-                {data.category_override ? tr('由書棲確認') : votes ? tr('{n} 人選過 · 顯示最多人選的', { n: votes }) : tr('還沒有人選，你可以先選')}
-              </AppText>
-            </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }}>
-              {PLACE_CATEGORIES.map((t) => (
-                <Chip
-                  key={t}
-                  label={`${categoryLabel(t)}${data.type_votes?.[t] ? ` ${data.type_votes[t]}` : ''}`}
-                  selected={data.my_type === t}
-                  disabled={setType.isPending}
-                  onPress={() => setType.mutate({ placeId: place.id, type: data.my_type === t ? null : t }, { onError: fail })}
-                />
-              ))}
-            </View>
-            <AppText variant="caption" muted>{tr('點一個是你的選擇，再點一次取消。')}</AppText>
-          </View>
-        ) : null}
         {isAdmin ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flexWrap: 'wrap' }}>
             <AppText variant="caption" muted>{tr('管理員：')}</AppText>
