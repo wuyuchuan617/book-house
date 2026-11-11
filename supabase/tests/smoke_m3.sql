@@ -23,6 +23,7 @@ reset role;
 grant select on t_e to anon, authenticated;
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000e');
 select public.add_curation_item((select id from t_e), (select id from public.books where title = '我的家人與其他動物'), '是我愛動物的起點。');
+update public.curation_items set note = '推薦理由' where curation_id = (select id from t_e) and (note is null or trim(note) = '');
 select public.publish_curation((select id from t_e));
 insert into public.readings (bookstore_id, book_id) select public.my_bookstore_id(), id from public.books where title = '野性的呼喚';
 insert into public.readings (bookstore_id, book_id, is_public) select public.my_bookstore_id(), id, false from public.books where title = '私房書';

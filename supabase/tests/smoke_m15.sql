@@ -90,6 +90,7 @@ select pg_temp.as_user('00000000-0000-0000-0000-0000000000f1');
 create temp table t_c15 as select * from public.create_curation(public.current_period(), '第一檔');
 insert into public.curation_items (curation_id, book_id, position)
   select (select id from t_c15), id, 0 from public.books where title = '公開設定測試書';
+update public.curation_items set note = '推薦理由' where curation_id = (select id from t_c15) and (note is null or trim(note) = '');
 select 1 from public.publish_curation((select id from t_c15));
 do $$ begin
   assert not (select auto_created from public.bookstores where owner_id = auth.uid()), 'first publish claims store';

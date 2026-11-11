@@ -60,6 +60,7 @@ do $$ begin
   assert (select count(*) from public.search_local_books('天文社')) = 1, 'publisher search';
 end $$;
 select public.add_curation_item((select id from t_c), (select id from public.books where isbn13 = '9786260000002'));
+update public.curation_items set note = '推薦理由' where curation_id = (select id from t_c) and (note is null or trim(note) = '');
 select public.publish_curation((select id from t_c));
 
 -- 搜尋所有月份：把這檔改成上個月仍搜得到

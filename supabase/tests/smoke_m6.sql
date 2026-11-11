@@ -52,6 +52,7 @@ end $$;
 select pg_temp.as_user('00000000-0000-0000-0000-000000000031');
 insert into public.books (source, title, authors, created_by) values ('manual', '通知之書', array['某人'], auth.uid());
 select public.add_curation_item((select id from t_n), (select id from public.books where title = '通知之書'));
+update public.curation_items set note = '推薦理由' where curation_id = (select id from t_n) and (note is null or trim(note) = '');
 select public.publish_curation((select id from t_n));
 reset role;
 do $$ begin

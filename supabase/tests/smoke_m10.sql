@@ -42,6 +42,7 @@ begin
   c3 := public.create_curation((p0 + interval '3 months')::date, '三個月後');
   perform public.add_curation_item(c2.id, b);
   perform public.add_curation_item(c3.id, b);
+  update public.curation_items set note = '推薦理由' where note is null and curation_id in (c1.id, c2.id, c3.id);
   assert public.suggest_new_period() = (p0 + interval '4 months')::date, 'suggest beyond window (app blocks)';
 
   -- 上架日期：要在策展月份內

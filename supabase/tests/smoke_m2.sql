@@ -74,6 +74,7 @@ select pg_temp.expect_error($q$select public.set_curation_tags((select id from t
 select pg_temp.expect_error($q$select public.create_custom_tag('這是一個超過十二個字的標籤名稱')$q$, 'tag too long');
 
 -- 發布本月 → published；不能刪到 0 本
+update public.curation_items set note = '推薦理由' where curation_id = (select id from t_cur) and (note is null or trim(note) = '');
 select public.publish_curation((select id from t_cur));
 do $$ begin
   assert (select status from public.curations where id = (select id from t_cur)) = 'published';
@@ -88,6 +89,7 @@ do $$ begin
   assert (select count(*) from public.curation_items where curation_id = (select id from t_next)) = 1, 'items copied';
   assert (select count(*) from public.curation_tags where curation_id = (select id from t_next)) = 2, 'tags copied';
 end $$;
+update public.curation_items set note = '推薦理由' where curation_id = (select id from t_next) and (note is null or trim(note) = '');
 select public.publish_curation((select id from t_next));
 do $$ begin
   assert (select status from public.curations where id = (select id from t_next)) = 'scheduled', 'next month → scheduled';

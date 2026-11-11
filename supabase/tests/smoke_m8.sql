@@ -31,6 +31,7 @@ reset role; grant select on t_a to anon, authenticated;
 select pg_temp.as_user('00000000-0000-0000-0000-000000000051');
 select public.add_curation_item((select id from t_a), (select id from public.books where title = '宇宙的形狀'));
 select public.set_curation_tags((select id from t_a), array[(select id from public.tags where slug = 'science')]);
+update public.curation_items set note = '推薦理由' where curation_id = (select id from t_a) and (note is null or trim(note) = '');
 select public.publish_curation((select id from t_a));
 
 select pg_temp.as_user('00000000-0000-0000-0000-000000000052');
@@ -40,6 +41,7 @@ reset role; grant select on t_b to anon, authenticated;
 select pg_temp.as_user('00000000-0000-0000-0000-000000000052');
 select public.add_curation_item((select id from t_b), (select id from public.books where title = '宇宙的形狀'));
 select public.set_curation_tags((select id from t_b), array[(select id from public.tags where slug = 'fiction')]);
+update public.curation_items set note = '推薦理由' where curation_id = (select id from t_b) and (note is null or trim(note) = '');
 select public.publish_curation((select id from t_b));
 
 -- 讀者：逛過 A、收藏 A 的書 → 推薦時 B（沒逛過）排前面；追蹤中只看追蹤的
