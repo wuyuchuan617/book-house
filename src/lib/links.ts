@@ -30,3 +30,15 @@ export function shareStore(name: string, slug: string, opts: { afterModal?: bool
   if (opts.afterModal) setTimeout(open, 450);
   else open();
 }
+
+/** 分享處方簽：App 連結（網頁版之後再做） */
+export function shareRx(id: string, title: string, opts: { afterModal?: boolean } = {}) {
+  const open = () => {
+    track('rx_shared', { channel: 'system' });
+    const url = `bookhaus://rx/${id}`;
+    const message = tr('幫我開一本書：「{title}」 在書棲打開：{url}', { title, url });
+    void Share.share(Platform.OS === 'ios' ? { message, url } : { message }).catch(() => {});
+  };
+  if (opts.afterModal) setTimeout(open, 450);
+  else open();
+}

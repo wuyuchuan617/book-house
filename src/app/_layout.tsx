@@ -111,6 +111,9 @@ function RootStack() {
         <Stack.Screen name="store-delete" options={{ title: tr('重設書店') }} />
         <Stack.Screen name="store-visibility" options={{ title: tr('公開設定') }} />
         <Stack.Screen name="want-book" options={{ title: tr('想讀的書') }} />
+        <Stack.Screen name="rx/new" options={{ title: tr('發起閱讀處方簽') }} />
+        <Stack.Screen name="rx/[id]" options={{ title: tr('閱讀處方簽') }} />
+        <Stack.Screen name="rx/reply" options={{ title: tr('開一張處方') }} />
         <Stack.Screen name="report/[id]" options={{ title: tr('檢舉書店'), presentation: 'modal' }} />
         <Stack.Screen name="blocked" options={{ title: tr('已封鎖的帳號') }} />
         <Stack.Screen name="help" options={{ title: tr('說明與意見回饋') }} />

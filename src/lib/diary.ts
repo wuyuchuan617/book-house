@@ -454,7 +454,9 @@ export type JournalItem =
       place: { id: string; name: string } | null;
       place_label?: string | null;
       book: DiaryBook | null;
-    });
+    })
+  | (JournalBase & { type: 'rx_reply'; reason: string; prescription: { id: string; title: string }; book: DiaryBook })
+  | (JournalBase & { type: 'rx'; title: string; reply_count: number; is_open: boolean });
 
 export function useStoreJournal(bookstoreId: string | undefined) {
   return useQuery({
@@ -469,6 +471,7 @@ export function useSetJournalPublic() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ item, value }: { item: JournalItem; value: boolean }) => {
+      if (item.type === 'rx' || item.type === 'rx_reply') return;
       const res =
         item.type === 'want'
           ? await supabase.from('book_saves').update({ is_public: value }).eq('book_id', item.id)

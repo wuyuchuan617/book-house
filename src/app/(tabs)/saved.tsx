@@ -1,11 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
 import { PlacesShelf } from '@/components/places-shelf';
+import { RxMine } from '@/components/rx-mine';
 import { FollowButton, StoreAvatar, UndoToast } from '@/components/social';
 import { AppText, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
@@ -19,13 +20,20 @@ import { WantSheet } from '@/components/want-sheet';
 import { currentPeriod, monthOf } from '@/lib/period';
 import { tr } from '@/lib/i18n';
 
-type Tab = 'stores' | 'books' | 'places';
+type Tab = 'stores' | 'books' | 'places' | 'rx';
 
 /** 書櫃：B2 想讀（預設）、B1 追蹤的書店、L3 收藏的地方（M10）；S4 空狀態 */
 export default function SavedScreen() {
   const c = useTheme();
   const { session, requireAuth } = useAuth();
-  const [tab, setTab] = useState<Tab>('books');
+  const params = useLocalSearchParams<{ tab?: Tab }>();
+  const [tab, setTab] = useState<Tab>(params.tab ?? 'books');
+  // 從探索 › 處方簽「我的處方簽」或通知進來：切到指定分頁
+  const [lastParam, setLastParam] = useState(params.tab);
+  if (params.tab !== lastParam) {
+    setLastParam(params.tab);
+    if (params.tab) setTab(params.tab);
+  }
   const stores = useFollowedStores();
   const books = useSavedBooks();
   const places = useMyPlaces('want');
@@ -60,9 +68,9 @@ export default function SavedScreen() {
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         <AppText variant="title" style={styles.title}>{tr('書櫃')}</AppText>
         <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
-          {(['books', 'stores', 'places'] as Tab[]).map((t) => {
+          {(['books', 'stores', 'places', 'rx'] as Tab[]).map((t) => {
             const selected = tab === t;
-            const count = t === 'stores' ? stores.data?.length : t === 'places' ? places.data?.length : books.data?.length;
+            const count = t === 'stores' ? stores.data?.length : t === 'places' ? places.data?.length : t === 'rx' ? undefined : books.data?.length;
             return (
               <Pressable
                 key={t}
@@ -71,14 +79,16 @@ export default function SavedScreen() {
                 onPress={() => setTab(t)}
                 style={[styles.segmentItem, selected && { backgroundColor: c.surface }]}>
                 <AppText variant="caption" style={{ fontWeight: '700', color: selected ? c.text : c.textSecondary }}>
-                  {`${t === 'stores' ? tr('追蹤的書店') : t === 'places' ? tr('地方') : tr('想讀')} · ${count ?? 0}`}
+                  {t === 'rx' ? tr('處方簽') : `${t === 'stores' ? tr('追蹤') : t === 'places' ? tr('地方') : tr('想讀')} · ${count ?? 0}`}
                 </AppText>
               </Pressable>
             );
           })}
         </View>
 
-        {tab === 'places' ? (
+        {tab === 'rx' ? (
+          <RxMine />
+        ) : tab === 'places' ? (
           <PlacesShelf />
         ) : tab === 'stores' ? (
           stores.isLoading ? (

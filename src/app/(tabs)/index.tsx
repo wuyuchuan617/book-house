@@ -1,5 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BookCover } from '@/components/book-cover';
 import { Chip } from '@/components/form';
 import { PostsExplore } from '@/components/posts-explore';
+import { RxExplore } from '@/components/rx-explore';
 import { FollowButton, StoreAvatar } from '@/components/social';
 import { AppText, Button, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing, StoreColors } from '@/constants/theme';
@@ -26,7 +27,7 @@ import { currentPeriod, monthOf, periodLabel, previousPeriod } from '@/lib/perio
 import { useMyStore, type ExploreItem } from '@/lib/queries';
 import { tagLabel, tr } from '@/lib/i18n';
 
-type Tab = 'curations' | 'posts';
+type Tab = 'curations' | 'posts' | 'rx';
 type FeedCard = ExploreItem & { visited?: boolean; is_following?: boolean };
 
 const SORTS = (): [ExploreSort, string][] => [['recommend', tr('推薦')], ['latest', tr('最新')], ['popular', tr('熱門')]];
@@ -38,7 +39,13 @@ const SORTS = (): [ExploreSort, string][] => [['recommend', tr('推薦')], ['lat
 export default function ExploreScreen() {
   const c = useTheme();
   const { session, requireAuth } = useAuth();
-  const [tab, setTab] = useState<Tab>('curations');
+  const params = useLocalSearchParams<{ tab?: Tab }>();
+  const [tab, setTab] = useState<Tab>(params.tab ?? 'curations');
+  const [lastParam, setLastParam] = useState(params.tab);
+  if (params.tab !== lastParam) {
+    setLastParam(params.tab);
+    if (params.tab) setTab(params.tab);
+  }
   const [following, setFollowing] = useState(false);
   const [period, setPeriod] = useState(currentPeriod());
   const [sort, setSort] = useState<ExploreSort>('recommend');
@@ -114,7 +121,7 @@ export default function ExploreScreen() {
 
   const segment = (
     <View style={[styles.tabs, { borderBottomColor: c.border }]} accessibilityRole="tablist">
-      {([['curations', tr('策展')], ['posts', tr('貼文')]] as const).map(([t, label]) => (
+      {([['curations', tr('策展')], ['posts', tr('貼文')], ['rx', tr('處方簽')]] as const).map(([t, label]) => (
         <Pressable key={t} accessibilityRole="tab" accessibilityState={{ selected: tab === t }} onPress={() => setTab(t)} style={[styles.tab, tab === t && { borderBottomColor: c.text }]}>
           <AppText style={{ fontSize: 15, fontWeight: tab === t ? '700' : '500', color: tab === t ? c.text : c.textSecondary }}>{label}</AppText>
         </Pressable>
@@ -122,7 +129,7 @@ export default function ExploreScreen() {
     </View>
   );
 
-  if (tab === 'posts') {
+  if (tab === 'posts' || tab === 'rx') {
     return (
       <Screen>
         <SafeAreaView edges={['top']} style={{ flex: 1 }}>
@@ -130,7 +137,7 @@ export default function ExploreScreen() {
             <AppText variant="title">{tr('探索')}</AppText>
           </View>
           {segment}
-          <PostsExplore />
+          {tab === 'posts' ? <PostsExplore /> : <RxExplore />}
         </SafeAreaView>
       </Screen>
     );

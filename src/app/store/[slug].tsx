@@ -49,7 +49,7 @@ export default function StoreScreen() {
   const tabs: Tab[] = [
     'curation',
     ...(store.show_reading === false ? [] : (['reading'] as Tab[])),
-    ...(store.show_want || store.show_place || store.show_post ? (['journal'] as Tab[]) : []),
+    ...(store.show_want || store.show_place || store.show_post || store.show_rx ? (['journal'] as Tab[]) : []),
   ];
   const shown: Tab = tabs.includes(tab) ? tab : 'curation';
 

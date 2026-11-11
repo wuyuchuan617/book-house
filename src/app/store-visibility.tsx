@@ -23,12 +23,12 @@ export default function StoreVisibilityScreen() {
   if (!data) return <ActivityIndicator style={{ marginTop: 48 }} />;
   const store = data.store;
 
-  // 閱讀處方簽上線時再加 show_rx
   const rows: [Key, string, string][] = [
     ['show_reading', tr('正在讀／讀過'), tr('就是「店主閱讀」；每本書可以再個別設成私人')],
     ['show_want', tr('想讀的書'), tr('顯示書名、為什麼想讀、在哪看到；連結不公開')],
     ['show_place', tr('想去的地點'), tr('只顯示公開場所與原因；私人地點、連結不公開')],
     ['show_post', tr('日記貼文'), tr('只顯示設成「公開」的日記（含打卡）')],
+    ['show_rx', tr('閱讀處方簽'), tr('你開的處方、用書店身分發起的處方簽；匿名發起的不會出現')],
   ];
 
   const set = (key: Key, value: boolean) => {

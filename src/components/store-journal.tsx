@@ -15,7 +15,7 @@ import { categoryLabel, diaryError, useDiaryImageUrls, useSetJournalPublic, useS
 import { taipeiDate } from '@/lib/period';
 import { tr } from '@/lib/i18n';
 
-type Filter = 'all' | 'want' | 'place' | 'post';
+type Filter = 'all' | 'want' | 'place' | 'post' | 'rx';
 
 /**
  * 店主手記：想讀、想去、日記貼文依時間混在一起。
@@ -37,9 +37,15 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
       </Card>
     );
   if (isLoading || !data) return <ActivityIndicator style={{ marginTop: 32 }} />;
-  const items = data.filter((i) => filter === 'all' || i.type === filter);
+  const items = data.filter((i) => filter === 'all' || i.type === filter || (filter === 'rx' && i.type === 'rx_reply'));
 
   const toggle = (item: JournalItem) => {
+    if (item.type === 'rx' || item.type === 'rx_reply') {
+      return Alert.alert(
+        tr('閱讀處方簽'),
+        item.type === 'rx' && !item.is_public ? tr('這張是匿名發起的，不會出現在書店頁。') : tr('處方簽要不要出現在書店頁，看「公開設定」裡的「閱讀處方簽」。'),
+      );
+    }
     const value = !item.is_public;
     if (value && item.type === 'place' && !item.public_ok) return Alert.alert(tr('私人地點不能公開'), tr('住家等私人地點只會留在自己的書櫃裡。'));
     track('journal_visibility_changed', { type: item.type, value });
@@ -60,6 +66,7 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
     ['want', tr('想讀')],
     ['place', tr('想去')],
     ['post', tr('日記')],
+    ['rx', tr('處方簽')],
   ];
 
   return (
@@ -86,7 +93,7 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
 
 function JournalCard({ item, color, mine, onToggle }: { item: JournalItem; color: StoreColor; mine?: boolean; onToggle: () => void }) {
   const c = useTheme();
-  const kind = item.type === 'want' ? { label: tr('想讀'), fg: c.primary, icon: 'bookmark' as const } : item.type === 'place' ? { label: tr('想去'), fg: '#2F5D6B', icon: 'map-pin' as const } : item.book ? { label: tr('正在讀'), fg: c.success, icon: 'play' as const } : item.kind === 'checkin' ? { label: tr('打卡'), fg: '#5A4B8A', icon: 'map-pin' as const } : { label: tr('日記'), fg: '#5A4B8A', icon: 'edit-3' as const };
+  const kind = item.type === 'rx' || item.type === 'rx_reply' ? { label: item.type === 'rx' ? tr('發起處方簽') : tr('開了處方'), fg: '#5A4B8A', icon: 'message-circle' as const } : item.type === 'want' ? { label: tr('想讀'), fg: c.primary, icon: 'bookmark' as const } : item.type === 'place' ? { label: tr('想去'), fg: '#2F5D6B', icon: 'map-pin' as const } : item.book ? { label: tr('正在讀'), fg: c.success, icon: 'play' as const } : item.kind === 'checkin' ? { label: tr('打卡'), fg: '#5A4B8A', icon: 'map-pin' as const } : { label: tr('日記'), fg: '#5A4B8A', icon: 'edit-3' as const };
   const date = item.type === 'post' ? taipeiDate(`${item.entry_date}T04:00:00Z`).md : taipeiDate(item.at).md;
 
   return (
@@ -122,6 +129,22 @@ function JournalCard({ item, color, mine, onToggle }: { item: JournalItem; color
           <AppText style={{ fontSize: 16, fontWeight: '700', color: c.primary }}>{`${item.place.name} ›`}</AppText>
           {item.place.category ? <AppText variant="caption" muted>{categoryLabel(item.place.category)}</AppText> : null}
           {item.note ? <AppText style={{ lineHeight: 21, marginTop: 2 }}>{item.note}</AppText> : null}
+        </Pressable>
+      ) : item.type === 'rx' ? (
+        <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/rx/[id]', params: { id: item.id } })} style={{ gap: 2 }}>
+          <AppText style={{ fontSize: 16, fontWeight: '700', lineHeight: 23 }}>{`℞ ${item.title}`}</AppText>
+          <AppText variant="caption" muted>{[tr('{n} 張處方', { n: item.reply_count }), item.is_open ? null : tr('已結案')].filter(Boolean).join(' · ')}</AppText>
+        </Pressable>
+      ) : item.type === 'rx_reply' ? (
+        <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/rx/[id]', params: { id: item.prescription.id } })} style={{ gap: Spacing.sm }}>
+          <AppText variant="caption" muted numberOfLines={2}>{`℞ ${item.prescription.title}`}</AppText>
+          <View style={{ flexDirection: 'row', gap: Spacing.md }}>
+            <BookCover title={item.book.title} url={item.book.cover_url} color={color} size="sm" />
+            <View style={{ flex: 1, gap: 2 }}>
+              <AppText variant="label">{item.book.title}</AppText>
+              <AppText style={{ lineHeight: 21 }}>{item.reason}</AppText>
+            </View>
+          </View>
         </Pressable>
       ) : (
         <PostBody item={item} color={color} />

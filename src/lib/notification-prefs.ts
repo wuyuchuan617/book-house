@@ -11,6 +11,8 @@ export type NotificationPrefs = {
   monthly_reminder: boolean;
   reminder_day: 20 | 25 | -3 | null;
   weekly_review: boolean;
+  /** v1.5 閱讀處方簽（伺服器還沒更新時沒有這欄） */
+  prescription?: boolean;
 };
 
 export function useNotificationPrefs() {
@@ -18,10 +20,12 @@ export function useNotificationPrefs() {
   return useQuery({
     queryKey: ['prefs', session?.user.id],
     enabled: !!session,
-    queryFn: async () =>
-      unwrap<NotificationPrefs | null>(
-        await supabase.from('notification_prefs').select('new_curation_from_followed, new_follower, monthly_reminder, reminder_day, weekly_review').maybeSingle(),
-      ),
+    queryFn: async () => {
+      const cols = 'new_curation_from_followed, new_follower, monthly_reminder, reminder_day, weekly_review';
+      const res = await supabase.from('notification_prefs').select(`${cols}, prescription`).maybeSingle();
+      if (res.error && /prescription/i.test(res.error.message)) return unwrap<NotificationPrefs | null>(await supabase.from('notification_prefs').select(cols).maybeSingle());
+      return unwrap<NotificationPrefs | null>(res);
+    },
   });
 }
 

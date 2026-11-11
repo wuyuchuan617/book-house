@@ -161,9 +161,10 @@ select cron.schedule('onboarding-nudges', '30 2 * * *', 'select public.enqueue_o
 select cron.schedule('purge-deleted-accounts', '0 19 * * *', 'select public.purge_deleted_accounts()');
 select cron.schedule('expire-place-coordinates', '20 3 * * *', 'select public.expire_place_coordinates()');
 select cron.schedule('weekly-reviews', '30 0 * * 1', 'select public.enqueue_weekly_reviews()');
+select cron.schedule('rx-reminders', '15 2 * * *', 'select public.enqueue_rx_reminders()');
 ```
 
-（除了 push-dispatch，其他排程在 migration 裡也有寫，但只有在 pg_cron 已開啟時才會建立；先開 pg_cron 再執行這段最保險。檢查：`select jobname, schedule from cron.job;` 應該有 7 個。）
+（除了 push-dispatch，其他排程在 migration 裡也有寫，但只有在 pg_cron 已開啟時才會建立；先開 pg_cron 再執行這段最保險。檢查：`select jobname, schedule from cron.job;` 應該有 8 個。）
 
 沒收到通知時，在 SQL Editor 查：`select kind, created_at, sent_at, error from notification_outbox order by created_at desc limit 10;`（`sent_at` 空的＝排程沒跑）與 `select * from push_tokens;`（沒有資料＝手機沒登記推播）。
 
@@ -194,6 +195,16 @@ eas submit --platform ios
 - App 隱私（營養標籤）：聯絡資訊（名稱、電子郵件）、使用者內容、識別碼（使用者 ID）、使用資料（產品互動）；都「連結到使用者」、「不用於追蹤」
 - 審核備註：提供一組可登入的測試帳號（Google），說明檢舉／封鎖在書店頁 ⋯、刪除帳號在設定
 - 內容分級：使用者產生內容 → 需有檢舉、封鎖、條款（都已完成）
+
+## v1.5 ④（閱讀處方簽）
+
+- 一個人說出狀況（≤60 字＋說明 ≤300 字、標籤最多 3 個、可匿名、開放 7／14／30 天），大家各開一本書＋理由（10–200 字）；每人每張只能一次、一本書，可以修改或撤回；發起人不能開給自己；同時最多開放 3 張。
+- 入口：探索第 3 個分頁「處方簽」（最新／還沒人開／最多處方＋標籤）、＋選單、書櫃第 4 個分頁（我發起的／我開的）。同一本書的處方合併成一張卡、依人數排序；每本都能「想讀」，發起人加入想讀時會通知開這本的人（不另做「收下」）。
+- 發起人的 ⋯：分享（App 連結 `bookhaus://rx/<id>`，網頁版之後做）、延長 7 天一次、提早結案、刪除。讀者可以檢舉處方簽或某一則理由。
+- 通知（設定 › 通知 › 閱讀處方簽）：有人開處方（同一張 1 小時內合併）、你開的書被加入想讀、快結案還沒人開（排程 `rx-reminders`）。
+- 店主手記與公開設定多「閱讀處方簽」：你開過的處方、用書店身分發起的處方簽（匿名的不會出現）。
+- 資料表 `prescriptions`、`prescription_replies`；讀取都走 `rx_list`／`rx_detail`／`rx_mine`（匿名時不外洩發起人）；寫入 `rx_reply`／`rx_close`／`rx_extend`／`rx_report`。
+- migration `20261125000001_prescriptions.sql`；測試 `supabase/tests/smoke_m18.sql`。
 
 ## v1.5 ③（探索：策展｜貼文，書的地方收進貼文）
 

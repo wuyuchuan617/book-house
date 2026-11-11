@@ -1,0 +1,115 @@
+import Feather from '@expo/vector-icons/Feather';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+
+import { BookCover } from '@/components/book-cover';
+import { Chip } from '@/components/form';
+import { AppText, Card, EmptyState } from '@/components/ui';
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/lib/auth';
+import { tr } from '@/lib/i18n';
+import { timeAgo } from '@/lib/period';
+import { authorName, daysLeft, RX_TAGS, rxTagLabel, useRxList, type RxFilter, type RxListItem } from '@/lib/rx';
+
+export const RX_PURPLE = '#5A4B8A';
+
+/** X1 探索 › 處方簽：最新／還沒人開／最多處方＋標籤；右上「我的處方簽」 */
+export function RxExplore() {
+  const c = useTheme();
+  const { requireAuth } = useAuth();
+  const [filter, setFilter] = useState<RxFilter>('latest');
+  const [tag, setTag] = useState<string | undefined>();
+  const list = useRxList(filter, tag);
+  const FILTERS: [RxFilter, string][] = [
+    ['latest', tr('最新')],
+    ['unanswered', tr('還沒人開')],
+    ['popular', tr('最多處方')],
+  ];
+
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={styles.head}>
+        <AppText variant="caption" muted style={{ flex: 1 }}>{tr('說出你的狀況，大家各開一本書。')}</AppText>
+        <Pressable accessibilityRole="link" hitSlop={8} onPress={() => requireAuth(() => router.push({ pathname: '/saved', params: { tab: 'rx' } }))}>
+          <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('我的處方簽 ›')}</AppText>
+        </Pressable>
+      </View>
+      <View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+          {FILTERS.map(([f, label]) => <Chip key={f} label={label} selected={filter === f} onPress={() => setFilter(f)} />)}
+          <View style={[styles.sep, { backgroundColor: c.border }]} />
+          {RX_TAGS.map((t) => <Chip key={t} label={rxTagLabel(t)} selected={tag === t} onPress={() => setTag(tag === t ? undefined : t)} />)}
+        </ScrollView>
+      </View>
+      {list.isPending ? (
+        <ActivityIndicator style={{ marginTop: 48 }} />
+      ) : list.error ? (
+        <EmptyState title={tr('沒有載入成功')} body={tr('檢查網路後再試一次。')} actionLabel={tr('重試')} onAction={() => void list.refetch()} />
+      ) : (
+        <FlatList
+          data={list.data}
+          keyExtractor={(r) => r.id}
+          contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.sm, gap: Spacing.md, flexGrow: 1, paddingBottom: 96 }}
+          refreshControl={<RefreshControl refreshing={list.isRefetching} onRefresh={() => void list.refetch()} />}
+          ListEmptyComponent={
+            <EmptyState
+              title={filter === 'unanswered' ? tr('每一張都有人開了') : tr('還沒有處方簽')}
+              body={tr('說說你最近的狀況或想找什麼書，請大家各開一本。')}
+              actionLabel={tr('發起閱讀處方簽')}
+              onAction={() => requireAuth(() => router.push('/rx/new'))}
+            />
+          }
+          renderItem={({ item }) => <RxCard item={item} />}
+        />
+      )}
+    </View>
+  );
+}
+
+export function RxCard({ item }: { item: RxListItem }) {
+  const c = useTheme();
+  const left = daysLeft(item.closes_at, item.is_open);
+  return (
+    <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/rx/[id]', params: { id: item.id } })}>
+      <Card style={{ gap: Spacing.sm }}>
+        <View style={{ flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start' }}>
+          <AppText style={{ fontSize: 20, color: RX_PURPLE, fontWeight: '700', lineHeight: 24 }}>℞</AppText>
+          <AppText variant="heading" style={{ flex: 1, fontSize: 16, lineHeight: 23 }}>{item.title}</AppText>
+          {!item.is_open ? (
+            <View style={[styles.tag, { backgroundColor: c.surfaceMuted }]}><AppText variant="caption" muted style={{ fontSize: 11, fontWeight: '700' }}>{tr('已結案')}</AppText></View>
+          ) : item.my_replied ? (
+            <View style={[styles.tag, { backgroundColor: c.successSurface }]}><AppText variant="caption" style={{ fontSize: 11, fontWeight: '700', color: c.success }}>{tr('你開過')}</AppText></View>
+          ) : null}
+        </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+          {item.tags.map((t) => (
+            <View key={t} style={[styles.tag, { backgroundColor: c.surfaceMuted }]}><AppText variant="caption" muted style={{ fontSize: 11, fontWeight: '700' }}>{rxTagLabel(t)}</AppText></View>
+          ))}
+          <AppText variant="caption" muted>{`${authorName(item.author)} · ${timeAgo(item.created_at)}${left ? ` · ${tr('還有 {n} 天', { n: left })}` : ''}`}</AppText>
+        </View>
+        {item.reply_count ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {item.covers.map((b) => <BookCover key={b.id} title={b.title} url={b.cover_url} color="wisteria" size="sm" />)}
+            <AppText variant="caption" muted style={{ marginLeft: 4 }}>{tr('{n} 張處方', { n: item.reply_count })}</AppText>
+          </View>
+        ) : item.is_open && !item.is_mine ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Feather name="edit-3" size={13} color={c.primary} />
+            <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('還沒有人開 · 搶先開一張 ›')}</AppText>
+          </View>
+        ) : (
+          <AppText variant="caption" muted>{tr('還沒有人開')}</AppText>
+        )}
+      </Card>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  head: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, gap: Spacing.sm },
+  chips: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm, gap: Spacing.sm, alignItems: 'center' },
+  sep: { width: 1, height: 20, marginHorizontal: 2 },
+  tag: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radius.sm },
+});
