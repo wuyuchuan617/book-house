@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
 import { Chip } from '@/components/form';
-import { PlacesExplore } from '@/components/places-explore';
+import { PostsExplore } from '@/components/posts-explore';
 import { FollowButton, StoreAvatar } from '@/components/social';
 import { AppText, Button, Card, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing, StoreColors } from '@/constants/theme';
@@ -26,7 +26,7 @@ import { currentPeriod, monthOf, periodLabel, previousPeriod } from '@/lib/perio
 import { useMyStore, type ExploreItem } from '@/lib/queries';
 import { tagLabel, tr } from '@/lib/i18n';
 
-type Tab = 'curations' | 'places';
+type Tab = 'curations' | 'posts';
 type FeedCard = ExploreItem & { visited?: boolean; is_following?: boolean };
 
 const SORTS = (): [ExploreSort, string][] => [['recommend', tr('推薦')], ['latest', tr('最新')], ['popular', tr('熱門')]];
@@ -114,7 +114,7 @@ export default function ExploreScreen() {
 
   const segment = (
     <View style={[styles.tabs, { borderBottomColor: c.border }]} accessibilityRole="tablist">
-      {([['curations', tr('策展')], ['places', tr('書的地方')]] as const).map(([t, label]) => (
+      {([['curations', tr('策展')], ['posts', tr('貼文')]] as const).map(([t, label]) => (
         <Pressable key={t} accessibilityRole="tab" accessibilityState={{ selected: tab === t }} onPress={() => setTab(t)} style={[styles.tab, tab === t && { borderBottomColor: c.text }]}>
           <AppText style={{ fontSize: 15, fontWeight: tab === t ? '700' : '500', color: tab === t ? c.text : c.textSecondary }}>{label}</AppText>
         </Pressable>
@@ -122,7 +122,7 @@ export default function ExploreScreen() {
     </View>
   );
 
-  if (tab === 'places') {
+  if (tab === 'posts') {
     return (
       <Screen>
         <SafeAreaView edges={['top']} style={{ flex: 1 }}>
@@ -130,7 +130,7 @@ export default function ExploreScreen() {
             <AppText variant="title">{tr('探索')}</AppText>
           </View>
           {segment}
-          <PlacesExplore />
+          <PostsExplore />
         </SafeAreaView>
       </Screen>
     );
@@ -141,19 +141,7 @@ export default function ExploreScreen() {
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         <View style={styles.header}>
           <AppText variant="title">{tr('探索')}</AppText>
-          {!following && !query ? (
-            <View style={styles.month}>
-              <Pressable accessibilityRole="button" accessibilityLabel={tr('上一個月')} disabled={!older} onPress={() => older && setPeriod(older)} style={[styles.arrow, { opacity: older ? 1 : 0.3 }]}>
-                <Feather name="chevron-left" size={20} color={c.text} />
-              </Pressable>
-              <AppText variant="label" accessibilityLiveRegion="polite">{isCurrent ? tr('{p0} 月 · 本月', { p0: monthOf(period) }) : periodLabel(period)}</AppText>
-              <Pressable accessibilityRole="button" accessibilityLabel={tr('下一個月')} disabled={!newer} onPress={() => newer && setPeriod(newer)} style={[styles.arrow, { opacity: newer ? 1 : 0.3 }]}>
-                <Feather name="chevron-right" size={20} color={c.text} />
-              </Pressable>
-            </View>
-          ) : (
-            <AppText variant="caption" muted>{query ? tr('{count} 檔符合（所有月份）', { count }) : tr('{count} 檔', { count })}</AppText>
-          )}
+          {following || query ? <AppText variant="caption" muted>{query ? tr('{count} 檔符合（所有月份）', { count }) : tr('{count} 檔', { count })}</AppText> : null}
         </View>
 
         {segment}
@@ -179,6 +167,17 @@ export default function ExploreScreen() {
 
         <View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tags}>
+            {!following && !query ? (
+              <View style={[styles.month, { backgroundColor: c.surface, borderColor: c.border }]}>
+                <Pressable accessibilityRole="button" accessibilityLabel={tr('上一個月')} disabled={!older} onPress={() => older && setPeriod(older)} style={[styles.arrow, { opacity: older ? 1 : 0.3 }]}>
+                  <Feather name="chevron-left" size={18} color={c.text} />
+                </Pressable>
+                <AppText variant="caption" style={{ fontWeight: '700' }} accessibilityLiveRegion="polite">{isCurrent ? tr('{p0} 月 · 本月', { p0: monthOf(period) }) : periodLabel(period)}</AppText>
+                <Pressable accessibilityRole="button" accessibilityLabel={tr('下一個月')} disabled={!newer} onPress={() => newer && setPeriod(newer)} style={[styles.arrow, { opacity: newer ? 1 : 0.3 }]}>
+                  <Feather name="chevron-right" size={18} color={c.text} />
+                </Pressable>
+              </View>
+            ) : null}
             <Chip label={tr('全部主題')} selected={!tag} onPress={() => setTag(undefined)} />
             {tags?.map((t) => <Chip key={t.slug} label={tagLabel(t)} selected={tag === t.slug} onPress={() => setTag(tag === t.slug ? undefined : t.slug)} />)}
           </ScrollView>
@@ -318,8 +317,8 @@ function CompactCard({ item, showMonth }: { item: FeedCard; showMonth?: boolean 
 
 const styles = StyleSheet.create({
   header: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  month: { flexDirection: 'row', alignItems: 'center' },
-  arrow: { width: MinTouch - 4, height: MinTouch, alignItems: 'center', justifyContent: 'center' },
+  month: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: Radius.pill, height: 36, paddingHorizontal: 2 },
+  arrow: { width: 30, height: 36, alignItems: 'center', justifyContent: 'center' },
   tabs: { flexDirection: 'row', gap: Spacing.xxl, marginHorizontal: Spacing.xl, marginTop: Spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth },
   tab: { minHeight: MinTouch, justifyContent: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent', marginBottom: -StyleSheet.hairlineWidth },
   search: { marginHorizontal: Spacing.xl, marginTop: Spacing.md, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderWidth: 1, borderRadius: Radius.md, paddingLeft: 14, minHeight: 48 },

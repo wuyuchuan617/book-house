@@ -156,13 +156,13 @@ export default function PlaceScreen() {
         ) : null}
 
         <View style={{ gap: Spacing.sm }}>
-          <AppText variant="heading">{tr('大家的打卡')}</AppText>
+          <AppText variant="heading">{tr('大家的貼文')}</AppText>
           {data.checkins.length ? (
             data.checkins.map((ch) => <CheckinCard key={ch.id} checkin={ch} onMore={session ? () => setMenuFor(ch) : undefined} />)
           ) : (
             <Card style={{ alignItems: 'center', gap: 6 }}>
-              <AppText variant="label">{tr('還沒有公開的打卡')}</AppText>
-              <AppText variant="caption" muted style={{ textAlign: 'center' }}>{tr('來這裡讀書時打個卡，選擇公開，就會出現在這裡。')}</AppText>
+              <AppText variant="label">{tr('還沒有公開的貼文')}</AppText>
+              <AppText variant="caption" muted style={{ textAlign: 'center' }}>{tr('來這裡讀書時寫一則日記、加上這個地點並設成公開，就會出現在這裡。')}</AppText>
             </Card>
           )}
         </View>
@@ -174,7 +174,7 @@ export default function PlaceScreen() {
         onClose={() => setMenuFor(null)}
         actions={[
           {
-            label: tr('檢舉這則打卡'),
+            label: tr('檢舉這則貼文'),
             destructive: true,
             onPress: () => {
               const target = menuFor;

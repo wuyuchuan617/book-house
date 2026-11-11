@@ -91,6 +91,8 @@ function invalidateDiary(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: ['place'] });
   qc.invalidateQueries({ queryKey: ['explore-places'] });
   qc.invalidateQueries({ queryKey: ['saved-places'] });
+  qc.invalidateQueries({ queryKey: ['explore-posts'] });
+  qc.invalidateQueries({ queryKey: ['store-journal'] });
 }
 
 // ---------------------------------------------------------------------------
@@ -575,4 +577,42 @@ export function diaryError(message: string) {
   if (message.includes('place_type_votes_category_check')) return tr('沒有這個類型。');
   if (message.includes('place_saves_note_check')) return tr('想去的原因最多 {n} 字。', { n: PLACE_NOTE_MAX });
   return userMessage(message);
+}
+
+// ---------------------------------------------------------------------------
+// 探索 › 貼文（E1）
+// ---------------------------------------------------------------------------
+export type PostFilter = 'all' | 'following' | 'near';
+export type PublicPost = {
+  id: string;
+  created_at: string;
+  entry_date: string;
+  kind: 'note' | 'checkin';
+  body: string | null;
+  photo_paths: string[];
+  page_ref: string | null;
+  book_id: string | null;
+  book_title: string | null;
+  book_cover_url: string | null;
+  place_id: string | null;
+  place_name: string | null;
+  place_category: PlaceCategory | null;
+  author_name: string;
+  author_store_slug: string | null;
+  author_store_color: string | null;
+  author_avatar_path: string | null;
+  is_mine: boolean;
+  distance_m: number | null;
+};
+
+export function useExplorePosts(filter: PostFilter, near: Coords | null) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ['explore-posts', session?.user.id ?? 'anon', filter, near ? `${near.lat.toFixed(2)},${near.lng.toFixed(2)}` : null],
+    enabled: filter !== 'near' || !!near,
+    queryFn: async () =>
+      unwrap<PublicPost[]>(
+        await supabase.rpc('explore_posts', { p_filter: filter, p_lat: near?.lat ?? null, p_lng: near?.lng ?? null, p_limit: 50 }),
+      ),
+  });
 }
