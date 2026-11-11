@@ -86,7 +86,6 @@ export const EN: Record<string, Entry> = {
   '最新': 'Latest',
   '熱門': 'Popular',
   '找不到「{query}」': 'No results for “{query}”',
-    `${v.p0 ? v.p0 : ''}${v.p0 ? 'no' : 'No'} bookstore has curated this yet.\nTry other keywords or a popular topic.`,
   '清除搜尋': 'Clear search',
   '登入後看追蹤中的書店': 'Sign in to see bookstores you follow',
   '追蹤喜歡的店主，新策展上架時會出現在這裡。': 'Follow bookstores you like — their new curations will show up here.',
