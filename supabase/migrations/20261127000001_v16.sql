@@ -15,8 +15,11 @@ update public.place_saves set is_public = true where not is_public;
 alter table public.prescriptions drop constraint if exists prescriptions_tags_check;
 create or replace function public.rx_tags_ok(p_tags text[])
 returns boolean language sql immutable set search_path = '' as $$
+  -- 常用的 7 個存英文代號（relationship 有 12 個字母），自訂的 1–10 字
   select cardinality(p_tags) <= 3
-     and not exists (select 1 from unnest(p_tags) t where char_length(trim(t)) not between 1 and 10 or t <> trim(t))
+     and not exists (select 1 from unnest(p_tags) t
+                     where t not in ('mood', 'work', 'relationship', 'beginner', 'gift', 'kids', 'travel')
+                       and (char_length(trim(t)) not between 1 and 10 or t <> trim(t)))
 $$;
 alter table public.prescriptions add constraint prescriptions_tags_check check (public.rx_tags_ok(tags));
 

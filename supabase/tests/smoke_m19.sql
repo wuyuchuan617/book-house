@@ -28,7 +28,7 @@ do $$ begin assert (select is_public from public.book_saves where user_id = auth
 
 -- 2. 處方簽：自訂標籤（1–10 字、最多 3 個）；匿名的不會出現在書店頁
 insert into public.prescriptions (title, tags) values ('想找一本讀完會想去看星星的書', array['通勤讀物', 'mood']);
-insert into public.prescriptions (title, anonymous) values ('匿名的那張', true);
+insert into public.prescriptions (title, anonymous, tags) values ('匿名的那張', true, array['relationship']);
 select pg_temp.expect_error($q$insert into public.prescriptions (title, tags) values ('x', array['a', 'b', 'c', 'd'])$q$, 'max 3 tags');
 select pg_temp.expect_error($q$insert into public.prescriptions (title, tags) values ('x', array[' 空白'])$q$, 'tag trimmed');
 update public.bookstores set show_rx = true where owner_id = auth.uid();
