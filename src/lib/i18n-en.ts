@@ -1071,4 +1071,7 @@ export const EN: Record<string, Entry> = {
   '貼文：{name}': 'Post: {name}',
   '我也想去': 'I want to go',
   '已在想讀': 'In want-to-read',
+  '想讀清單沒有載入成功': 'Couldn’t load your want-to-read list',
+  '你的想讀都還在，只是這次沒讀到。檢查網路後再試一次。': 'Your books are still saved; they just didn’t load this time. Check your connection and try again.',
+  '店主手記沒有載入成功': 'Couldn’t load owner’s notes',
 };

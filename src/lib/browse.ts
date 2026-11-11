@@ -194,13 +194,15 @@ export function useSavedBooks() {
   return useQuery({
     queryKey: ['saves', session?.user.id],
     enabled: !!session,
-    queryFn: async () =>
-      unwrap<SavedBook[]>(
-        await supabase
-          .from('book_saves')
-          .select(`book_id, created_at, from_curation_id, from_bookstore_id, note, source_text, link, is_public, books(${BOOK_COLS}), curations(title), bookstores(name, slug, color)`)
-          .order('created_at', { ascending: false }),
-      ),
+    queryFn: async () => {
+      const base = `book_id, created_at, from_curation_id, from_bookstore_id, note, source_text, books(${BOOK_COLS}), curations(title), bookstores(name, slug, color)`;
+      const res = await supabase.from('book_saves').select(`${base}, link, is_public`).order('created_at', { ascending: false });
+      // 資料庫還沒套用 v1.5 ②（沒有 link、is_public 欄位）時，退回原本的欄位，想讀清單照樣顯示
+      if (res.error && /link|is_public|column/i.test(res.error.message)) {
+        return unwrap<SavedBook[]>(await supabase.from('book_saves').select(base).order('created_at', { ascending: false }));
+      }
+      return unwrap<SavedBook[]>(res);
+    },
   });
 }
 

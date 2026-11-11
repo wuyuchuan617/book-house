@@ -23,10 +23,19 @@ type Filter = 'all' | 'want' | 'place' | 'post';
  */
 export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string; color: StoreColor; mine?: boolean }) {
   const c = useTheme();
-  const { data, isLoading } = useStoreJournal(bookstoreId);
+  const { data, isLoading, error, refetch } = useStoreJournal(bookstoreId);
   const [filter, setFilter] = useState<Filter>('all');
   const setPublic = useSetJournalPublic();
 
+  if (error)
+    return (
+      <Card style={{ alignItems: 'center', gap: Spacing.sm, paddingVertical: 24 }}>
+        <AppText variant="label">{tr('店主手記沒有載入成功')}</AppText>
+        <Pressable accessibilityRole="button" onPress={() => void refetch()}>
+          <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('重試')}</AppText>
+        </Pressable>
+      </Card>
+    );
   if (isLoading || !data) return <ActivityIndicator style={{ marginTop: 32 }} />;
   const items = data.filter((i) => filter === 'all' || i.type === filter);
 

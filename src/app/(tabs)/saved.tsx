@@ -97,6 +97,8 @@ export default function SavedScreen() {
           )
         ) : books.isLoading ? (
           <ActivityIndicator style={{ marginTop: 48 }} />
+        ) : books.error ? (
+          <EmptyState title={tr('想讀清單沒有載入成功')} body={tr('你的想讀都還在，只是這次沒讀到。檢查網路後再試一次。')} actionLabel={tr('重試')} onAction={() => void books.refetch()} />
         ) : (
           <FlatList
             data={books.data}
