@@ -1,4 +1,3 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
@@ -14,7 +13,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { useFollowedStores, useSavedBooks, useToggleSave, wantSource, type FollowedStore, type SavedBook } from '@/lib/browse';
 import { useMyPlaces } from '@/lib/diary';
-import { SwipeRow, swipeA11y } from '@/components/swipe-row';
+import { ActionSheet } from '@/components/sheet';
+import { MoreButton, SwipeRow, swipeA11y } from '@/components/swipe-row';
 import { LinkLine } from '@/components/link-line';
 import { currentPeriod, monthOf } from '@/lib/period';
 import { tr } from '@/lib/i18n';
@@ -116,7 +116,7 @@ export default function SavedScreen() {
             ListEmptyComponent={
               <EmptyState title={tr('還沒有想讀的書')} body={tr('在書店頁按書旁邊的書籤，\n或在店主閱讀按「＋」加入想讀。')} actionLabel={tr('去探索書店')} onAction={() => router.navigate('/')} />
             }
-            renderItem={({ item }) => <BookRow item={item} onOpen={() => router.push({ pathname: '/want-book', params: { bookId: item.book_id } })} onUnsave={() => unsave(item)} />}
+            renderItem={({ item, index }) => <BookRow item={item} hint={index === 0} onOpen={() => router.push({ pathname: '/want-book', params: { bookId: item.book_id } })} onUnsave={() => unsave(item)} />}
           />
         )}
         <UndoToast message={undo ? tr('已從想讀移除「{title}」', { title: undo.books.title }) : null} onUndo={restore} onHide={hideToast} />
@@ -158,16 +158,17 @@ function StoreRow({ store }: { store: FollowedStore }) {
   );
 }
 
-function BookRow({ item, onOpen, onUnsave }: { item: SavedBook; onOpen: () => void; onUnsave: () => void }) {
+function BookRow({ item, hint, onOpen, onUnsave }: { item: SavedBook; hint?: boolean; onOpen: () => void; onUnsave: () => void }) {
   const c = useTheme();
   const from = wantSource(item);
   const actions = [
     { label: tr('編輯'), icon: 'edit-2' as const, onPress: onOpen },
-    { label: tr('移除'), icon: 'trash-2' as const, destructive: true, onPress: onUnsave },
+    { label: tr('移除'), sub: tr('6 秒內可以復原'), icon: 'trash-2' as const, destructive: true, onPress: onUnsave },
   ];
+  const [menu, setMenu] = useState(false);
   return (
     <Card style={{ padding: 0, overflow: 'hidden' }}>
-      <SwipeRow actions={actions}>
+      <SwipeRow actions={actions} hint={hint}>
       <View style={[styles.row, { padding: Spacing.lg }]}>
       <Pressable accessibilityRole="button" accessibilityHint={tr('編輯為什麼想讀、在哪看到')} {...swipeA11y(actions)} onPress={onOpen} style={[styles.row, { flex: 1 }]}>
         <BookCover title={item.books.title} url={item.books.cover_url} color={item.bookstores?.color ?? 'moss'} />
@@ -179,11 +180,10 @@ function BookRow({ item, onOpen, onUnsave }: { item: SavedBook; onOpen: () => vo
           <LinkLine url={item.link} />
         </View>
       </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel={tr('從想讀移除「{title}」', { title: item.books.title })} onPress={onUnsave} style={styles.unsave}>
-        <Ionicons name="bookmark" size={20} color={c.primary} />
-      </Pressable>
+      <MoreButton onPress={() => setMenu(true)} label={tr('{title}的更多動作', { title: item.books.title })} />
       </View>
       </SwipeRow>
+      <ActionSheet visible={menu} onClose={() => setMenu(false)} title={item.books.title} actions={actions} />
     </Card>
   );
 }

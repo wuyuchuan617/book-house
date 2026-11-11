@@ -6,11 +6,11 @@ import { KindChip, NoteBody, NotePhotos } from '@/components/note-card';
 import { AppText, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { noteTime } from '@/lib/period';
 import { tr } from '@/lib/i18n';
 import { useMyStore } from '@/lib/queries';
 import { readingError, useDeleteNote, useMyReading } from '@/lib/readings';
 
-const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
 
 /** R10 心得詳情（店主）：全文、大圖；右上編輯，最下面刪除 */
 export default function NoteDetailScreen() {
@@ -49,7 +49,7 @@ export default function NoteDetailScreen() {
       <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg, paddingBottom: 48 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
           <KindChip kind={note.kind} />
-          <AppText variant="caption" muted>{`${md(note.created_at)} · ${r.is_public ? tr('公開在書店頁') : tr('只有自己看得到')}`}</AppText>
+          <AppText variant="caption" muted>{`${noteTime(note.created_at)} · ${r.is_public ? tr('公開在書店頁') : tr('只有自己看得到')}`}</AppText>
         </View>
         {note.title ? <AppText variant="title">{note.title}</AppText> : null}
         <NoteBody note={note} />

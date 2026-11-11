@@ -27,7 +27,7 @@ insert into public.prescriptions (title, body, tags, anonymous) values ('最近�
 insert into public.prescriptions (title, duration_days) values ('第二張', 7);
 insert into public.prescriptions (title, duration_days) values ('第三張', 30);
 select pg_temp.expect_error($q$insert into public.prescriptions (title) values ('第四張')$q$, 'max 3 open');
-select pg_temp.expect_error($q$insert into public.prescriptions (title, tags) values ('x', array['nope'])$q$, 'fixed tags');
+select pg_temp.expect_error($q$insert into public.prescriptions (title, tags) values ('x', array['這個標籤真的太長了超過十個字'])$q$, 'tag too long');
 do $$ begin
   assert (select closes_at::date - created_at::date from public.prescriptions where title = '第二張') = 7, '7 days';
 end $$;

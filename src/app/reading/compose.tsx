@@ -152,6 +152,8 @@ export default function ComposeNoteScreen() {
             </Pressable>
           ) : null}
 
+          <TextField label={tr('標題')} optional max={NOTE_TITLE_MAX} value={title} onChangeText={setTitle} placeholder={tr('一句話標題')} />
+
           <View style={{ gap: 4 }}>
             <TextField label={bodyLabel} multiline max={NOTE_BODY_MAX} value={body} onChangeText={setBody} placeholder={placeholder} />
             {fromScan ? <AppText variant="caption" muted>{tr('來自掃描 · 可以直接修改錯字')}</AppText> : null}
@@ -160,16 +162,11 @@ export default function ComposeNoteScreen() {
             ) : null}
           </View>
 
-          <View style={{ flexDirection: 'row', gap: Spacing.md }}>
-            {kind === 'quote' ? (
-              <View style={{ flex: 1 }}>
-                <TextField label={tr('頁碼')} optional max={NOTE_PAGE_MAX} value={pageRef} onChangeText={setPageRef} placeholder="p.128" />
-              </View>
-            ) : null}
-            <View style={{ flex: 2 }}>
-              <TextField label={tr('標題')} optional max={NOTE_TITLE_MAX} value={title} onChangeText={setTitle} placeholder={tr('一句話標題')} />
+          {kind === 'quote' ? (
+            <View style={{ width: '40%' }}>
+              <TextField label={tr('頁碼')} optional max={NOTE_PAGE_MAX} value={pageRef} onChangeText={setPageRef} placeholder="p.128" />
             </View>
-          </View>
+          ) : null}
 
           <View style={{ gap: Spacing.sm }}>
             <AppText variant="label">

@@ -1,6 +1,6 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Chip, chipRow, TextField } from '@/components/form';
@@ -9,7 +9,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { tr } from '@/lib/i18n';
 import { useMyStore } from '@/lib/queries';
-import { RX_BODY_MAX, RX_DURATIONS, RX_TAGS, RX_TITLE_MAX, rxError, rxTagLabel, useCreateRx, useRx, useUpdateRx, type RxDetail, type RxDuration, type RxTag } from '@/lib/rx';
+import { RX_BODY_MAX, RX_DURATIONS, RX_TAGS, RX_TITLE_MAX, rxError, rxTagLabel, useCreateRx, useRx, useUpdateRx, type RxDetail, type RxDuration } from '@/lib/rx';
 
 /** X2 發起閱讀處方簽：狀況（必填）、想多說一點、標籤（最多 3）、身分（書店／匿名）、開放多久；帶 id = 編輯（還沒有人開才行） */
 export default function NewRxScreen() {
@@ -26,11 +26,19 @@ function RxForm({ existing }: { existing?: RxDetail }) {
   const update = useUpdateRx();
   const [title, setTitle] = useState(existing?.title ?? '');
   const [body, setBody] = useState(existing?.body ?? '');
-  const [tags, setTags] = useState<RxTag[]>((existing?.tags ?? []) as RxTag[]);
+  const [tags, setTags] = useState<string[]>(existing?.tags ?? []);
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState('');
   const [anonymous, setAnonymous] = useState(true);
   const [duration, setDuration] = useState<RxDuration>(14);
 
-  const toggleTag = (t: RxTag) => setTags((ts) => (ts.includes(t) ? ts.filter((x) => x !== t) : ts.length >= 3 ? ts : [...ts, t]));
+  const toggleTag = (t: string) => setTags((ts) => (ts.includes(t) ? ts.filter((x) => x !== t) : ts.length >= 3 ? ts : [...ts, t]));
+  const addTag = () => {
+    const t = draft.trim().slice(0, 10);
+    setAdding(false);
+    setDraft('');
+    if (t && !tags.includes(t) && tags.length < 3) setTags([...tags, t]);
+  };
   const submit = () =>
     existing
       ? update.mutate({ id: existing.id, title, body, tags }, { onSuccess: () => router.back(), onError: (e) => Alert.alert(tr('沒有儲存成功'), rxError(e.message)) })
@@ -56,7 +64,25 @@ function RxForm({ existing }: { existing?: RxDetail }) {
               <AppText variant="caption" muted>{tr('  選填 · 最多 3 個')}</AppText>
             </AppText>
             <View style={chipRow}>
-              {RX_TAGS.map((t) => <Chip key={t} label={rxTagLabel(t)} selected={tags.includes(t)} onPress={() => toggleTag(t)} />)}
+              {[...RX_TAGS, ...tags.filter((t) => !(RX_TAGS as readonly string[]).includes(t))].map((t) => (
+                <Chip key={t} label={rxTagLabel(t)} selected={tags.includes(t)} onPress={() => toggleTag(t)} />
+              ))}
+              {adding ? (
+                <TextInput
+                  autoFocus
+                  value={draft}
+                  onChangeText={setDraft}
+                  maxLength={10}
+                  onSubmitEditing={addTag}
+                  onBlur={addTag}
+                  placeholder={tr('例如：通勤讀物')}
+                  placeholderTextColor={c.textTertiary}
+                  accessibilityLabel={tr('自己新增標籤')}
+                  style={[styles.tagInput, { borderColor: c.primary, color: c.text, backgroundColor: c.surface }]}
+                />
+              ) : tags.length < 3 ? (
+                <Chip label={tr('＋ 自己新增')} onPress={() => setAdding(true)} />
+              ) : null}
             </View>
           </View>
           {!existing ? (
@@ -93,5 +119,6 @@ function RxForm({ existing }: { existing?: RxDetail }) {
 }
 
 const styles = StyleSheet.create({
+  tagInput: { minWidth: 120, height: 36, borderWidth: 1, borderRadius: 18, paddingHorizontal: 12, fontSize: 14 },
   footer: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, borderTopWidth: StyleSheet.hairlineWidth },
 });

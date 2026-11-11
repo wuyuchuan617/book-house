@@ -70,3 +70,16 @@ export function taipeiDate(iso: string) {
   const d = new Date(new Date(iso).getTime() + TAIPEI_OFFSET_MS);
   return { md: `${d.getUTCMonth() + 1}/${d.getUTCDate()}`, ymd: `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}` };
 }
+
+/** v1.6 心得時間：今天「今天 14:20」、昨天「昨天 21:05」、其他天「11/10」（跨年加年份）；用手機時區 */
+export function noteTime(iso: string) {
+  const d = new Date(iso);
+  const now = new Date();
+  const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(now) - day(d)) / 86400000);
+  if (diff === 0) return tr('今天 {hm}', { hm });
+  if (diff === 1) return tr('昨天 {hm}', { hm });
+  const md = `${d.getMonth() + 1}/${d.getDate()}`;
+  return d.getFullYear() === now.getFullYear() ? md : `${d.getFullYear()}/${md}`;
+}

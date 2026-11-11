@@ -127,7 +127,7 @@ export function useRxMine(kind: 'started' | 'replied') {
 export function useCreateRx() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { title: string; body: string; tags: RxTag[]; anonymous: boolean; duration: RxDuration }) =>
+    mutationFn: async (input: { title: string; body: string; tags: string[]; anonymous: boolean; duration: RxDuration }) =>
       unwrap<{ id: string }>(
         await supabase
           .from('prescriptions')
@@ -145,7 +145,7 @@ export function useCreateRx() {
 export function useUpdateRx() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { id: string; title: string; body: string; tags: RxTag[] }) => {
+    mutationFn: async (input: { id: string; title: string; body: string; tags: string[] }) => {
       const res = await supabase.from('prescriptions').update({ title: input.title.trim(), body: input.body.trim() || null, tags: input.tags }).eq('id', input.id);
       if (res.error) throw new Error(res.error.message);
     },

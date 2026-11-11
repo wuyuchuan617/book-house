@@ -7,7 +7,8 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-nat
 import { BookCover } from '@/components/book-cover';
 import { BookLine, VisibilityBadge } from '@/components/diary';
 import { Chip, chipRow } from '@/components/form';
-import { SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
+import { ActionSheet } from '@/components/sheet';
+import { MoreButton, SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
 import { AppText, Card } from '@/components/ui';
 import { Radius, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -18,11 +19,11 @@ import { rxError, useRxAction, useRxWithdraw } from '@/lib/rx';
 import { taipeiDate, taipeiToday } from '@/lib/period';
 import { tr } from '@/lib/i18n';
 
-type Filter = 'all' | 'want' | 'place' | 'post' | 'rx';
+type Filter = 'all' | 'want' | 'place' | 'post';
 
 /**
- * 店主手記：想讀、想去、日記貼文依時間混在一起。
- * mine（G2）：自己看全部，每一則標出書店頁看不看得到，點標籤可以切換；讀者（G4）：只看公開的。
+ * 店主手記：想讀、想去、日記貼文依時間混在一起（v1.6：處方簽獨立成書店的「處方簽」分頁）。
+ * mine（G2）：自己看全部，每一則標出書店頁看不看得到；每一則右邊「⋯」＋往左滑；讀者（G4）：只看公開的。
  */
 export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string; color: StoreColor; mine?: boolean }) {
   const c = useTheme();
@@ -35,6 +36,7 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
   const rxAction = useRxAction();
   const withdraw = useRxWithdraw();
   const [undo, setUndo] = useState<Extract<JournalItem, { type: 'want' | 'place' }> | null>(null);
+  const [menuFor, setMenuFor] = useState<JournalItem | null>(null);
   // 移除後 6 秒內可以復原（列表在捲動區裡，所以用列表上方的提示，不用浮動的 toast）
   useEffect(() => {
     if (!undo) return;
@@ -52,17 +54,22 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
       </Card>
     );
   if (isLoading || !data) return <ActivityIndicator style={{ marginTop: 32 }} />;
-  const items = data.filter((i) => filter === 'all' || i.type === filter || (filter === 'rx' && i.type === 'rx_reply'));
+  const items = data.filter((i) => i.type !== 'rx' && i.type !== 'rx_reply' && (filter === 'all' || i.type === filter));
 
   const toggle = (item: JournalItem) => {
-    if (item.type === 'rx' || item.type === 'rx_reply') {
+    // v1.6：想讀、想去不再一則一則選，只看公開設定
+    if (item.type !== 'post') {
+      if (item.type === 'place' && !item.public_ok) return Alert.alert(tr('私人地點不會公開'), tr('住家等私人地點只會留在自己的書櫃裡。'));
       return Alert.alert(
-        tr('閱讀處方簽'),
-        item.type === 'rx' && !item.is_public ? tr('這張是匿名發起的，不會出現在書店頁。') : tr('處方簽要不要出現在書店頁，看「公開設定」裡的「閱讀處方簽」。'),
+        item.shown ? tr('讀者看得到') : tr('只有你看得到'),
+        tr('想讀、想去要不要出現在書店頁，看「公開設定」。'),
+        [
+          { text: tr('好'), style: 'cancel' },
+          { text: tr('公開設定'), onPress: () => router.push('/store-visibility') },
+        ],
       );
     }
     const value = !item.is_public;
-    if (value && item.type === 'place' && !item.public_ok) return Alert.alert(tr('私人地點不能公開'), tr('住家等私人地點只會留在自己的書櫃裡。'));
     track('journal_visibility_changed', { type: item.type, value });
     setPublic.mutate(
       { item, value },
@@ -85,12 +92,12 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
 
   // 往左滑：想讀、想去＝編輯／移除（可復原）；日記貼文＝今天的編輯／改私人／刪除，過去的改私人／刪除；
   // 我開的處方＝修改／撤回；我發起的處方簽＝（沒人開才有）編輯／結案／刪除
-  const actionsFor = (item: JournalItem): SwipeAction[] => {
+  const actionsFor = (item: JournalItem): (SwipeAction & { sub?: string })[] => {
     switch (item.type) {
       case 'want':
         return [
           { label: tr('編輯'), icon: 'edit-2', onPress: () => router.push({ pathname: '/want-book', params: { bookId: item.id } }) },
-          { label: tr('移除'), icon: 'trash-2', destructive: true, onPress: () => toggleSave.mutate({ bookId: item.id, save: false }, { onSuccess: () => setUndo(item), onError: fail }) },
+          { label: tr('移除'), sub: tr('6 秒內可以復原'), icon: 'trash-2', destructive: true, onPress: () => toggleSave.mutate({ bookId: item.id, save: false }, { onSuccess: () => setUndo(item), onError: fail }) },
         ];
       case 'place':
         return [
@@ -100,13 +107,17 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
             onPress: () =>
               router.push({ pathname: '/diary/compose', params: { kind: 'want', placeId: item.place.id, placeName: item.place.name, googlePlaceId: 'saved', publicOk: item.public_ok ? '1' : '0', saved: '1', note: item.note ?? '' } }),
           },
-          { label: tr('移除'), icon: 'trash-2', destructive: true, onPress: () => savePlace.mutate({ placeId: item.place.id, save: false }, { onSuccess: () => setUndo(item), onError: fail }) },
+          { label: tr('移除'), sub: tr('6 秒內可以復原'), icon: 'trash-2', destructive: true, onPress: () => savePlace.mutate({ placeId: item.place.id, save: false }, { onSuccess: () => setUndo(item), onError: fail }) },
         ];
       case 'post': {
         const today = item.entry_date === taipeiToday();
         return [
-          ...(today ? [{ label: tr('編輯'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/diary/compose', params: { entryId: item.id } }) }] : []),
-          ...(item.is_public ? [{ label: tr('改成私人'), icon: 'eye-off' as const, onPress: () => setPublic.mutate({ item, value: false }, { onError: fail }) }] : []),
+          ...(today ? [{ label: tr('編輯'), sub: tr('只能改今天的日記'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/diary/compose', params: { entryId: item.id } }) }] : []),
+          ...(item.is_public
+            ? [{ label: tr('改成只有自己'), sub: tr('從探索、地點頁和書店頁拿掉'), icon: 'lock' as const, onPress: () => setPublic.mutate({ item, value: false }, { onError: fail }) }]
+            : today
+              ? [{ label: tr('公開'), sub: tr('出現在書店頁和探索'), icon: 'globe' as const, onPress: () => toggle(item) }]
+              : []),
           {
             label: tr('刪除'),
             icon: 'trash-2',
@@ -154,7 +165,6 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
     ['want', tr('想讀')],
     ['place', tr('想去')],
     ['post', tr('日記')],
-    ['rx', tr('處方簽')],
   ];
 
   return (
@@ -180,13 +190,13 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
           </AppText>
         </Card>
       ) : (
-        items.map((item) => {
-          const card = <JournalCard item={item} color={color} mine={mine} onToggle={() => toggle(item)} />;
+        items.map((item, index) => {
+          const card = <JournalCard item={item} color={color} mine={mine} onToggle={() => toggle(item)} onMore={mine ? () => setMenuFor(item) : undefined} />;
           if (!mine) return <View key={`${item.type}-${item.id}`}>{card}</View>;
           const actions = actionsFor(item);
           return (
             <View key={`${item.type}-${item.id}`} style={{ borderRadius: Radius.xl, overflow: 'hidden' }} {...swipeA11y(actions)}>
-              <SwipeRow actions={actions} background={c.background}>
+              <SwipeRow actions={actions} background={c.background} hint={index === 0}>
                 {card}
               </SwipeRow>
             </View>
@@ -194,7 +204,16 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
         })
       )}
       {mine && items.length ? (
-        <AppText variant="caption" style={{ color: c.textTertiary }}>{tr('往左滑可以編輯、移除；點右上角的標籤切換「書店頁／只有自己」。哪幾類會顯示，看上方的「公開設定」。')}</AppText>
+        <AppText variant="caption" style={{ color: c.textTertiary }}>{tr('點「⋯」或往左滑可以編輯、移除。想讀、想去要不要出現在書店頁，看「公開設定」。')}</AppText>
+      ) : null}
+      {mine ? (
+        <ActionSheet
+          visible={!!menuFor}
+          onClose={() => setMenuFor(null)}
+          badge={menuFor ? <KindTag item={menuFor} /> : undefined}
+          title={menuFor ? journalTitle(menuFor) : undefined}
+          actions={menuFor ? actionsFor(menuFor) : []}
+        />
       ) : null}
 
     </View>
@@ -203,9 +222,26 @@ export function StoreJournal({ bookstoreId, color, mine }: { bookstoreId: string
 
 const item_error = (m: string) => (/prescription|處方/.test(m) ? rxError(m) : diaryError(m));
 
-function JournalCard({ item, color, mine, onToggle }: { item: JournalItem; color: StoreColor; mine?: boolean; onToggle: () => void }) {
+function kindOf(item: JournalItem, c: ReturnType<typeof useTheme>) {
+  return item.type === 'rx' || item.type === 'rx_reply' ? { label: item.type === 'rx' ? tr('發起處方簽') : tr('開了處方'), fg: '#5A4B8A', icon: 'message-circle' as const } : item.type === 'want' ? { label: tr('想讀'), fg: c.primary, icon: 'bookmark' as const } : item.type === 'place' ? { label: tr('想去'), fg: '#2F5D6B', icon: 'map-pin' as const } : item.book ? { label: tr('正在讀'), fg: c.success, icon: 'play' as const } : item.kind === 'checkin' ? { label: tr('打卡'), fg: '#5A4B8A', icon: 'map-pin' as const } : { label: tr('日記'), fg: '#5A4B8A', icon: 'edit-3' as const };
+}
+
+const journalTitle = (item: JournalItem) =>
+  item.type === 'want' ? item.book.title : item.type === 'place' ? item.place.name : item.type === 'rx' ? item.title : item.type === 'rx_reply' ? item.book.title : (item.body ?? item.place?.name ?? item.place_label ?? item.book?.title ?? '');
+
+function KindTag({ item }: { item: JournalItem }) {
   const c = useTheme();
-  const kind = item.type === 'rx' || item.type === 'rx_reply' ? { label: item.type === 'rx' ? tr('發起處方簽') : tr('開了處方'), fg: '#5A4B8A', icon: 'message-circle' as const } : item.type === 'want' ? { label: tr('想讀'), fg: c.primary, icon: 'bookmark' as const } : item.type === 'place' ? { label: tr('想去'), fg: '#2F5D6B', icon: 'map-pin' as const } : item.book ? { label: tr('正在讀'), fg: c.success, icon: 'play' as const } : item.kind === 'checkin' ? { label: tr('打卡'), fg: '#5A4B8A', icon: 'map-pin' as const } : { label: tr('日記'), fg: '#5A4B8A', icon: 'edit-3' as const };
+  const kind = kindOf(item, c);
+  return (
+    <View style={[styles.tag, { backgroundColor: c.surface }]}>
+      <AppText variant="caption" style={{ fontWeight: '700', color: kind.fg, fontSize: 11 }}>{kind.label}</AppText>
+    </View>
+  );
+}
+
+function JournalCard({ item, color, mine, onToggle, onMore }: { item: JournalItem; color: StoreColor; mine?: boolean; onToggle: () => void; onMore?: () => void }) {
+  const c = useTheme();
+  const kind = kindOf(item, c);
   const date = item.type === 'post' ? taipeiDate(`${item.entry_date}T04:00:00Z`).md : taipeiDate(item.at).md;
 
   return (
@@ -215,16 +251,11 @@ function JournalCard({ item, color, mine, onToggle }: { item: JournalItem; color
         <AppText variant="caption" style={{ fontWeight: '700', color: kind.fg }}>{kind.label}</AppText>
         <AppText variant="caption" muted style={{ flex: 1 }}>{`· ${date}`}</AppText>
         {mine ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={item.shown ? tr('改成只有自己') : tr('顯示在書店頁')} hitSlop={8} onPress={onToggle}>
-            {item.shown ? (
-              <VisibilityBadge v={{ public: true, where: 'store' }} />
-            ) : item.is_public ? (
-              <AppText variant="caption" style={{ fontSize: 11, color: c.textTertiary }}>{tr('公開・這類沒開')}</AppText>
-            ) : (
-              <VisibilityBadge v={{ public: false }} />
-            )}
+          <Pressable accessibilityRole="button" accessibilityLabel={item.shown ? tr('讀者看得到') : tr('只有你看得到')} hitSlop={8} onPress={onToggle}>
+            {item.shown ? <VisibilityBadge v={{ public: true, where: 'store' }} /> : <VisibilityBadge v={{ public: false }} />}
           </Pressable>
         ) : null}
+        {onMore ? <MoreButton onPress={onMore} label={tr('{kind}的更多動作', { kind: kind.label })} /> : null}
       </View>
 
       {item.type === 'want' ? (
@@ -300,4 +331,5 @@ const styles = StyleSheet.create({
   card: { borderRadius: Radius.xl, padding: Spacing.lg, gap: Spacing.sm },
   undo: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, minHeight: 44 },
   photo: { width: 96, height: 72, borderRadius: 10 },
+  tag: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
 });

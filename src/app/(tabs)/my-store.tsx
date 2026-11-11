@@ -32,8 +32,7 @@ export default function MyStoreScreen() {
   const readings = useMyReadings();
   const removal = useReadingRemoval();
   const [tab, setTab] = useState<'curation' | 'reading' | 'journal'>('curation');
-  const { data: wants } = useSavedBooks();
-  const readingCount = (readings.data ?? []).filter((r) => r.id !== removal.pending?.id).length + (wants?.length ?? 0);
+  const readingCount = (readings.data ?? []).filter((r) => r.id !== removal.pending?.id).length;
 
   if (!session) {
     return (
@@ -107,7 +106,7 @@ export default function MyStoreScreen() {
           {tab === 'curation' ? (
             <CurationSection />
           ) : tab === 'reading' ? (
-            <ReadingSection readings={readings.data} wants={wants} loading={readings.isLoading} color={store.color} removal={removal} />
+            <ReadingSection readings={readings.data} loading={readings.isLoading} color={store.color} removal={removal} />
           ) : (
             <StoreJournal bookstoreId={store.id} color={store.color} mine />
           )}

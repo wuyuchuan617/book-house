@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { AutoItemRow, OwnEntryCard, visibilityOf } from '@/components/diary';
-import { SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
+import { ActionSheet } from '@/components/sheet';
+import { MoreButton, SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
 import { AppText } from '@/components/ui';
 import { Radius, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -24,6 +25,7 @@ export function DiaryTimeline({ items, isToday, color }: { items: DiaryItem[]; i
   const unpublish = useUnpublishEntry();
   const [filter, setFilter] = useState<Filter>('all');
   const [autoOpen, setAutoOpen] = useState(true);
+  const [menuFor, setMenuFor] = useState<DiaryEntry | null>(null);
   const fail = (e: Error) => Alert.alert(tr('沒有成功'), diaryError(e.message));
 
   const pubCount = items.filter((i) => visibilityOf(i).public).length;
@@ -33,7 +35,7 @@ export function DiaryTimeline({ items, isToday, color }: { items: DiaryItem[]; i
 
   const actionsFor = (e: DiaryEntry): SwipeAction[] => [
     ...(isToday ? [{ label: tr('編輯'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/diary/compose', params: { entryId: e.id } }) }] : []),
-    ...(e.is_public ? [{ label: tr('改成私人'), icon: 'eye-off' as const, onPress: () => unpublish.mutate(e.id, { onError: fail }) }] : []),
+    ...(e.is_public ? [{ label: tr('改成只有自己'), icon: 'lock' as const, onPress: () => unpublish.mutate(e.id, { onError: fail }) }] : []),
     {
       label: tr('刪除'),
       icon: 'trash-2' as const,
@@ -74,12 +76,17 @@ export function DiaryTimeline({ items, isToday, color }: { items: DiaryItem[]; i
       {own.length ? (
         <View style={{ gap: Spacing.sm }}>
           <AppText variant="caption" style={styles.section}>{tr('我寫的')}</AppText>
-          {own.map((e) => {
+          {own.map((e, index) => {
             const actions = actionsFor(e);
             return (
               <View key={e.id} {...swipeA11y(actions)}>
-                <SwipeRow actions={actions} background={c.background}>
-                  <OwnEntryCard item={e} color={color} />
+                <SwipeRow actions={actions} background={c.background} hint={index === 0}>
+                  <View>
+                    <OwnEntryCard item={e} color={color} />
+                    <View style={styles.more}>
+                      <MoreButton onPress={() => setMenuFor(e)} />
+                    </View>
+                  </View>
                 </SwipeRow>
               </View>
             );
@@ -103,7 +110,8 @@ export function DiaryTimeline({ items, isToday, color }: { items: DiaryItem[]; i
       ) : null}
 
       {!own.length && !auto.length ? <AppText variant="caption" muted style={{ textAlign: 'center', paddingVertical: Spacing.lg }}>{tr('這個篩選沒有項目。')}</AppText> : null}
-      {own.length ? <AppText variant="caption" style={{ color: c.textTertiary }}>{isToday ? tr('往左滑：可以編輯、改成私人、刪除') : tr('往左滑：可以改成私人、刪除')}</AppText> : null}
+      {own.length ? <AppText variant="caption" style={{ color: c.textTertiary }}>{isToday ? tr('點「⋯」或往左滑：可以編輯、改成只有自己、刪除') : tr('點「⋯」或往左滑：可以改成只有自己、刪除')}</AppText> : null}
+      <ActionSheet visible={!!menuFor} onClose={() => setMenuFor(null)} title={menuFor?.body ?? undefined} actions={menuFor ? actionsFor(menuFor) : []} />
     </View>
   );
 }
@@ -113,4 +121,5 @@ const styles = StyleSheet.create({
   section: { fontWeight: '700', paddingHorizontal: 2 },
   autoHead: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32 },
   autoBox: { borderWidth: 1, borderStyle: 'dashed', borderRadius: Radius.xl, paddingHorizontal: Spacing.lg },
+  more: { position: 'absolute', top: 6, right: 6 },
 });

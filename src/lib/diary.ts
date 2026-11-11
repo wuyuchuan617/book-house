@@ -606,6 +606,10 @@ export function diaryError(message: string) {
 // ---------------------------------------------------------------------------
 export type PostFilter = 'all' | 'following' | 'near';
 export type PublicPost = {
+  /** v1.6：'note' ＝ 書公開的心得（標「心得」） */
+  source?: 'diary' | 'note';
+  note_kind?: NoteKind | null;
+  title?: string | null;
   id: string;
   created_at: string;
   entry_date: string;
@@ -627,14 +631,18 @@ export type PublicPost = {
   distance_m: number | null;
 };
 
-export function useExplorePosts(filter: PostFilter, near: Coords | null) {
+export function useExplorePosts(filter: PostFilter, near: Coords | null, query = '') {
   const { session } = useAuth();
+  const q = query.trim();
   return useQuery({
-    queryKey: ['explore-posts', session?.user.id ?? 'anon', filter, near ? `${near.lat.toFixed(2)},${near.lng.toFixed(2)}` : null],
+    queryKey: ['explore-posts', session?.user.id ?? 'anon', filter, near ? `${near.lat.toFixed(2)},${near.lng.toFixed(2)}` : null, q],
     enabled: filter !== 'near' || !!near,
-    queryFn: async () =>
-      unwrap<PublicPost[]>(
-        await supabase.rpc('explore_posts', { p_filter: filter, p_lat: near?.lat ?? null, p_lng: near?.lng ?? null, p_limit: 50 }),
-      ),
+    queryFn: async () => {
+      const base = { p_filter: filter, p_lat: near?.lat ?? null, p_lng: near?.lng ?? null, p_limit: 50 };
+      const res = await supabase.rpc('explore_posts', q ? { ...base, p_query: q } : base);
+      // 伺服器還沒套用 v1.6（沒有 p_query）：搜尋時先回空的，不要整個失敗
+      if (res.error && q && /function|p_query/i.test(res.error.message)) return [] as PublicPost[];
+      return unwrap<PublicPost[]>(res);
+    },
   });
 }

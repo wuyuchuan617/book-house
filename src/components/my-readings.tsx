@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { BookCover } from '@/components/book-cover';
 import { Chip, chipRow } from '@/components/form';
@@ -12,12 +12,10 @@ import { MinTouch, Radius, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { timeAgo } from '@/lib/period';
 import { useDeleteReading, type MyReading } from '@/lib/readings';
-import { useToggleSave, wantSource, type SavedBook } from '@/lib/browse';
 import { SwipeRow, swipeA11y } from '@/components/swipe-row';
-import { LinkLine } from '@/components/link-line';
 import { tr } from '@/lib/i18n';
 
-type Filter = 'want' | 'reading' | 'finished';
+type Filter = 'reading' | 'finished';
 const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
 
 /**
@@ -64,10 +62,9 @@ export function ReadingRemovalToast({ removal }: { removal: ReturnType<typeof us
   );
 }
 
-/** R1 店主閱讀：想讀 → 在讀 → 讀完（想讀與「收藏 › 想讀」是同一份）＋S6 空狀態 */
-export function ReadingSection({ readings, wants, color, loading, removal }: {
+/** R1 店主閱讀（v1.6）：只留正在讀、讀完了（想讀移到書櫃）＋S6 空狀態 */
+export function ReadingSection({ readings, color, loading, removal }: {
   readings: MyReading[] | undefined;
-  wants: SavedBook[] | undefined;
   color: StoreColor;
   loading: boolean;
   removal: ReturnType<typeof useReadingRemoval>;
@@ -76,22 +73,15 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
   const [filter, setFilter] = useState<Filter>('reading');
   const [menuFor, setMenuFor] = useState<MyReading | null>(null);
   const { pending, remove } = removal;
-  const toggleSave = useToggleSave();
-  const confirmUnsave = (w: SavedBook) =>
-    Alert.alert(tr('從想讀移除「{title}」？', { title: w.books.title }), undefined, [
-      { text: tr('取消'), style: 'cancel' },
-      { text: tr('移除'), style: 'destructive', onPress: () => toggleSave.mutate({ bookId: w.book_id, save: false }) },
-    ]);
 
   if (loading || !readings) return <ActivityIndicator style={{ marginTop: 24 }} />;
   const visible = readings.filter((r) => r.id !== pending?.id);
-  const wantList = wants ?? [];
-  const counts = { want: wantList.length, reading: visible.filter((r) => r.status === 'reading').length, finished: visible.filter((r) => r.status === 'finished').length };
-  const shown = filter === 'want' ? [] : visible.filter((r) => r.status === filter);
+  const counts = { reading: visible.filter((r) => r.status === 'reading').length, finished: visible.filter((r) => r.status === 'finished').length };
+  const shown = visible.filter((r) => r.status === filter);
   // v1.5：新增統一用右下角的＋；空的時候這裡給一個捷徑
-  const add = () => (filter === 'want' ? router.push('/want-book') : router.push({ pathname: '/diary/compose', params: { kind: 'reading' } }));
+  const add = () => router.push({ pathname: '/diary/compose', params: { kind: 'reading' } });
 
-  if (visible.length === 0 && wantList.length === 0) {
+  if (visible.length === 0) {
     return (
       <Card style={{ alignItems: 'center', paddingVertical: 28, gap: Spacing.sm }}>
           <AppText variant="heading">{tr('記下你正在讀的書')}</AppText>
@@ -105,42 +95,12 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
     <View style={{ gap: Spacing.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={chipRow}>
-          <Chip label={tr('想讀 {want}', { want: counts.want })} selected={filter === 'want'} onPress={() => setFilter('want')} />
           <Chip label={tr('在讀 {reading}', { reading: counts.reading })} selected={filter === 'reading'} onPress={() => setFilter('reading')} />
           <Chip label={tr('讀完 {finished}', { finished: counts.finished })} selected={filter === 'finished'} onPress={() => setFilter('finished')} />
         </View>
       </View>
 
-      {filter === 'want'
-        ? wantList.map((w) => {
-            const from = wantSource(w);
-            const actions = [
-              { label: tr('編輯'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/want-book', params: { bookId: w.book_id } }) },
-              { label: tr('移除'), icon: 'trash-2' as const, destructive: true, onPress: () => confirmUnsave(w) },
-            ];
-            return (
-              <Card key={w.book_id} style={{ padding: 0, overflow: 'hidden' }}>
-                <SwipeRow actions={actions}>
-                <Pressable accessibilityRole="button" accessibilityHint={tr('編輯理由、開始讀')} {...swipeA11y(actions)} onPress={() => router.push({ pathname: '/want-book', params: { bookId: w.book_id } })} style={styles.main}>
-                  <BookCover title={w.books.title} url={w.books.cover_url} color={color} />
-                  <View style={{ flex: 1, gap: 3 }}>
-                    <View style={[styles.pill, { backgroundColor: c.surfaceMuted, alignSelf: 'flex-start' }]}>
-                      <AppText variant="caption" style={{ fontWeight: '700', color: c.textSecondary }}>{tr('想讀')}</AppText>
-                    </View>
-                    <AppText variant="label" style={{ fontSize: 16 }}>{w.books.title}</AppText>
-                    {from ? <AppText variant="caption" muted numberOfLines={1}>{tr('在哪看到：{from}', { from })}</AppText> : null}
-                    <AppText variant="caption" muted numberOfLines={2}>{w.note ? tr('「{note}」', { note: w.note }) : tr('還沒寫為什麼想讀')}</AppText>
-                    <LinkLine url={w.link} />
-                  </View>
-                  <AppText variant="caption" style={{ color: c.primary, fontWeight: '700', alignSelf: 'center' }}>{tr('開始讀')}</AppText>
-                </Pressable>
-                </SwipeRow>
-              </Card>
-            );
-          })
-        : null}
-      {filter === 'want' && wantList.length === 0 ? <AppText muted style={{ textAlign: 'center', marginTop: Spacing.lg }}>{tr('還沒有想讀的書。\n在策展裡按書籤，或按右下角的＋加一本。')}</AppText> : null}
-      {shown.map((r) => {
+      {shown.map((r, index) => {
         const latest = r.reading_notes[0];
         const actions = [
           { label: tr('編輯'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/reading/manage/[id]', params: { id: r.id } }) },
@@ -148,7 +108,7 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
         ];
         return (
           <Card key={r.id} style={{ padding: 0, overflow: 'hidden' }}>
-            <SwipeRow actions={actions}>
+            <SwipeRow actions={actions} hint={index === 0}>
             <View style={{ flexDirection: 'row' }}>
               <Pressable
                 {...swipeA11y(actions)}
@@ -184,7 +144,7 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
           </Card>
         );
       })}
-      {filter !== 'want' && shown.length === 0 ? <AppText muted style={{ textAlign: 'center', marginTop: Spacing.lg }}>{filter === 'reading' ? tr('目前沒有在讀的書') : tr('還沒有讀完的書')}</AppText> : null}
+      {shown.length === 0 ? <AppText muted style={{ textAlign: 'center', marginTop: Spacing.lg }}>{filter === 'reading' ? tr('目前沒有在讀的書') : tr('還沒有讀完的書')}</AppText> : null}
 
       {menuFor ? (
         <ReadingActions reading={menuFor} visible onClose={() => setMenuFor(null)} onRemove={() => remove(menuFor)} />

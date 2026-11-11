@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { BookLine, DiaryPhotos } from '@/components/diary';
+import { KindChip, NotePhotos } from '@/components/note-card';
 import { Chip, chipRow } from '@/components/form';
 import { PlacesExplore } from '@/components/places-explore';
 import { ActionSheet } from '@/components/sheet';
@@ -95,7 +96,7 @@ export function PostsExplore() {
               <EmptyState title={tr('還沒有公開貼文')} body={tr('寫日記時選「公開」，就會出現在這裡。')} />
             )
           }
-          renderItem={({ item }) => <PostCard post={item} onMore={item.is_mine ? undefined : () => requireAuth(() => setMenuFor(item))} />}
+          renderItem={({ item }) => <PostCard post={item} onMore={item.is_mine || item.source === 'note' ? undefined : () => requireAuth(() => setMenuFor(item))} />}
         />
       )}
 
@@ -183,8 +184,14 @@ function PostCard({ post, onMore }: { post: PublicPost; onMore?: () => void }) {
           {post.distance_m != null ? <AppText variant="caption" muted>{post.distance_m < 1000 ? tr('{n} 公尺', { n: post.distance_m }) : tr('{n} 公里', { n: (post.distance_m / 1000).toFixed(1) })}</AppText> : null}
         </Pressable>
       ) : null}
-      {post.body ? <AppText style={{ lineHeight: 23 }}>{post.body}</AppText> : null}
-      <DiaryPhotos paths={post.photo_paths} />
+      {post.source === 'note' ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+          {post.note_kind ? <KindChip kind={post.note_kind} /> : null}
+          {post.title ? <AppText variant="label" style={{ flex: 1 }} numberOfLines={1}>{post.title}</AppText> : null}
+        </View>
+      ) : null}
+      {post.body ? <AppText style={{ lineHeight: 23 }}>{post.source === 'note' && post.note_kind === 'quote' ? tr('「{body}」', { body: post.body }) : post.body}</AppText> : null}
+      {post.source === 'note' ? <NotePhotos paths={post.photo_paths} /> : <DiaryPhotos paths={post.photo_paths} />}
       {post.book_id && post.book_title ? (
         <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/book/[id]', params: { id: post.book_id! } })} style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
           <View style={{ flex: 1 }}>

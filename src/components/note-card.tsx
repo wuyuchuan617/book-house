@@ -8,7 +8,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import type { NoteKind, ReadingNote } from '@/lib/browse';
 import { tr } from '@/lib/i18n';
-import { timeAgo } from '@/lib/period';
+import { noteTime } from '@/lib/period';
 import { useNoteImageUrls } from '@/lib/readings';
 
 const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
@@ -105,7 +105,7 @@ export function NoteTimeline({ notes, startedAt, onPressNote, actionsFor, highli
             <View style={{ flex: 1, paddingBottom: last ? 0 : Spacing.lg, gap: 6 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
                 <KindChip kind={n.kind} />
-                <AppText variant="caption" muted>{i === 0 && highlightLatest ? timeAgo(n.created_at) : md(n.created_at)}</AppText>
+                <AppText variant="caption" muted>{noteTime(n.created_at)}</AppText>
               </View>
               {n.title ? <AppText variant="label">{n.title}</AppText> : null}
               <NoteBody note={n} lines={onPressNote ? 6 : undefined} />
@@ -143,7 +143,7 @@ export function NoteSnippet({ note }: { note: Pick<ReadingNote, 'kind' | 'title'
       <AppText variant="caption" style={{ flex: 1, lineHeight: 19 }} numberOfLines={3}>
         {note.title ? `${note.title}｜` : ''}
         {note.kind === 'quote' ? tr('「{body}」', { body: note.body }) : note.body}
-        <AppText variant="caption" muted>{` · ${timeAgo(note.created_at)}`}</AppText>
+        <AppText variant="caption" muted>{` · ${noteTime(note.created_at)}`}</AppText>
       </AppText>
     </View>
   );

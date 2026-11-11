@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { PlaceRow } from '@/components/diary';
-import { SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
+import { ActionSheet } from '@/components/sheet';
+import { MoreButton, SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
 import { AppText, EmptyState } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -23,6 +24,11 @@ export function PlacesShelf() {
   const edit = (p: MyPlace) =>
     router.push({ pathname: '/diary/compose', params: { kind: 'want', placeId: p.id, placeName: p.name, googlePlaceId: 'saved', publicOk: '0', saved: '1', note: p.note ?? '' } });
   const remove = useSavePlace();
+  const [menuFor, setMenuFor] = useState<MyPlace | null>(null);
+  const actionsFor = (p: MyPlace): SwipeAction[] => [
+    { label: tr('編輯'), icon: 'edit-2', onPress: () => edit(p) },
+    { label: tr('移除'), icon: 'trash-2', destructive: true, onPress: () => remove.mutate({ placeId: p.id, save: false }) },
+  ];
 
   const meta = (p: MyPlace) =>
     kind === 'want'
@@ -65,24 +71,26 @@ export function PlacesShelf() {
               <EmptyState title={tr('還沒有去過的地方')} body={tr('在有書的地方打卡，就會記在這裡。')} actionLabel={tr('去打卡')} onAction={() => router.push({ pathname: '/diary/compose', params: { kind: 'checkin' } })} />
             )
           }
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             if (kind !== 'want') return <PlaceRow place={item} isIndie={item.is_indie} meta={meta(item)} />;
-            const actions: SwipeAction[] = [
-              { label: tr('編輯'), icon: 'edit-2', onPress: () => edit(item) },
-              { label: tr('移除'), icon: 'trash-2', destructive: true, onPress: () => remove.mutate({ placeId: item.id, save: false }) },
-            ];
+            const actions = actionsFor(item);
             return (
               <View style={{ borderRadius: Radius.xl, overflow: 'hidden' }} {...swipeA11y(actions)}>
-                <SwipeRow actions={actions}>
-                  <PlaceRow place={item} isIndie={item.is_indie} meta={meta(item)} />
+                <SwipeRow actions={actions} hint={index === 0}>
+                  <View>
+                    <PlaceRow place={item} isIndie={item.is_indie} meta={meta(item)} />
+                    <View style={styles.more}>
+                      <MoreButton onPress={() => setMenuFor(item)} label={tr('{name}的更多動作', { name: item.name })} />
+                    </View>
+                  </View>
                 </SwipeRow>
               </View>
             );
           }}
-          ListFooterComponent={kind === 'want' && list.data?.length ? <AppText variant="caption" muted style={{ textAlign: 'center' }}>{tr('往左滑可以修改原因或移除；在那裡打卡後會移到「去過」。')}</AppText> : undefined}
+          ListFooterComponent={kind === 'want' && list.data?.length ? <AppText variant="caption" muted style={{ textAlign: 'center' }}>{tr('點「⋯」或往左滑可以修改原因或移除；在那裡打卡後會移到「去過」。')}</AppText> : undefined}
         />
       )}
-
+      <ActionSheet visible={!!menuFor} onClose={() => setMenuFor(null)} title={menuFor?.name} actions={menuFor ? actionsFor(menuFor) : []} />
     </View>
   );
 }
@@ -92,4 +100,5 @@ const styles = StyleSheet.create({
   pill: { minHeight: 34, paddingHorizontal: 16, borderRadius: Radius.pill, borderWidth: 1, justifyContent: 'center' },
   add: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: MinTouch },
   list: { padding: Spacing.xl, paddingTop: Spacing.md, gap: Spacing.md, flexGrow: 1, paddingBottom: 96 },
+  more: { position: 'absolute', top: 6, right: 6 },
 });

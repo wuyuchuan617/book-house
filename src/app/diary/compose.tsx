@@ -148,7 +148,8 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
   // 公開：日記貼文 → 沒有地點或公開場所才可以；正在讀 → 預設跟著那本書；想去 → 公開場所才可以
   const canPublic = kind === 'want' ? !!googlePlace?.public_ok : kind === 'post' ? !place || !!googlePlace?.public_ok : true;
   const defaultPublic = kind === 'reading' ? (linkedReading ? linkedReading.is_public : newReadingPublic) && !!store?.store.show_post : kind === 'want' ? !!store?.store.show_place : false;
-  const publicOn = canPublic && (isPublic ?? defaultPublic);
+  // v1.6：想去不再一則一則選公開（公開場所一律可以顯示，要不要出現在書店頁只看公開設定）
+  const publicOn = kind === 'want' ? canPublic : canPublic && (isPublic ?? defaultPublic);
 
   const dirty = existing
     ? body !== (existing.body ?? '') || book?.id !== existing.book?.id || photos.length !== existing.photo_paths.length || photos.some((p) => 'uri' in p) || publicOn !== existing.is_public || placeKey(place) !== (existing.place_id ?? existing.place_label ?? '') || pageRef !== (existing.page_ref ?? '')
@@ -326,8 +327,8 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
         : !googlePlace.public_ok
           ? tr('這裡看起來是私人地點，只會留在自己的書櫃裡。')
           : store?.store.show_place
-            ? tr('讀者會在你的書店頁「店主手記」看到這個地方與原因；連結不公開。')
-            : tr('公開設定裡「想去的地點」還沒打開，打開後才會顯示。')
+            ? tr('公開設定裡「想去的地點」開著：讀者會在你的書店頁看到這個地方與原因；連結不公開。')
+            : tr('公開設定裡「想去的地點」沒開，只有你看得到。')
       : place?.kind === 'label'
         ? tr('自己輸入的地點只有自己看得到。')
         : googlePlace && !googlePlace.public_ok
@@ -377,7 +378,7 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
                 hint={editingWant && wantLink === null ? tr('看到它的貼文或文章；只有你自己看得到。留空就保留原本的連結。') : tr('看到它的貼文或文章；只有你自己看得到')}
               />
               {googlePlace ? typeChips : null}
-              {visibility}
+              <AppText variant="caption" muted>{publicHint}</AppText>
               {editingWant ? <Button kind="link" label={tr('從想去移除')} onPress={removeWant} /> : null}
             </>
           ) : null}
