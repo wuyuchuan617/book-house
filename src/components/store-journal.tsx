@@ -162,11 +162,12 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bo
     setUndo(null);
   };
 
-  const heading = filter === 'want' ? tr('想讀 · {n}', { n: items.length }) : filter === 'place' ? tr('想去 · {n}', { n: items.length }) : tr('日記貼文 · {n}', { n: items.length });
+  // 想讀、想去的數字在上面的小膠囊（SubChips）裡
+  const heading = tr('日記貼文 · {n}', { n: items.length });
 
   return (
     <View style={{ gap: Spacing.md }}>
-      {items.length ? <AppText variant="label" style={{ fontSize: 15 }}>{heading}</AppText> : null}
+      {items.length && filter === 'post' ? <AppText variant="label" style={{ fontSize: 15 }}>{heading}</AppText> : null}
       {undo ? (
         <View style={[styles.undo, { backgroundColor: c.text }]} accessibilityLiveRegion="polite">
           <AppText variant="caption" style={{ color: c.background, flex: 1 }} numberOfLines={1}>

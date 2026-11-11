@@ -10,11 +10,13 @@ import { OwnerRx } from '@/components/rx-mine';
 import { CountLink, SmallButton, StoreHeader } from '@/components/store-header';
 import { UnderlineTabs } from '@/components/underline-tabs';
 import { StoreJournal } from '@/components/store-journal';
+import { SubChips, useVisitedPlaces, VisitedPlaces } from '@/components/store-lists';
 import { StoreSetupSheet } from '@/components/store-setup';
 import { AppText, EmptyState, Screen } from '@/components/ui';
 import { Radius, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
+import { useStoreJournal } from '@/lib/diary';
 import { CurationSection } from '@/components/my-curations';
 import { ReadingRemovalToast, ReadingSection, useReadingRemoval } from '@/components/my-readings';
 import { useMyReadings } from '@/lib/readings';
@@ -41,6 +43,11 @@ export default function MyStoreScreen() {
   const initial = params.tab === 'lists' ? 'want' : params.tab;
   const [tab, setTab] = useState<Tab>(TAB_KEYS.includes(initial as Tab) ? (initial as Tab) : 'curation');
   const insights = useStoreInsights();
+  const [wantSub, setWantSub] = useState<'want' | 'tbr'>('want');
+  const [placeSub, setPlaceSub] = useState<'want' | 'visited'>('want');
+  const journal = useStoreJournal(data?.store.id);
+  const visited = useVisitedPlaces(data?.store.id);
+  const purchases = useMyPurchases();
 
   if (!session) {
     return (
@@ -73,7 +80,7 @@ export default function MyStoreScreen() {
     ['reading', tr('閱讀')],
     ['journal', tr('手記')],
     ['want', tr('想讀')],
-    ['place', tr('想去')],
+    ['place', tr('地點')],
     ['rx', tr('處方簽')],
   ];
   // 讀者看不到的分頁（公開設定沒開）
@@ -81,9 +88,11 @@ export default function MyStoreScreen() {
     reading: ['show_reading', tr('閱讀')],
     journal: ['show_post', tr('手記')],
     want: ['show_want', tr('想讀')],
-    place: ['show_place', tr('想去')],
+    place: ['show_place', tr('地點')],
     rx: ['show_rx', tr('處方簽')],
   };
+  const count = (t: 'want' | 'place') => (journal.data ?? []).filter((i) => i.type === t).length;
+  const tbrCount = (purchases.data?.items ?? []).filter((p) => p.status === 'unread').length;
   const off = hidden[tab] && store[hidden[tab]![0]] === false ? hidden[tab]![1] : null;
 
   return (
@@ -125,11 +134,22 @@ export default function MyStoreScreen() {
             <StoreJournal bookstoreId={store.id} color={store.color} mine scope="posts" />
           ) : tab === 'want' ? (
             <>
-              <StoreJournal bookstoreId={store.id} color={store.color} mine scope="want" />
-              <OwnerTbr color={store.color} hiddenFromReaders={store.show_owned === false} />
+              <SubChips
+                options={[['want', tr('想讀 · {n}', { n: count('want') })], ['tbr', tr('積讀 · {n}', { n: tbrCount })]]}
+                value={wantSub}
+                onChange={setWantSub}
+              />
+              {wantSub === 'want' ? <StoreJournal bookstoreId={store.id} color={store.color} mine scope="want" /> : <OwnerTbr color={store.color} hiddenFromReaders={store.show_owned === false} />}
             </>
           ) : tab === 'place' ? (
-            <StoreJournal bookstoreId={store.id} color={store.color} mine scope="place" />
+            <>
+              <SubChips
+                options={[['want', tr('想去 · {n}', { n: count('place') })], ['visited', tr('去過 · {n}', { n: visited.places.length })]]}
+                value={placeSub}
+                onChange={setPlaceSub}
+              />
+              {placeSub === 'want' ? <StoreJournal bookstoreId={store.id} color={store.color} mine scope="place" /> : <VisitedPlaces bookstoreId={store.id} mine />}
+            </>
           ) : (
             <OwnerRx />
           )}
@@ -153,22 +173,28 @@ function HiddenBar({ what }: { what: string }) {
   );
 }
 
-/** AA3 想讀分頁的第二段：積讀（買了還沒讀）；完整管理在書櫃 › 積讀 */
+/** 想讀 › 積讀（買了還沒讀）；完整管理在書櫃 › 積讀 */
 function OwnerTbr({ color, hiddenFromReaders }: { color: StoreColor; hiddenFromReaders: boolean }) {
   const c = useTheme();
   const { data } = useMyPurchases();
-  const unread = (data?.items ?? []).filter((p) => p.status === 'unread');
-  if (!unread.length) return null;
+  const unread = (data?.items ?? []).filter((p) => p.status === 'unread').sort((a, b) => a.bought_on.localeCompare(b.bought_on));
+  if (!unread.length)
+    return (
+      <View style={{ alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 200 }}>
+        <AppText variant="label">{tr('沒有積讀')}</AppText>
+        <AppText variant="caption" muted style={{ textAlign: 'center' }}>{tr('買了還沒讀的書會放在這裡；按右下角的＋ › 買了一本書。')}</AppText>
+      </View>
+    );
   return (
-    <View style={{ gap: Spacing.sm, marginTop: Spacing.sm }}>
+    <View style={{ gap: Spacing.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <AppText variant="label" style={{ fontSize: 15, flex: 1 }}>{tr('積讀 · {n}', { n: unread.length })}</AppText>
+        <AppText variant="caption" muted style={{ flex: 1 }}>{tr('買了還沒讀，最久的在最上面')}</AppText>
         <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.push({ pathname: '/saved', params: { tab: 'tbr' } })}>
           <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('管理 ›')}</AppText>
         </Pressable>
       </View>
       {hiddenFromReaders ? <AppText variant="caption" muted>{tr('讀者看不到積讀；到公開設定可以打開（不會顯示金額和在哪買）。')}</AppText> : null}
-      {unread.slice(0, 5).map((p) => (
+      {unread.map((p) => (
         <Pressable key={p.id} accessibilityRole="link" onPress={() => router.push({ pathname: '/book/[id]', params: { id: p.book_id } })} style={[styles.tbr, { backgroundColor: c.surface }]}>
           <BookCover title={p.book.title} url={p.book.cover_url} color={color} size="sm" />
           <View style={{ flex: 1 }}>

@@ -22,6 +22,8 @@ import { useStoreTbr } from '@/lib/store-v16';
 import { tr } from '@/lib/i18n';
 import { StoreRxTab } from '@/components/rx-explore';
 import { StoreJournal } from '@/components/store-journal';
+import { SubChips, useVisitedPlaces, VisitedPlaces } from '@/components/store-lists';
+import { useStoreJournal } from '@/lib/diary';
 
 type Tab = 'curation' | 'reading' | 'journal' | 'want' | 'place' | 'rx';
 
@@ -42,6 +44,11 @@ export default function StoreScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const current = data?.curations[index];
   const { data: readings } = useStoreReadings(data?.store.id);
+  const [wantSub, setWantSub] = useState<'want' | 'tbr'>('want');
+  const [placeSub, setPlaceSub] = useState<'want' | 'visited'>('want');
+  const journal = useStoreJournal(data?.store.id);
+  const visited = useVisitedPlaces(data?.store.id);
+  const tbr = useStoreTbr(data?.store.show_owned ? data.store.slug : undefined);
 
   useEffect(() => {
     if (current) void recordVisit(current.id);
@@ -61,8 +68,15 @@ export default function StoreScreen() {
     ...(store.show_place ? (['place'] as Tab[]) : []),
     ...(store.show_rx ? (['rx'] as Tab[]) : []),
   ];
-  const LABEL: Record<Tab, string> = { curation: tr('策展'), reading: tr('閱讀'), journal: tr('手記'), want: tr('想讀'), place: tr('想去'), rx: tr('處方簽') };
+  const LABEL: Record<Tab, string> = { curation: tr('策展'), reading: tr('閱讀'), journal: tr('手記'), want: tr('想讀'), place: tr('地點'), rx: tr('處方簽') };
   const shown: Tab = tabs.includes(tab) ? tab : 'curation';
+  const count = (t: 'want' | 'place') => (journal.data ?? []).filter((i) => i.type === t).length;
+  // 想讀分頁：想讀（公開設定「想讀」）｜積讀（「積讀」），只放有開的
+  const wantOpts: ['want' | 'tbr', string][] = [
+    ...(store.show_want ? [['want', tr('想讀 · {n}', { n: count('want') })] as ['want', string]] : []),
+    ...(store.show_owned ? [['tbr', tr('積讀 · {n}', { n: tbr.data?.length ?? 0 })] as ['tbr', string]] : []),
+  ];
+  const wantShown = wantOpts.some(([k]) => k === wantSub) ? wantSub : wantOpts[0]?.[0] ?? 'want';
 
   return (
     <Screen>
@@ -126,13 +140,18 @@ export default function StoreScreen() {
             <StoreJournal bookstoreId={store.id} color={store.color} scope="posts" />
           </View>
         ) : shown === 'want' ? (
-          <View style={{ padding: Spacing.xl, gap: Spacing.lg }}>
-            {store.show_want ? <StoreJournal bookstoreId={store.id} color={store.color} scope="want" /> : null}
-            {store.show_owned ? <StoreTbr slug={store.slug} color={store.color} /> : null}
+          <View style={{ padding: Spacing.xl, gap: Spacing.md }}>
+            <SubChips options={wantOpts} value={wantShown} onChange={setWantSub} />
+            {wantShown === 'want' ? <StoreJournal bookstoreId={store.id} color={store.color} scope="want" /> : <StoreTbr slug={store.slug} color={store.color} />}
           </View>
         ) : shown === 'place' ? (
-          <View style={{ padding: Spacing.xl }}>
-            <StoreJournal bookstoreId={store.id} color={store.color} scope="place" />
+          <View style={{ padding: Spacing.xl, gap: Spacing.md }}>
+            <SubChips
+              options={[['want', tr('想去 · {n}', { n: count('place') })], ['visited', tr('去過 · {n}', { n: visited.places.length })]]}
+              value={placeSub}
+              onChange={setPlaceSub}
+            />
+            {placeSub === 'want' ? <StoreJournal bookstoreId={store.id} color={store.color} scope="place" /> : <VisitedPlaces bookstoreId={store.id} />}
           </View>
         ) : (
           <View style={{ padding: Spacing.xl }}>
@@ -213,10 +232,10 @@ function Centered({ children }: { children: React.ReactNode }) {
 /** 書店頁 › 想讀 › 積讀（店主公開設定打開才有；不顯示金額、在哪買） */
 function StoreTbr({ slug, color }: { slug: string; color: StoreColor }) {
   const { data } = useStoreTbr(slug);
-  if (!data?.length) return null;
+  if (!data) return <ActivityIndicator style={{ marginTop: 32 }} />;
+  if (!data.length) return <Centered><EmptyState title={tr('店主沒有公開的積讀')} body={tr('店主買了還沒讀的書會出現在這裡。')} /></Centered>;
   return (
     <View style={{ gap: Spacing.sm }}>
-      <AppText variant="label">{tr('積讀 · {n}', { n: data.length })}</AppText>
       <View style={styles.grid}>
         {data.map((b) => (
           <Pressable key={b.book_id} accessibilityRole="link" accessibilityLabel={b.title} onPress={() => openBook(b.book_id)} style={{ width: 80, gap: 4 }}>
