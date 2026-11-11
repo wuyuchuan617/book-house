@@ -52,7 +52,7 @@ export function DiaryPhotos({ paths, size = 84, full }: { paths: string[]; size?
   );
 }
 
-function BookLine({ book, color }: { book: { id: string; title: string; cover_url: string | null }; color: StoreColor }) {
+export function BookLine({ book, color }: { book: { id: string; title: string; cover_url: string | null }; color: StoreColor }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
       <BookCover title={book.title} url={book.cover_url} color={color} size="sm" />
@@ -61,13 +61,14 @@ function BookLine({ book, color }: { book: { id: string; title: string; cover_ur
   );
 }
 
-export type Visibility = { public: boolean; where?: 'place' | 'store' };
+export type Visibility = { public: boolean; where?: 'place' | 'store' | 'post' };
 
-/** 每一項是誰看得到：日記、想讀只有自己；打卡看有沒有公開；心得、開始讀、讀完跟著那本書 */
+/** 每一項是誰看得到：日記貼文（含打卡）看有沒有公開；想讀只有自己；心得、開始讀、讀完跟著那本書 */
 export function visibilityOf(item: DiaryItem): Visibility {
   switch (item.type) {
+    case 'note':
     case 'checkin':
-      return item.is_public ? { public: true, where: 'place' } : { public: false };
+      return item.is_public ? { public: true, where: 'post' } : { public: false };
     case 'reading_note':
     case 'started':
     case 'finished':
@@ -80,7 +81,7 @@ export function visibilityOf(item: DiaryItem): Visibility {
 /** 公開／只有自己：公開是綠色標籤（寫出公開在哪裡），只有自己是小鎖頭＋小字，降低干擾 */
 export function VisibilityBadge({ v, compact }: { v: Visibility; compact?: boolean }) {
   const c = useTheme();
-  const label = v.public ? (v.where === 'place' ? tr('公開・地點頁') : tr('公開・書店頁')) : tr('只有自己');
+  const label = v.public ? (v.where === 'place' ? tr('公開・地點頁') : v.where === 'post' ? tr('公開') : tr('公開・書店頁')) : tr('只有自己');
   if (!v.public) {
     return (
       <View accessible accessibilityLabel={label} style={styles.priv}>
@@ -108,8 +109,9 @@ export function OwnEntryCard({ item, color = 'moss' }: { item: DiaryEntry; color
       <AppText variant="caption" style={[styles.time, { color: c.textTertiary }]}>{taipeiTime(item.at)}</AppText>
       <View style={[styles.card, { backgroundColor: c.surface }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Feather name={item.type === 'checkin' ? 'map-pin' : 'edit-3'} size={13} color={c.textSecondary} />
-          <AppText variant="caption" style={{ fontWeight: '700', color: c.textSecondary }}>{item.type === 'checkin' ? tr('打卡') : tr('日記')}</AppText>
+          <Feather name={item.type === 'checkin' ? 'map-pin' : item.book ? 'play' : 'edit-3'} size={13} color={c.textSecondary} />
+          <AppText variant="caption" style={{ fontWeight: '700', color: c.textSecondary }}>{item.type === 'checkin' ? tr('打卡') : item.book ? tr('正在讀') : tr('日記')}</AppText>
+          {item.page_ref ? <AppText variant="caption" muted>{`· ${item.page_ref}`}</AppText> : null}
           <View style={{ flex: 1 }} />
           <VisibilityBadge v={v} />
         </View>

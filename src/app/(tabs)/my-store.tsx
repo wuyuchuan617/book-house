@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StoreAvatar } from '@/components/social';
+import { StoreJournal } from '@/components/store-journal';
 import { StoreSetupSheet } from '@/components/store-setup';
 import { AppText, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing, StoreColors } from '@/constants/theme';
@@ -30,7 +31,7 @@ export default function MyStoreScreen() {
   const { data: curations } = useMyCurations();
   const readings = useMyReadings();
   const removal = useReadingRemoval();
-  const [tab, setTab] = useState<'curation' | 'reading'>('curation');
+  const [tab, setTab] = useState<'curation' | 'reading' | 'journal'>('curation');
   const { data: wants } = useSavedBooks();
   const readingCount = (readings.data ?? []).filter((r) => r.id !== removal.pending?.id).length + (wants?.length ?? 0);
 
@@ -68,7 +69,7 @@ export default function MyStoreScreen() {
     <Screen>
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         <View style={[styles.band, { backgroundColor: StoreColors[store.color].hex }]} />
-        <ScrollView contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: Spacing.xl, gap: Spacing.md }} stickyHeaderIndices={[1]}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: 96, gap: Spacing.md }} stickyHeaderIndices={[1]}>
           <View style={{ gap: Spacing.md, paddingTop: Spacing.lg }}>
             <View style={styles.head}>
               <StoreAvatar name={store.name} color={store.color} size={48} path={store.avatar_path} />
@@ -90,12 +91,12 @@ export default function MyStoreScreen() {
 
           <View style={{ backgroundColor: c.background, paddingVertical: 4 }}>
             <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
-              {(['curation', 'reading'] as const).map((t) => {
+              {(['curation', 'reading', 'journal'] as const).map((t) => {
                 const selected = tab === t;
                 return (
                   <Pressable key={t} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => setTab(t)} style={[styles.segmentItem, selected && { backgroundColor: c.surface }]}>
                     <AppText variant="caption" style={{ fontWeight: '700', color: selected ? c.text : c.textSecondary }}>
-                      {t === 'curation' ? tr('策展 · {p0}', { p0: curations?.length ?? 0 }) : tr('店主閱讀 · {readingCount}', { readingCount })}
+                      {t === 'curation' ? tr('策展 · {p0}', { p0: curations?.length ?? 0 }) : t === 'reading' ? tr('店主閱讀 · {readingCount}', { readingCount }) : tr('店主手記')}
                     </AppText>
                   </Pressable>
                 );
@@ -105,8 +106,10 @@ export default function MyStoreScreen() {
 
           {tab === 'curation' ? (
             <CurationSection />
-          ) : (
+          ) : tab === 'reading' ? (
             <ReadingSection readings={readings.data} wants={wants} loading={readings.isLoading} color={store.color} removal={removal} />
+          ) : (
+            <StoreJournal bookstoreId={store.id} color={store.color} mine />
           )}
         </ScrollView>
         <ReadingRemovalToast removal={removal} />

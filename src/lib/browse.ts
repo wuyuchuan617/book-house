@@ -167,6 +167,8 @@ export type SavedBook = {
   bookstores: { name: string; slug: string; color: StoreColor } | null;
   note: string | null;
   source_text: string | null;
+  link?: string | null;
+  is_public?: boolean;
 };
 
 /** 想讀清單上顯示的「在哪看到」：從策展收藏的自動帶入書店與策展 */
@@ -196,7 +198,7 @@ export function useSavedBooks() {
       unwrap<SavedBook[]>(
         await supabase
           .from('book_saves')
-          .select(`book_id, created_at, from_curation_id, from_bookstore_id, note, source_text, books(${BOOK_COLS}), curations(title), bookstores(name, slug, color)`)
+          .select(`book_id, created_at, from_curation_id, from_bookstore_id, note, source_text, link, is_public, books(${BOOK_COLS}), curations(title), bookstores(name, slug, color)`)
           .order('created_at', { ascending: false }),
       ),
   });
@@ -337,9 +339,16 @@ export function useUpsertWant() {
   const qc = useQueryClient();
   const { session } = useAuth();
   return useMutation({
-    mutationFn: async ({ bookId, note, sourceText }: { bookId: string; note?: string | null; sourceText?: string | null }) => {
+    mutationFn: async ({ bookId, note, sourceText, link, isPublic }: { bookId: string; note?: string | null; sourceText?: string | null; link?: string | null; isPublic?: boolean }) => {
       const res = await supabase.from('book_saves').upsert(
-        { user_id: session!.user.id, book_id: bookId, note: note?.trim() || null, source_text: sourceText?.trim() || null },
+        {
+          user_id: session!.user.id,
+          book_id: bookId,
+          note: note?.trim() || null,
+          source_text: sourceText?.trim() || null,
+          ...(link !== undefined ? { link: link?.trim() ? (/^https?:\/\//i.test(link.trim()) ? link.trim() : `https://${link.trim()}`).slice(0, 500) : null } : {}),
+          ...(isPublic !== undefined ? { is_public: isPublic } : {}),
+        },
         { onConflict: 'user_id,book_id' },
       );
       if (res.error) throw new Error(res.error.message);
@@ -347,6 +356,7 @@ export function useUpsertWant() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['save-ids'] });
       qc.invalidateQueries({ queryKey: ['saves'] });
+      qc.invalidateQueries({ queryKey: ['store-journal'] });
     },
   });
 }

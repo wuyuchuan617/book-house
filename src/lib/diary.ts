@@ -71,6 +71,7 @@ export type DiaryItem =
       reading_note_id: string | null;
       reading_id: string | null;
       note_public: boolean | null;
+      page_ref?: string | null;
       book: DiaryBook | null;
     }
   | { type: 'reading_note'; id: string; at: string; reading_id: string; kind: NoteKind; is_public: boolean; title: string | null; body: string; book: DiaryBook }
@@ -148,6 +149,8 @@ export type DiaryInput = {
   placeLabel: string | null;
   photos: DiaryPhoto[];
   isPublic: boolean;
+  /** 正在讀：讀到第幾頁 */
+  pageRef?: string | null;
   /** 同時存成的心得（日記筆記選了店主閱讀裡的書） */
   readingNoteId?: string | null;
 };
@@ -187,7 +190,9 @@ export function useSaveEntry() {
         body: input.body.trim() || null,
         place_id: checkin ? input.placeId : null,
         place_label: checkin && !input.placeId ? input.placeLabel?.trim().slice(0, PLACE_LABEL_MAX) || null : null,
-        is_public: checkin && !!input.placeId && input.isPublic,
+        // v1.5 日記貼文：沒有地點也能公開；自己輸入的地點不能公開
+        is_public: input.isPublic && !(checkin && !input.placeId),
+        page_ref: input.pageRef?.trim().slice(0, 20) || null,
         photo_paths: paths,
         ...(input.readingNoteId ? { reading_note_id: input.readingNoteId } : {}),
       };
@@ -208,7 +213,7 @@ export function useSaveEntry() {
           has_book: !!v.input.bookId,
           has_text: !!v.input.body.trim(),
           photo_count: v.input.photos.length,
-          public: v.input.kind === 'checkin' && !!v.input.placeId && v.input.isPublic,
+          public: v.input.isPublic && !(v.input.kind === 'checkin' && !v.input.placeId),
           google_place: !!v.input.placeId,
           also_note: !!v.input.readingNoteId,
         });
@@ -417,11 +422,66 @@ function invalidatePlace(qc: QueryClient, placeId: string) {
 }
 
 /** 存成想去（可以寫一句為什麼想去）／移除；type = 順便選這個地點的類型 */
+/** 連結：空白 → null；沒寫 http 就補 https:// */
+export function normalizeLink(link: string | null | undefined) {
+  const t = link?.trim();
+  if (!t) return null;
+  return (/^https?:\/\//i.test(t) ? t : `https://${t}`).slice(0, 500);
+}
+
+// ---------------------------------------------------------------------------
+// 店主手記（G2 自己看、G4 讀者看）：想讀、想去、日記貼文
+// ---------------------------------------------------------------------------
+type JournalBase = { id: string; at: string; is_public: boolean; shown: boolean };
+export type JournalItem =
+  | (JournalBase & { type: 'want'; note: string | null; source_text: string | null; book: DiaryBook & { authors: string[] } })
+  | (JournalBase & { type: 'place'; note: string | null; public_ok: boolean; place: { id: string; name: string; category: PlaceCategory | null } })
+  | (JournalBase & {
+      type: 'post';
+      kind: 'note' | 'checkin';
+      entry_date: string;
+      body: string | null;
+      photo_paths: string[];
+      page_ref: string | null;
+      place: { id: string; name: string } | null;
+      place_label?: string | null;
+      book: DiaryBook | null;
+    });
+
+export function useStoreJournal(bookstoreId: string | undefined) {
+  return useQuery({
+    queryKey: ['store-journal', bookstoreId],
+    enabled: !!bookstoreId,
+    queryFn: async () => unwrap<JournalItem[]>(await supabase.rpc('store_journal', { p_bookstore_id: bookstoreId })),
+  });
+}
+
+/** 店主手記裡改一則公不公開（貼文：公開只能在當天打開，隨時可以關掉） */
+export function useSetJournalPublic() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ item, value }: { item: JournalItem; value: boolean }) => {
+      const res =
+        item.type === 'want'
+          ? await supabase.from('book_saves').update({ is_public: value }).eq('book_id', item.id)
+          : item.type === 'place'
+            ? await supabase.from('place_saves').update({ is_public: value }).eq('place_id', item.id)
+            : await supabase.from('diary_entries').update({ is_public: value }).eq('id', item.id);
+      if (res.error) throw new Error(res.error.message);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['store-journal'] });
+      qc.invalidateQueries({ queryKey: ['saves'] });
+      invalidateDiary(qc);
+    },
+  });
+}
+
 export function useSavePlace() {
   const qc = useQueryClient();
   const { session } = useAuth();
   return useMutation({
-    mutationFn: async ({ placeId, save, note, type }: { placeId: string; save: boolean; note?: string | null; type?: PlaceCategory | null; from?: string }) => {
+    mutationFn: async ({ placeId, save, note, type, link, isPublic }: { placeId: string; save: boolean; note?: string | null; type?: PlaceCategory | null; from?: string; link?: string | null; isPublic?: boolean }) => {
       if (!save) {
         const res = await supabase.from('place_saves').delete().eq('place_id', placeId);
         if (res.error) throw new Error(res.error.message);
@@ -429,7 +489,16 @@ export function useSavePlace() {
       }
       const res = await supabase
         .from('place_saves')
-        .upsert({ user_id: session!.user.id, place_id: placeId, note: note?.trim().slice(0, PLACE_NOTE_MAX) || null }, { onConflict: 'user_id,place_id' });
+        .upsert(
+          {
+            user_id: session!.user.id,
+            place_id: placeId,
+            note: note?.trim().slice(0, PLACE_NOTE_MAX) || null,
+            ...(link !== undefined ? { link: normalizeLink(link) } : {}),
+            ...(isPublic !== undefined ? { is_public: isPublic } : {}),
+          },
+          { onConflict: 'user_id,place_id' },
+        );
       if (res.error) throw new Error(res.error.message);
       if (type) await supabase.rpc('set_place_type', { p_place_id: placeId, p_category: type });
     },

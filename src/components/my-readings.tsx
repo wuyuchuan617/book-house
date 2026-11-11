@@ -89,7 +89,8 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
   const wantList = wants ?? [];
   const counts = { want: wantList.length, reading: visible.filter((r) => r.status === 'reading').length, finished: visible.filter((r) => r.status === 'finished').length };
   const shown = filter === 'want' ? [] : visible.filter((r) => r.status === filter);
-  const add = () => router.push({ pathname: '/reading/new', params: filter === 'want' ? { status: 'want' } : {} });
+  // v1.5：新增統一用右下角的＋；空的時候這裡給一個捷徑
+  const add = () => (filter === 'want' ? router.push('/want-book') : router.push({ pathname: '/diary/compose', params: { kind: 'reading' } }));
 
   if (visible.length === 0 && wantList.length === 0) {
     return (
@@ -109,10 +110,6 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
           <Chip label={tr('在讀 {reading}', { reading: counts.reading })} selected={filter === 'reading'} onPress={() => setFilter('reading')} />
           <Chip label={tr('讀完 {finished}', { finished: counts.finished })} selected={filter === 'finished'} onPress={() => setFilter('finished')} />
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel={tr('記錄一本書')} onPress={add} style={[styles.add, { backgroundColor: c.primary }]}>
-          <Feather name="plus" size={16} color={c.onPrimary} />
-          <AppText variant="caption" style={{ color: c.onPrimary, fontWeight: '700' }}>{tr('新增')}</AppText>
-        </Pressable>
       </View>
 
       {filter === 'want'
@@ -142,7 +139,7 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
             );
           })
         : null}
-      {filter === 'want' && wantList.length === 0 ? <AppText muted style={{ textAlign: 'center', marginTop: Spacing.lg }}>{tr('還沒有想讀的書。\n在策展裡按書籤，或按「新增」加一本。')}</AppText> : null}
+      {filter === 'want' && wantList.length === 0 ? <AppText muted style={{ textAlign: 'center', marginTop: Spacing.lg }}>{tr('還沒有想讀的書。\n在策展裡按書籤，或按右下角的＋加一本。')}</AppText> : null}
       <WantSheet item={openWant} hasStore onClose={() => setOpenWant(null)} />
       {shown.map((r) => {
         const latest = r.reading_notes[0];

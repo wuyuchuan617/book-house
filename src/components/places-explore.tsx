@@ -67,7 +67,7 @@ export function PlacesExplore() {
         <FlatList
           data={list.data}
           keyExtractor={(p) => p.id}
-          contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.md, gap: Spacing.md, flexGrow: 1 }}
+          contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.md, gap: Spacing.md, flexGrow: 1, paddingBottom: 96 }}
           refreshControl={<RefreshControl refreshing={list.isRefetching} onRefresh={() => void list.refetch()} />}
           renderItem={({ item }) => (
             <PlaceRow

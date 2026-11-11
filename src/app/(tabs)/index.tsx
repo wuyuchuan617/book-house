@@ -216,7 +216,7 @@ export default function ExploreScreen() {
           <FlatList
             data={rest}
             keyExtractor={(item) => item.curation_id}
-            contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: Spacing.xxl, gap: Spacing.md, flexGrow: 1 }}
+            contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: 96, gap: Spacing.md, flexGrow: 1 }}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             refreshControl={<RefreshControl refreshing={list.isRefetching || search.isRefetching} onRefresh={refetch} />}

@@ -17,8 +17,9 @@ import { currentPeriod, monthOf } from '@/lib/period';
 import { recordVisit, useMyStore, usePublicStore } from '@/lib/queries';
 import { storageUrl } from '@/lib/uploads';
 import { tr } from '@/lib/i18n';
+import { StoreJournal } from '@/components/store-journal';
 
-type Tab = 'curation' | 'reading';
+type Tab = 'curation' | 'reading' | 'journal';
 
 const openBook = (id: string) => router.push({ pathname: '/book/[id]', params: { id } });
 
@@ -28,7 +29,7 @@ export default function StoreScreen() {
   const c = useTheme();
   const { data, isLoading } = usePublicStore(slug);
   const { data: mine } = useMyStore();
-  const [tab, setTab] = useState<Tab>(initialTab === 'reading' ? 'reading' : 'curation');
+  const [tab, setTab] = useState<Tab>(initialTab === 'reading' || initialTab === 'journal' ? initialTab : 'curation');
   const [index, setIndex] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const current = data?.curations[index];
@@ -45,7 +46,11 @@ export default function StoreScreen() {
   const isMine = mine?.store.id === store.id;
   const banner = storageUrl('banner', store.banner_path);
   // 公開設定把「正在讀／讀過」關掉 → 不顯示店主閱讀分頁
-  const tabs: Tab[] = store.show_reading === false ? ['curation'] : ['curation', 'reading'];
+  const tabs: Tab[] = [
+    'curation',
+    ...(store.show_reading === false ? [] : (['reading'] as Tab[])),
+    ...(store.show_want || store.show_place || store.show_post ? (['journal'] as Tab[]) : []),
+  ];
   const shown: Tab = tabs.includes(tab) ? tab : 'curation';
 
   return (
@@ -88,7 +93,7 @@ export default function StoreScreen() {
                 onPress={() => setTab(t)}
                 style={[styles.tab, { borderBottomColor: selected ? c.primary : 'transparent' }]}>
                 <AppText style={{ fontWeight: selected ? '700' : '500', color: selected ? c.text : c.textSecondary }}>
-                  {t === 'curation' ? tr('策展') : tr('店主閱讀')}
+                  {t === 'curation' ? tr('策展') : t === 'reading' ? tr('店主閱讀') : tr('店主手記')}
                 </AppText>
               </Pressable>
             );
@@ -125,8 +130,12 @@ export default function StoreScreen() {
               ) : null}
             </View>
           )
-        ) : (
+        ) : shown === 'reading' ? (
           <ReadingTab readings={readings} color={store.color} />
+        ) : (
+          <View style={{ padding: Spacing.xl }}>
+            <StoreJournal bookstoreId={store.id} color={store.color} />
+          </View>
         )}
       </ScrollView>
       <StoreMenu store={store} visible={menuOpen} onClose={() => setMenuOpen(false)} isMine={isMine} />

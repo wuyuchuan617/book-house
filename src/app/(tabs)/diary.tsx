@@ -68,23 +68,17 @@ export default function DiaryScreen() {
 
   const items = day.data?.items ?? [];
   const refetch = () => void Promise.all([day.refetch(), streak.refetch(), active.refetch()]);
-  const compose = (kind: 'note' | 'checkin') => router.push({ pathname: '/diary/compose', params: { kind } });
 
   return (
     <Screen>
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         {header}
         <ScrollView
-          contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.md, gap: Spacing.md, paddingBottom: 40 }}
+          contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.md, gap: Spacing.md, paddingBottom: 96 }}
           refreshControl={<RefreshControl refreshing={day.isRefetching} onRefresh={refetch} />}>
           <WeekCard color={mine?.store.color} />
           {streak.data ? <StreakCard streak={streak.data} today={today} activeDays={activeSet} onPress={() => router.push('/diary/calendar')} /> : null}
 
-          <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-            <QuickButton icon="edit-3" label={tr('寫日記')} sub={tr('只有自己看得到')} onPress={() => compose('note')} stacked={!!mine} />
-            <QuickButton icon="map-pin" label={tr('打卡')} sub={tr('可以選擇公開')} onPress={() => compose('checkin')} stacked={!!mine} />
-            {mine ? <QuickButton icon="book" label={tr('記一本書')} sub={tr('加入店主閱讀')} onPress={() => router.push('/reading/new')} stacked /> : null}
-          </View>
 
           <View style={styles.sectionHead}>
             <AppText variant="heading">{tr('今天')}</AppText>
@@ -98,7 +92,7 @@ export default function DiaryScreen() {
             <View style={[styles.empty, { borderColor: c.border }]}>
               <AppText variant="label">{tr('今天還沒有記錄')}</AppText>
               <AppText variant="caption" muted style={{ textAlign: 'center' }}>
-                {mine ? tr('寫日記、打個卡；今天寫的心得、加入的想讀也會自動出現在這裡。') : tr('寫日記、打個卡；今天加入的想讀也會自動出現在這裡。')}
+                {tr('按右下角的＋寫日記、記正在讀的書；今天寫的心得、加入的想讀也會自動出現在這裡。')}
               </AppText>
             </View>
           )}
@@ -133,39 +127,10 @@ export default function DiaryScreen() {
 }
 
 /** 快速按鈕：有開店時三個並排（寫日記、打卡、記一本書），改成上下排 */
-function QuickButton({ icon, label, sub, onPress, stacked }: { icon: 'edit-3' | 'map-pin' | 'book'; label: string; sub: string; onPress: () => void; stacked?: boolean }) {
-  const c = useTheme();
-  if (stacked) {
-    return (
-      <Pressable accessibilityRole="button" accessibilityLabel={`${label}，${sub}`} onPress={onPress} style={({ pressed }) => [styles.quickStacked, { backgroundColor: c.surface, borderColor: c.border, opacity: pressed ? 0.85 : 1 }]}>
-        <View style={[styles.quickIcon, { backgroundColor: c.primary }]}>
-          <Feather name={icon} size={18} color={c.onPrimary} />
-        </View>
-        <AppText variant="label" style={{ textAlign: 'center' }}>{label}</AppText>
-        <AppText variant="caption" muted numberOfLines={1} style={{ fontSize: 11, textAlign: 'center' }}>{sub}</AppText>
-      </Pressable>
-    );
-  }
-  return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.quick, { backgroundColor: c.surface, borderColor: c.border, opacity: pressed ? 0.85 : 1 }]}>
-      <View style={[styles.quickIcon, { backgroundColor: c.primary }]}>
-        <Feather name={icon} size={18} color={c.onPrimary} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <AppText variant="label">{label}</AppText>
-        <AppText variant="caption" muted numberOfLines={2}>{sub}</AppText>
-      </View>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   header: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   icon: { width: MinTouch, height: MinTouch, alignItems: 'center', justifyContent: 'center', marginRight: -10 },
   sectionHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: Spacing.sm },
   empty: { borderWidth: 1.5, borderStyle: 'dashed', borderRadius: Radius.lg, alignItems: 'center', padding: Spacing.xl, gap: 6 },
   dayRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, minHeight: 52 },
-  quick: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.md, minHeight: 64 },
-  quickStacked: { flex: 1, alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: Radius.lg, paddingVertical: Spacing.md, paddingHorizontal: Spacing.xs },
-  quickIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
 });

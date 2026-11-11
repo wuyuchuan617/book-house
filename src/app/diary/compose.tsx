@@ -2,7 +2,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, Stack, useLocalSearchParams, usePreventRemove } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -14,7 +14,6 @@ import { PlacePicker, type PlaceChoice } from '@/components/place-picker';
 import { AppText, Button, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useSavedBooks } from '@/lib/browse';
 import type { Book } from '@/lib/curations';
 import {
   categoryIcon,
@@ -37,18 +36,20 @@ import {
 import { tr } from '@/lib/i18n';
 import { taipeiToday } from '@/lib/period';
 import { useMyStore } from '@/lib/queries';
-import { useAddReading, useMyReadings, useSaveNote } from '@/lib/readings';
+import { useAddReading, useMyReadings, useSaveNote, useUpdateReading, type ReadingStatus } from '@/lib/readings';
 
 type MiniBook = { id: string; title: string; cover_url: string | null };
 
 /**
- * D3 寫日記／D4 打卡／想去（只能記今天）。
- * 日記：書（選填）→ 一句話 → 照片。打卡：地點 → 類型（選填）→ 公開 → 書、一句話、照片。
- * 想去：還沒去的地方先存起來（書櫃 › 地方・想去），寫原因、選類型；書櫃「＋ 加地方」與地點頁「想去」都開這一頁。
+ * v1.5 ＋選單的三種（只能記今天）：
+ * 日記貼文（F6）：文字＋照片＋選填地點（有地點＝打卡）、只有自己／公開。
+ * 正在讀（F5）：選正在讀的書或其他書（自動加入正在讀）、讀到第幾頁、還在讀／讀完了、今天讀了什麼、照片。
+ * 想去（F4）：Google 地點、為什麼想去、連結、類型、顯示在書店頁。
  */
-type Kind = 'note' | 'checkin' | 'want';
+type Kind = 'post' | 'reading' | 'want';
 type Params = {
-  kind?: Kind;
+  /** 舊的 note／checkin 都當成日記貼文（checkin 會直接打開選地點） */
+  kind?: Kind | 'note' | 'checkin';
   entryId?: string;
   placeId?: string;
   placeName?: string;
@@ -59,6 +60,8 @@ type Params = {
   note?: string;
   type?: PlaceCategory;
   saved?: string;
+  /** 正在讀：先選好這本 */
+  bookId?: string;
 };
 
 export default function DiaryComposeScreen() {
@@ -81,36 +84,44 @@ function initialPlace(params: Params, e?: DiaryEntry): PlaceChoice | null {
   return null;
 }
 
+function initialKind(params: Params, e?: DiaryEntry): Kind {
+  if (e) return e.book && !e.place_id && !e.place_label ? 'reading' : 'post';
+  if (params.kind === 'reading' || params.kind === 'want') return params.kind;
+  return 'post';
+}
+
 function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEntry }) {
   const c = useTheme();
   const today = taipeiToday();
   const { data: store } = useMyStore();
   const readings = useMyReadings();
-  const saves = useSavedBooks();
   const save = useSaveEntry();
   const saveNote = useSaveNote();
   const savePlace = useSavePlace();
   const setPlaceType = useSetPlaceType();
+  const addReading = useAddReading();
+  const updateReading = useUpdateReading();
   const [busy, setBusy] = useState(false);
 
-  const [kind, setKind] = useState<Kind>(existing?.type ?? (params.kind === 'checkin' || params.kind === 'want' ? params.kind : 'note'));
-  const [book, setBook] = useState<MiniBook | null>(existing?.book ?? null);
+  const kind = initialKind(params, existing);
+  const [pickedBook, setBook] = useState<MiniBook | null>(existing?.book ?? null);
   const [place, setPlace] = useState<PlaceChoice | null>(() => initialPlace(params, existing));
   const [body, setBody] = useState(existing?.body ?? '');
+  const [pageRef, setPageRef] = useState(existing?.page_ref ?? '');
   const [photos, setPhotos] = useState<DiaryPhoto[]>(() => (existing?.photo_paths ?? []).map((path) => ({ path })));
-  const [isPublic, setIsPublic] = useState(existing?.is_public ?? false);
+  const [isPublic, setIsPublic] = useState<boolean | null>(existing ? existing.is_public : null);
   const [placeOpen, setPlaceOpen] = useState(false);
   const [bookOpen, setBookOpen] = useState(false);
   const [done, setDone] = useState(false);
   const [alsoNote, setAlsoNote] = useState(false);
-  const [addToReading, setAddToReading] = useState(false);
-  const addReading = useAddReading();
+  const [finished, setFinished] = useState(false);
   const [placeType, setPlaceTypeState] = useState<PlaceCategory | null>(params.type ?? null);
   const [wantNote, setWantNote] = useState(params.note ?? '');
-  const editingWant = params.kind === 'want' && params.saved === '1';
+  const [wantLink, setWantLink] = useState<string | null>(null);
+  const editingWant = kind === 'want' && params.saved === '1';
   const autoOpened = useRef(false);
 
-  // 從「打卡」進來：直接打開選地點
+  // 從「打卡」或「想去」進來：直接打開選地點
   useEffect(() => {
     if ((params.kind !== 'checkin' && params.kind !== 'want') || params.entryId || params.placeId || autoOpened.current) return;
     autoOpened.current = true;
@@ -120,31 +131,25 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
 
   const { data: signed } = useDiaryImageUrls(existing?.photo_paths);
 
-  const quickBooks = useMemo(() => {
-    const seen = new Set<string>();
-    const reading = (readings.data ?? []).filter((r) => r.status === 'reading').map((r) => r.books);
-    const want = (saves.data ?? []).map((s) => s.books);
-    return [...reading.map((b) => ({ b, reading: true })), ...want.map((b) => ({ b, reading: false }))]
-      .filter(({ b }) => (seen.has(b.id) ? false : (seen.add(b.id), true)))
-      .slice(0, 6);
-  }, [readings.data, saves.data]);
+  const nowReading = (readings.data ?? []).filter((r) => r.status === 'reading');
+  // 正在讀：還沒選書時先選第一本正在讀的（或從這本書頁進來的那本）
+  const preset = kind === 'reading' && !existing ? (params.bookId ? readings.data?.find((r) => r.books.id === params.bookId)?.books : nowReading[0]?.books) : undefined;
+  const book: MiniBook | null = pickedBook ?? (preset ? { id: preset.id, title: preset.title, cover_url: preset.cover_url } : null);
+  const linkedReading = book ? readings.data?.find((r) => r.books.id === book.id) : undefined;
 
-  // 日記筆記選了店主閱讀裡的書：可以同時存成那本書的心得（跟著那本書的公開設定）
-  const linkedReading = kind === 'note' && !existing && book ? readings.data?.find((r) => r.books.id === book.id) : undefined;
-  // 選了一本還不在店主閱讀裡的書：可以順便加入店主閱讀（正在讀）
-  const canAddReading = kind === 'note' && !existing && !!store && !!book && !!readings.data && !linkedReading;
-  const newReadingPublic = store?.store.reading_public_default ?? true;
-  const willHaveReading = !!linkedReading || (canAddReading && addToReading);
   const googlePlace = place?.kind === 'google' ? place.place : null;
+  const newReadingPublic = store?.store.reading_public_default ?? true;
 
-  const canPublic = kind === 'checkin' && place?.kind === 'google' && place.place.public_ok;
-  const publicOn = canPublic && isPublic;
+  // 公開：日記貼文 → 沒有地點或公開場所才可以；正在讀 → 預設跟著那本書；想去 → 公開場所才可以
+  const canPublic = kind === 'want' ? !!googlePlace?.public_ok : kind === 'post' ? !place || !!googlePlace?.public_ok : true;
+  const defaultPublic = kind === 'reading' ? (linkedReading ? linkedReading.is_public : newReadingPublic) && !!store?.store.show_post : kind === 'want' ? !!store?.store.show_place : false;
+  const publicOn = canPublic && (isPublic ?? defaultPublic);
 
   const dirty = existing
-    ? body !== (existing.body ?? '') || book?.id !== existing.book?.id || kind !== existing.type || photos.length !== existing.photo_paths.length || photos.some((p) => 'uri' in p) || publicOn !== existing.is_public || placeKey(place) !== (existing.place_id ?? existing.place_label ?? '')
+    ? body !== (existing.body ?? '') || book?.id !== existing.book?.id || photos.length !== existing.photo_paths.length || photos.some((p) => 'uri' in p) || publicOn !== existing.is_public || placeKey(place) !== (existing.place_id ?? existing.place_label ?? '') || pageRef !== (existing.page_ref ?? '')
     : kind === 'want'
       ? !editingWant && !!(place || wantNote.trim())
-      : !!(body.trim() || photos.length || book || place);
+      : !!(body.trim() || photos.length || (kind === 'post' && place) || pageRef.trim());
 
   usePreventRemove(dirty && !done, ({ repeat }) => {
     Alert.alert(tr('捨棄這筆日記？'), tr('還沒儲存的內容會不見。'), [
@@ -171,7 +176,8 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
       { text: tr('取消'), style: 'cancel' },
     ]);
 
-  const ready = kind === 'want' ? !!googlePlace : kind === 'checkin' ? !!place : !!(body.trim() || photos.length);
+  const ready =
+    kind === 'want' ? !!googlePlace : kind === 'reading' ? !!book && !!(body.trim() || photos.length || pageRef.trim() || finished) : !!(body.trim() || photos.length || place);
   const finish = () => {
     setDone(true);
     setTimeout(() => router.back(), 0);
@@ -182,37 +188,47 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
     try {
       if (kind === 'want') {
         if (!googlePlace) return;
-        await savePlace.mutateAsync({ placeId: googlePlace.id, save: true, note: wantNote, type: placeType, from: editingWant ? 'edit' : 'compose' });
+        await savePlace.mutateAsync({
+          placeId: googlePlace.id,
+          save: true,
+          note: wantNote,
+          type: placeType,
+          from: editingWant ? 'edit' : 'compose',
+          ...(wantLink !== null ? { link: wantLink } : {}),
+          isPublic: publicOn,
+        });
         finish();
         return;
       }
+
       let readingNoteId: string | null = null;
-      let readingId = linkedReading?.id;
-      if (canAddReading && addToReading && book) {
-        readingId = (await addReading.mutateAsync({ bookId: book.id, status: 'reading', isPublic: newReadingPublic })).id;
+      if (kind === 'reading' && book && !existing) {
+        const status: ReadingStatus = finished ? 'finished' : 'reading';
+        let readingId = linkedReading?.id;
+        if (!readingId) readingId = (await addReading.mutateAsync({ bookId: book.id, status, isPublic: newReadingPublic })).id;
+        else if (linkedReading && linkedReading.status !== status) await updateReading.mutateAsync({ id: readingId, status });
+        if (alsoNote && body.trim()) {
+          readingNoteId = (await saveNote.mutateAsync({ readingId, input: { kind: 'thought', body, photos: photos.filter((p) => 'uri' in p), fromScan: false } })).id;
+        }
       }
-      if (readingId && willHaveReading && alsoNote && body.trim()) {
-        const r = await saveNote.mutateAsync({
-          readingId,
-          input: { kind: 'thought', body, photos: photos.filter((p) => 'uri' in p), fromScan: false },
-        });
-        readingNoteId = r.id;
-      }
+      const text = body.trim() || (kind === 'reading' && !photos.length ? (pageRef.trim() ? tr('讀到 {page}', { page: pageRef.trim() }) : tr('讀完了')) : '');
+      const isCheckin = kind === 'post' && !!place;
       await save.mutateAsync({
         entryId: existing?.id,
         previousPaths: existing?.photo_paths,
         input: {
-          kind,
-          bookId: book?.id ?? null,
-          body,
-          placeId: place?.kind === 'google' ? place.place.id : null,
-          placeLabel: place?.kind === 'label' ? place.label : null,
+          kind: isCheckin ? 'checkin' : 'note',
+          bookId: kind === 'reading' ? book?.id ?? null : existing?.book?.id ?? null,
+          body: text,
+          placeId: isCheckin && place?.kind === 'google' ? place.place.id : null,
+          placeLabel: isCheckin && place?.kind === 'label' ? place.label : null,
           photos,
           isPublic: !!publicOn,
+          pageRef: kind === 'reading' ? pageRef : null,
           readingNoteId,
         },
       });
-      if (kind === 'checkin' && googlePlace && placeType) await setPlaceType.mutateAsync({ placeId: googlePlace.id, type: placeType }).catch(() => {});
+      if (isCheckin && googlePlace && placeType && !existing) await setPlaceType.mutateAsync({ placeId: googlePlace.id, type: placeType }).catch(() => {});
       finish();
     } catch (e) {
       Alert.alert(tr('沒有儲存成功'), diaryError((e as Error).message));
@@ -242,12 +258,15 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
 
   const placeField = (
     <View style={{ gap: Spacing.sm }}>
-      <AppText variant="label">{tr('地點')}</AppText>
-      <Pressable accessibilityRole="button" disabled={editingWant} onPress={() => setPlaceOpen(true)} style={[styles.field, { backgroundColor: c.surface, borderColor: place ? c.border : c.primary }]}>
+      <AppText variant="label">
+        {tr('地點')}
+        {kind === 'post' ? <AppText variant="caption" muted>{tr('  選填 · 加了地點就是打卡')}</AppText> : null}
+      </AppText>
+      <Pressable accessibilityRole="button" disabled={editingWant} onPress={() => setPlaceOpen(true)} style={[styles.field, { backgroundColor: c.surface, borderColor: place ? c.border : kind === 'want' ? c.primary : c.border }]}>
         <Feather name={googlePlace ? categoryIcon(googlePlace.category) : place ? 'edit-3' : 'map-pin'} size={18} color={place ? c.text : c.primary} />
         <View style={{ flex: 1 }}>
           <AppText variant="label" style={{ color: place ? c.text : c.primary }} numberOfLines={1}>
-            {place ? (place.kind === 'google' ? place.place.name : place.label) : tr('選一個地點')}
+            {place ? (place.kind === 'google' ? place.place.name : place.label) : kind === 'post' ? tr('＋ 加地點（打卡）') : tr('選一個地點')}
           </AppText>
           {place ? (
             <AppText variant="caption" muted numberOfLines={1}>
@@ -255,166 +274,198 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
             </AppText>
           ) : null}
         </View>
-        {!editingWant ? <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{place ? tr('更換') : ''}</AppText> : null}
+        {place && kind === 'post' ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={tr('拿掉地點')} hitSlop={8} onPress={() => setPlace(null)} style={styles.iconBtn}>
+            <Feather name="x" size={18} color={c.textSecondary} />
+          </Pressable>
+        ) : !editingWant && place ? (
+          <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('更換')}</AppText>
+        ) : null}
       </Pressable>
       {kind === 'want' && place?.kind === 'label' ? <AppText variant="caption" style={{ color: c.danger }}>{tr('想去要選 Google 上的地點，才能在地圖打開。')}</AppText> : null}
     </View>
   );
 
-  const KINDS: Kind[] = existing ? ['note', 'checkin'] : ['note', 'checkin', 'want'];
-  const KIND_ICON = { note: 'edit-3', checkin: 'map-pin', want: 'star' } as const;
-  const kindLabel = (k: Kind) => (k === 'note' ? tr('日記') : k === 'checkin' ? tr('打卡') : tr('想去'));
+  const photoField = (
+    <View style={{ gap: Spacing.sm }}>
+      <AppText variant="label">
+        {tr('照片')}
+        <AppText variant="caption" muted>{publicOn ? tr('  最多 {n} 張 · 會跟著公開', { n: DIARY_PHOTO_MAX }) : tr('  最多 {n} 張', { n: DIARY_PHOTO_MAX })}</AppText>
+      </AppText>
+      <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+        {photos.map((p, i) => {
+          const uri = 'uri' in p ? p.uri : signed?.[existing?.photo_paths.indexOf(p.path) ?? -1] ?? undefined;
+          return (
+            <View key={'uri' in p ? p.uri : p.path}>
+              <Image source={uri ? { uri } : undefined} style={[styles.photo, { backgroundColor: c.surfaceMuted }]} contentFit="cover" accessibilityLabel={tr('日記的照片 {n}', { n: i + 1 })} />
+              <Pressable accessibilityRole="button" accessibilityLabel={tr('移除這張照片')} hitSlop={8} onPress={() => setPhotos((ps) => ps.filter((_, j) => j !== i))} style={styles.remove}>
+                <Feather name="x" size={14} color="#FFFFFF" />
+              </Pressable>
+            </View>
+          );
+        })}
+        {photos.length < DIARY_PHOTO_MAX ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={tr('加入照片')} onPress={pickPhoto} style={[styles.photo, styles.addPhoto, { borderColor: c.border }]}>
+            <Feather name="camera" size={20} color={c.textSecondary} />
+            <AppText variant="caption" muted>{tr('照片')}</AppText>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+
+  const publicHint =
+    kind === 'want'
+      ? !googlePlace
+        ? tr('選了公開場所（書店、圖書館、咖啡店…）才能顯示在書店頁。')
+        : !googlePlace.public_ok
+          ? tr('這裡看起來是私人地點，只會留在自己的書櫃裡。')
+          : store?.store.show_place
+            ? tr('讀者會在你的書店頁「店主手記」看到這個地方與原因；連結不公開。')
+            : tr('公開設定裡「想去的地點」還沒打開，打開後才會顯示。')
+      : place?.kind === 'label'
+        ? tr('自己輸入的地點只有自己看得到。')
+        : googlePlace && !googlePlace.public_ok
+          ? tr('這裡看起來是私人地點，只會留在自己的日記裡。')
+          : publicOn
+            ? googlePlace
+              ? tr('會出現在探索的貼文、「{name}」的地點頁和你的書店頁。', { name: googlePlace.name })
+              : tr('會出現在探索的貼文和你的書店頁。')
+            : tr('只有自己看得到。');
+
+  const visibility = (
+    <View style={[styles.switchRow, { backgroundColor: c.surface, opacity: canPublic ? 1 : 0.6 }]}>
+      <View style={{ flex: 1, gap: 2 }}>
+        <AppText variant="label">{kind === 'want' ? tr('顯示在書店頁') : tr('公開')}</AppText>
+        <AppText variant="caption" muted>{publicHint}</AppText>
+      </View>
+      <Toggle accessibilityLabel={kind === 'want' ? tr('顯示在書店頁') : tr('公開')} value={!!publicOn} disabled={!canPublic} onValueChange={setIsPublic} />
+    </View>
+  );
+
+  const title = existing ? tr('編輯日記') : kind === 'want' ? (editingWant ? tr('編輯想去') : tr('想去的地點')) : kind === 'reading' ? tr('正在讀') : tr('日記');
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: existing ? tr('編輯日記') : kind === 'want' ? (editingWant ? tr('編輯想去') : tr('想去')) : kind === 'checkin' ? tr('打卡') : tr('寫日記') }} />
+      <Stack.Screen options={{ title }} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={90}>
         <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <AppText variant="caption" muted>{tr('今天 · {date}', { date: dayLabel(today) })}</AppText>
-            <VisibilityBadge v={publicOn ? { public: true, where: 'place' } : { public: false }} />
+            <AppText variant="caption" muted>{kind === 'want' ? tr('還沒去、先存起來；到了打卡就會移到「去過」') : tr('今天 · {date}', { date: dayLabel(today) })}</AppText>
+            {kind !== 'want' ? <VisibilityBadge v={publicOn ? { public: true, where: 'post' } : { public: false }} /> : null}
           </View>
-
-          {!editingWant ? (
-            <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="radiogroup">
-              {KINDS.map((k) => (
-                <Pressable key={k} accessibilityRole="radio" accessibilityState={{ selected: kind === k }} onPress={() => setKind(k)} style={[styles.segmentItem, kind === k && { backgroundColor: c.surface }]}>
-                  <Feather name={KIND_ICON[k]} size={14} color={kind === k ? c.text : c.textSecondary} />
-                  <AppText variant="caption" style={{ fontWeight: '700', color: kind === k ? c.text : c.textSecondary }}>{kindLabel(k)}</AppText>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-
-          <AppText variant="caption" muted style={{ marginTop: editingWant ? 0 : -Spacing.sm }}>
-            {kind === 'note'
-              ? tr('日記只有自己看得到。')
-              : kind === 'want'
-                ? tr('還沒去、先存起來，會放進書櫃 › 地方・想去；到了在這裡打卡，就會移到「去過」。')
-                : tr('打卡預設只有自己看得到；在公開場所可以選擇公開到地點頁。')}
-          </AppText>
 
           {kind === 'want' ? (
             <>
               {placeField}
               <TextField label={tr('為什麼想去？')} optional max={PLACE_NOTE_MAX} value={wantNote} onChangeText={setWantNote} placeholder={tr('朋友推薦、想找某本書、二樓很安靜…')} />
+              <TextField
+                label={tr('連結')}
+                optional
+                max={500}
+                value={wantLink ?? ''}
+                onChangeText={setWantLink}
+                placeholder="https://"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+                hint={editingWant && wantLink === null ? tr('看到它的貼文或文章；只有你自己看得到。留空就保留原本的連結。') : tr('看到它的貼文或文章；只有你自己看得到')}
+              />
               {googlePlace ? typeChips : null}
-              <AppText variant="caption" muted>{tr('想去的地方只有自己看得到；地點頁只會多一個「N 人想去」。')}</AppText>
+              {visibility}
               {editingWant ? <Button kind="link" label={tr('從想去移除')} onPress={removeWant} /> : null}
             </>
           ) : null}
 
-          {kind === 'checkin' ? (
-            <View style={{ gap: Spacing.sm }}>
-              {placeField}
-
-              <View style={[styles.switchRow, { backgroundColor: c.surface, opacity: canPublic ? 1 : 0.6 }]}>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <AppText variant="label">{tr('公開在地點頁')}</AppText>
-                  <AppText variant="caption" muted>
-                    {!place
-                      ? tr('選了公開場所（書店、圖書館、咖啡店…）就能分享給其他人。')
-                      : place.kind === 'label'
-                        ? tr('自己輸入的地點只有自己看得到。')
-                        : !place.place.public_ok
-                          ? tr('這裡看起來是私人地點，只會留在自己的日記裡。')
-                          : publicOn
-                            ? tr('其他人會在「{name}」的地點頁看到這則打卡，只顯示日期。', { name: place.place.name })
-                            : tr('只有自己看得到。')}
-                  </AppText>
-                </View>
-                <Toggle accessibilityLabel={tr('公開在地點頁')} value={!!publicOn} disabled={!canPublic} onValueChange={setIsPublic} />
-              </View>
-              {googlePlace && !existing ? typeChips : null}
-            </View>
-          ) : null}
-
-          {kind !== 'want' ? (
+          {kind === 'reading' ? (
             <>
-
-          <View style={{ gap: Spacing.sm }}>
-            <AppText variant="label">
-              {tr('書')}
-              <AppText variant="caption" muted>{tr('  選填')}</AppText>
-            </AppText>
-            {book ? (
-              <View style={[styles.field, { backgroundColor: c.surface, borderColor: c.border }]}>
-                <BookCover title={book.title} url={book.cover_url} color={store?.store.color ?? 'moss'} size="sm" />
-                <AppText variant="label" style={{ flex: 1 }} numberOfLines={2}>{book.title}</AppText>
-                <Pressable accessibilityRole="button" accessibilityLabel={tr('移除這本書')} hitSlop={8} onPress={() => setBook(null)} style={styles.iconBtn}>
-                  <Feather name="x" size={18} color={c.textSecondary} />
-                </Pressable>
-              </View>
-            ) : (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }}>
-                {quickBooks.map(({ b, reading }) => (
-                  <Chip key={b.id} label={`${reading ? tr('在讀 · ') : ''}${b.title.length > 14 ? `${b.title.slice(0, 14)}…` : b.title}`} onPress={() => setBook(b)} />
-                ))}
-                <Chip label={tr('＋ 其他書')} onPress={() => setBookOpen(true)} />
-              </View>
-            )}
-          </View>
-
-          <TextField
-            label={kind === 'checkin' ? tr('一句話') : tr('今天讀了什麼？')}
-            optional={kind === 'checkin' || photos.length > 0}
-            multiline
-            max={DIARY_BODY_MAX}
-            value={body}
-            onChangeText={setBody}
-            placeholder={kind === 'checkin' ? tr('在這裡讀了什麼、遇見什麼') : tr('一句話就好')}
-          />
-          {canAddReading ? (
-            <Check
-              checked={addToReading}
-              onPress={() => setAddToReading(!addToReading)}
-              label={tr('也加入店主閱讀（正在讀）')}
-              sub={newReadingPublic ? tr('依你的設定會公開在書店頁，之後可以在這本書的頁面改。') : tr('依你的設定只有自己看得到，之後可以在這本書的頁面改。')}
-            />
-          ) : null}
-          {willHaveReading ? (
-            <Check
-              checked={alsoNote}
-              onPress={() => setAlsoNote(!alsoNote)}
-              label={tr('也存成這本書的心得')}
-              sub={(linkedReading ? linkedReading.is_public : newReadingPublic) ? tr('這本書公開在書店頁，讀者會看到這則心得（想法）。') : tr('存成「想法」，只有自己看得到。')}
-            />
-          ) : existing?.reading_note_id ? (
-            <AppText variant="caption" muted>{tr('這則也存成了心得；要修改心得請到這本書的頁面。')}</AppText>
-          ) : null}
-
-          <View style={{ gap: Spacing.sm }}>
-            <AppText variant="label">
-              {tr('照片')}
-              <AppText variant="caption" muted>{publicOn ? tr('  最多 {n} 張 · 會跟著打卡公開', { n: DIARY_PHOTO_MAX }) : tr('  最多 {n} 張', { n: DIARY_PHOTO_MAX })}</AppText>
-            </AppText>
-            <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-              {photos.map((p, i) => {
-                const uri = 'uri' in p ? p.uri : signed?.[existing?.photo_paths.indexOf(p.path) ?? -1] ?? undefined;
-                return (
-                  <View key={'uri' in p ? p.uri : p.path}>
-                    <Image source={uri ? { uri } : undefined} style={[styles.photo, { backgroundColor: c.surfaceMuted }]} contentFit="cover" accessibilityLabel={tr('日記的照片 {n}', { n: i + 1 })} />
-                    <Pressable accessibilityRole="button" accessibilityLabel={tr('移除這張照片')} hitSlop={8} onPress={() => setPhotos((ps) => ps.filter((_, j) => j !== i))} style={styles.remove}>
-                      <Feather name="x" size={14} color="#FFFFFF" />
+              <View style={{ gap: Spacing.sm }}>
+                <AppText variant="label">{tr('今天讀哪一本')}</AppText>
+                {existing ? (
+                  book ? (
+                    <View style={[styles.field, { backgroundColor: c.surface, borderColor: c.border }]}>
+                      <BookCover title={book.title} url={book.cover_url} color={store?.store.color ?? 'moss'} size="sm" />
+                      <AppText variant="label" style={{ flex: 1 }} numberOfLines={2}>{book.title}</AppText>
+                    </View>
+                  ) : null
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.sm }}>
+                    {[...nowReading.map((r) => r.books), ...(book && !nowReading.some((r) => r.books.id === book.id) ? [book] : [])].map((b) => {
+                      const on = book?.id === b.id;
+                      return (
+                        <Pressable
+                          key={b.id}
+                          accessibilityRole="radio"
+                          accessibilityState={{ selected: on }}
+                          accessibilityLabel={b.title}
+                          onPress={() => setBook({ id: b.id, title: b.title, cover_url: b.cover_url })}
+                          style={[styles.readingCard, { backgroundColor: c.surface, borderColor: on ? c.primary : c.border, borderWidth: on ? 2 : 1 }]}>
+                          <BookCover title={b.title} url={b.cover_url} color={store?.store.color ?? 'moss'} size="md" />
+                          <AppText variant="caption" style={{ fontWeight: '700' }} numberOfLines={2}>{b.title}</AppText>
+                          {on ? (
+                            <View style={[styles.check, { backgroundColor: c.primary }]}>
+                              <Feather name="check" size={12} color={c.onPrimary} />
+                            </View>
+                          ) : null}
+                        </Pressable>
+                      );
+                    })}
+                    <Pressable accessibilityRole="button" onPress={() => setBookOpen(true)} style={[styles.readingCard, styles.otherBook, { borderColor: c.border }]}>
+                      <Feather name="plus" size={22} color={c.primary} />
+                      <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('其他書')}</AppText>
                     </Pressable>
+                  </ScrollView>
+                )}
+                {!existing && book && !linkedReading ? <AppText variant="caption" muted>{tr('這本會順便加入「正在讀」。')}</AppText> : null}
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-end' }}>
+                <View style={{ flex: 1 }}>
+                  <TextField label={tr('讀到第幾頁')} optional max={20} value={pageRef} onChangeText={setPageRef} placeholder={tr('例如 p.156')} />
+                </View>
+                {!existing ? (
+                  <View style={{ flexDirection: 'row', gap: Spacing.sm, paddingBottom: 6 }}>
+                    <Chip label={tr('還在讀')} selected={!finished} onPress={() => setFinished(false)} />
+                    <Chip label={tr('讀完了')} selected={finished} onPress={() => setFinished(true)} />
                   </View>
-                );
-              })}
-              {photos.length < DIARY_PHOTO_MAX ? (
-                <Pressable accessibilityRole="button" accessibilityLabel={tr('加入照片')} onPress={pickPhoto} style={[styles.photo, styles.addPhoto, { borderColor: c.border }]}>
-                  <Feather name="camera" size={20} color={c.textSecondary} />
-                  <AppText variant="caption" muted>{tr('照片')}</AppText>
-                </Pressable>
+                ) : null}
+              </View>
+
+              <TextField label={tr('今天讀了什麼')} optional multiline max={DIARY_BODY_MAX} value={body} onChangeText={setBody} placeholder={tr('讀到哪、想到什麼都可以')} />
+              {photoField}
+              {!existing && body.trim() ? (
+                <Check
+                  checked={alsoNote}
+                  onPress={() => setAlsoNote(!alsoNote)}
+                  label={tr('也存成這本書的心得')}
+                  sub={(linkedReading ? linkedReading.is_public : newReadingPublic) ? tr('這本書公開在書店頁，讀者會看到這則心得（想法）。') : tr('存成「想法」，只有自己看得到。')}
+                />
+              ) : existing?.reading_note_id ? (
+                <AppText variant="caption" muted>{tr('這則也存成了心得；要修改心得請到這本書的頁面。')}</AppText>
               ) : null}
-            </View>
-          </View>
+              {visibility}
+            </>
+          ) : null}
+
+          {kind === 'post' ? (
+            <>
+              <TextField label={tr('今天')} optional={photos.length > 0 || !!place} multiline max={DIARY_BODY_MAX} value={body} onChangeText={setBody} placeholder={tr('今天在哪裡、讀了什麼、想到什麼')} />
+              {photoField}
+              {placeField}
+              {googlePlace && !existing ? typeChips : null}
+              {visibility}
             </>
           ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
 
       <SafeAreaView edges={['bottom']} style={[styles.footer, { backgroundColor: c.surface, borderTopColor: c.border }]}>
-        <Button label={kind === 'want' ? (editingWant ? tr('儲存') : tr('存成想去')) : publicOn ? tr('儲存並公開') : tr('儲存')} disabled={!ready} loading={busy} onPress={() => void submit()} />
+        <Button
+          label={kind === 'want' ? (editingWant ? tr('儲存') : tr('存成想去')) : kind === 'reading' ? tr('記下來') : publicOn ? tr('發布') : tr('儲存')}
+          disabled={!ready}
+          loading={busy}
+          onPress={() => void submit()}
+        />
       </SafeAreaView>
 
       <PlacePicker
@@ -434,7 +485,7 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
         storeColor={store?.store.color ?? 'moss'}
         pickedIds={new Set()}
         onClose={() => setBookOpen(false)}
-        onAdd={async (b: Book) => setBook(b)}
+        onAdd={async (b: Book) => setBook({ id: b.id, title: b.title, cover_url: b.cover_url })}
       />
     </Screen>
   );
@@ -456,13 +507,14 @@ function Check({ checked, onPress, label, sub }: { checked: boolean; onPress: ()
 const placeKey = (p: PlaceChoice | null) => (!p ? '' : p.kind === 'google' ? p.place.id : p.label);
 
 const styles = StyleSheet.create({
-  segment: { flexDirection: 'row', borderRadius: Radius.md, padding: 3 },
-  segmentItem: { flex: 1, minHeight: MinTouch - 4, borderRadius: Radius.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   field: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: Spacing.md, minHeight: 56, paddingVertical: Spacing.sm },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.lg, padding: Spacing.lg },
   iconBtn: { width: MinTouch, height: MinTouch, alignItems: 'center', justifyContent: 'center', marginRight: -Spacing.sm },
   photo: { width: 84, height: 84, borderRadius: 10 },
   addPhoto: { borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 2 },
   remove: { position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(31,27,22,0.8)', alignItems: 'center', justifyContent: 'center' },
+  readingCard: { width: 104, borderRadius: Radius.lg, padding: 10, gap: 6 },
+  otherBook: { borderWidth: 1.5, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', width: 92 },
+  check: { position: 'absolute', top: 6, right: 6, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   footer: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.sm },
 });
