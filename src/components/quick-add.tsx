@@ -1,9 +1,9 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Modal, Pressable, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
+import { BottomSheet } from '@/components/bottom-sheet';
 import { AppText } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -40,7 +40,6 @@ export function QuickAddButton({ bottom }: { bottom: number }) {
 
 function QuickAddSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const c = useTheme();
-  const insets = useSafeAreaInsets();
   const { data: suggested } = useSuggestedPeriod();
   const create = useCreateCuration();
 
@@ -68,10 +67,7 @@ function QuickAddSheet({ visible, onClose }: { visible: boolean; onClose: () => 
   ];
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel={tr('關閉')} />
-      <View style={[styles.sheet, { backgroundColor: c.background, paddingBottom: Math.max(insets.bottom, 16) + Spacing.sm }]}>
-        <View style={[styles.grabber, { backgroundColor: c.border }]} />
+    <BottomSheet visible={visible} onClose={onClose} style={styles.sheet}>
         <View style={styles.head}>
           <AppText variant="heading" style={{ flex: 1 }}>{tr('新增')}</AppText>
           <Pressable accessibilityRole="button" accessibilityLabel={tr('關閉')} onPress={onClose} style={[styles.close, { backgroundColor: c.surfaceMuted }]}>
@@ -94,8 +90,7 @@ function QuickAddSheet({ visible, onClose }: { visible: boolean; onClose: () => 
             </Pressable>
           ))}
         </View>
-      </View>
-    </Modal>
+    </BottomSheet>
   );
 }
 
@@ -114,9 +109,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 5 },
     elevation: 6,
   },
-  backdrop: { flex: 1, backgroundColor: 'rgba(31,27,22,0.45)' },
-  sheet: { borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingHorizontal: Spacing.xl, paddingTop: Spacing.sm, gap: Spacing.md },
-  grabber: { width: 40, height: 5, borderRadius: 3, alignSelf: 'center' },
+  sheet: { paddingHorizontal: Spacing.xl, gap: Spacing.md },
   head: { flexDirection: 'row', alignItems: 'center' },
   close: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },

@@ -14,9 +14,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { useFollowedStores, useSavedBooks, useToggleSave, wantSource, type FollowedStore, type SavedBook } from '@/lib/browse';
 import { useMyPlaces } from '@/lib/diary';
-import { useMyStore } from '@/lib/queries';
 import { SwipeRow, swipeA11y } from '@/components/swipe-row';
-import { WantSheet } from '@/components/want-sheet';
+import { LinkLine } from '@/components/link-line';
 import { currentPeriod, monthOf } from '@/lib/period';
 import { tr } from '@/lib/i18n';
 
@@ -39,8 +38,6 @@ export default function SavedScreen() {
   const places = useMyPlaces('want');
   const toggleSave = useToggleSave();
   const [undo, setUndo] = useState<SavedBook | null>(null);
-  const [openWant, setOpenWant] = useState<SavedBook | null>(null);
-  const { data: mine } = useMyStore();
   const hideToast = useCallback(() => setUndo(null), []);
 
   if (!session) {
@@ -119,11 +116,10 @@ export default function SavedScreen() {
             ListEmptyComponent={
               <EmptyState title={tr('還沒有想讀的書')} body={tr('在書店頁按書旁邊的書籤，\n或在店主閱讀按「＋」加入想讀。')} actionLabel={tr('去探索書店')} onAction={() => router.navigate('/')} />
             }
-            renderItem={({ item }) => <BookRow item={item} onOpen={() => setOpenWant(item)} onUnsave={() => unsave(item)} />}
+            renderItem={({ item }) => <BookRow item={item} onOpen={() => router.push({ pathname: '/want-book', params: { bookId: item.book_id } })} onUnsave={() => unsave(item)} />}
           />
         )}
         <UndoToast message={undo ? tr('已從想讀移除「{title}」', { title: undo.books.title }) : null} onUndo={restore} onHide={hideToast} />
-        <WantSheet item={openWant} hasStore={!!mine} onClose={() => setOpenWant(null)} />
       </SafeAreaView>
     </Screen>
   );
@@ -180,6 +176,7 @@ function BookRow({ item, onOpen, onUnsave }: { item: SavedBook; onOpen: () => vo
           <AppText variant="caption" muted>{item.books.authors.join(tr('、'))}</AppText>
           {from ? <AppText variant="caption" style={{ color: c.textTertiary }} numberOfLines={1}>{tr('在哪看到：{from}', { from })}</AppText> : null}
           {item.note ? <AppText variant="caption" numberOfLines={2}>{tr('「{note}」', { note: item.note })}</AppText> : null}
+          <LinkLine url={item.link} />
         </View>
       </Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel={tr('從想讀移除「{title}」', { title: item.books.title })} onPress={onUnsave} style={styles.unsave}>

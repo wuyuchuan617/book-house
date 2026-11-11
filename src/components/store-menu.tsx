@@ -45,9 +45,10 @@ export function StoreMenu({ store, visible, onClose, isMine }: { store: Store; v
         subtitle={tr('店主 {owner_name}', { owner_name: store.owner_name })}
         onClose={onClose}
         actions={[
-          { label: tr('分享書店'), onPress: () => shareStore(store.name, store.slug, { afterModal: true }) },
+          { label: tr('分享書店'), icon: 'share' as const, onPress: () => shareStore(store.name, store.slug, { afterModal: true }) },
           {
             label: tr('複製連結'),
+            icon: 'link' as const,
             onPress: async () => {
               await Clipboard.setStringAsync(storeUrl(store.slug));
               track('share_link_copied', { channel: 'copy' });
@@ -57,8 +58,8 @@ export function StoreMenu({ store, visible, onClose, isMine }: { store: Store; v
           ...(isMine
             ? []
             : [
-                { label: tr('檢舉這間書店'), sub: tr('不當內容、侵權、垃圾訊息等'), destructive: true, onPress: report },
-                { label: tr('封鎖{owner_name}', { owner_name: store.owner_name }), sub: tr('你將不會再看到他的書店與內容'), destructive: true, onPress: () => requireAuth(() => setConfirmBlock(true)) },
+                { label: tr('檢舉這間書店'), icon: 'flag' as const, sub: tr('不當內容、侵權、垃圾訊息等'), destructive: true, onPress: report },
+                { label: tr('封鎖{owner_name}', { owner_name: store.owner_name }), icon: 'slash' as const, sub: tr('你將不會再看到他的書店與內容'), destructive: true, onPress: () => requireAuth(() => setConfirmBlock(true)) },
               ]),
         ]}
       />

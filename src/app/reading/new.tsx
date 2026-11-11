@@ -5,14 +5,14 @@ import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleShee
 
 import { BookCover } from '@/components/book-cover';
 import { BookPicker } from '@/components/book-picker';
-import { Chip, chipRow, TextField, Toggle } from '@/components/form';
+import { TextField, Toggle } from '@/components/form';
 import { AppText, Button, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Book } from '@/lib/curations';
 import { useMyStore } from '@/lib/queries';
 import { useUpsertWant } from '@/lib/browse';
-import { SOURCE_SUGGESTIONS } from '@/components/want-sheet';
+import { SourcePicker } from '@/components/source-picker';
 import { NOTE_BODY_MAX, readingError, useAddReading, useMyCurationBooks, useMyReadings, type ReadingStatus } from '@/lib/readings';
 import { tr } from '@/lib/i18n';
 
@@ -97,12 +97,7 @@ export default function NewReadingScreen() {
           {status === 'want' ? (
             <>
               <TextField label={tr('為什麼想讀')} optional multiline max={200} value={note} onChangeText={setNote} placeholder={tr('哪一句話、哪個人讓你想讀它？')} hint={tr('開始讀的時候，這段會變成第一則心得。')} />
-              <View style={{ gap: Spacing.sm }}>
-                <TextField label={tr('在哪看到')} optional max={60} value={source} onChangeText={setSource} placeholder={tr('例如：朋友推薦')} />
-                <View style={chipRow}>
-                  {SOURCE_SUGGESTIONS().map((s) => <Chip key={s} label={s} selected={source === s} onPress={() => setSource(source === s ? '' : s)} />)}
-                </View>
-              </View>
+              <SourcePicker value={source} onChange={setSource} />
             </>
           ) : (
           <TextField

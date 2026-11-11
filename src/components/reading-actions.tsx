@@ -32,14 +32,14 @@ export function ReadingActions({ reading, visible, onClose, onRemove, inDetail }
   };
 
   const actions: SheetAction[] = [
-    ...(!inDetail ? [{ label: tr('查看與編輯心得'), onPress: () => router.push({ pathname: '/reading/manage/[id]', params: { id: reading.id } }) }] : []),
+    ...(!inDetail ? [{ label: tr('查看與編輯心得'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/reading/manage/[id]', params: { id: reading.id } }) }] : []),
     reading.status === 'reading'
-      ? { label: tr('標記為讀完'), onPress: () => update.mutate({ id: reading.id, status: 'finished' }, { onError: fail }) }
-      : { label: tr('改回正在讀'), onPress: () => update.mutate({ id: reading.id, status: 'reading' }, { onError: fail }) },
+      ? { label: tr('標記為讀完'), icon: 'check-circle' as const, onPress: () => update.mutate({ id: reading.id, status: 'finished' }, { onError: fail }) }
+      : { label: tr('改回正在讀'), icon: 'book-open' as const, onPress: () => update.mutate({ id: reading.id, status: 'reading' }, { onError: fail }) },
     reading.is_public
-      ? { label: tr('從書店頁隱藏'), sub: tr('只有自己看得到'), onPress: () => update.mutate({ id: reading.id, is_public: false }, { onError: fail }) }
-      : { label: tr('顯示在書店頁'), sub: tr('讀者可以在「店主閱讀」看到'), onPress: () => update.mutate({ id: reading.id, is_public: true }, { onError: fail }) },
-    { label: tr('放進 {p0} 月策展', { p0: monthOf(next) }), sub: tr('加到下個月的草稿書架'), onPress: () => void toNextCuration() },
+      ? { label: tr('從書店頁隱藏'), icon: 'eye-off' as const, sub: tr('只有自己看得到'), onPress: () => update.mutate({ id: reading.id, is_public: false }, { onError: fail }) }
+      : { label: tr('顯示在書店頁'), icon: 'eye' as const, sub: tr('讀者可以在「店主閱讀」看到'), onPress: () => update.mutate({ id: reading.id, is_public: true }, { onError: fail }) },
+    { label: tr('放進 {p0} 月策展', { p0: monthOf(next) }), icon: 'layers' as const, sub: tr('加到下個月的草稿書架'), onPress: () => void toNextCuration() },
     { label: tr('從店主閱讀移除'), destructive: true, onPress: onRemove },
   ];
 

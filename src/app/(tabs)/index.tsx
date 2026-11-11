@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
 import { Chip } from '@/components/form';
+import { MonthSheet, monthPillLabel } from '@/components/month-sheet';
 import { PostsExplore } from '@/components/posts-explore';
 import { RxExplore } from '@/components/rx-explore';
 import { FollowButton, StoreAvatar } from '@/components/social';
@@ -23,7 +24,7 @@ import {
   useSystemTags,
   type ExploreSort,
 } from '@/lib/browse';
-import { currentPeriod, monthOf, periodLabel, previousPeriod } from '@/lib/period';
+import { currentPeriod, monthOf, previousPeriod } from '@/lib/period';
 import { useMyStore, type ExploreItem } from '@/lib/queries';
 import { tagLabel, tr } from '@/lib/i18n';
 
@@ -48,6 +49,7 @@ export default function ExploreScreen() {
   }
   const [following, setFollowing] = useState(false);
   const [period, setPeriod] = useState(currentPeriod());
+  const [monthOpen, setMonthOpen] = useState(false);
   const [sort, setSort] = useState<ExploreSort>('recommend');
   const [unvisitedOnly, setUnvisitedOnly] = useState(false);
   const [tag, setTag] = useState<string | undefined>();
@@ -84,16 +86,6 @@ export default function ExploreScreen() {
   const loading = query ? search.isPending : list.isPending && list.fetchStatus !== 'idle';
   const paused = (query ? search.fetchStatus : list.fetchStatus) === 'paused';
   const refetch = () => void (query ? search.refetch() : list.refetch());
-
-  // 月份切換：只能切到有策展的月份（本月一定可選）
-  const periods = useMemo(() => {
-    const ps = new Set((months ?? []).map((m) => m.period));
-    ps.add(currentPeriod());
-    return [...ps].sort().reverse();
-  }, [months]);
-  const idx = periods.indexOf(period);
-  const older = idx >= 0 && idx < periods.length - 1 ? periods[idx + 1] : null;
-  const newer = idx > 0 ? periods[idx - 1] : null;
 
   const tagRow = tags?.find((t) => t.slug === tag);
   const tagName = tagRow ? tagLabel(tagRow) : undefined;
@@ -175,15 +167,14 @@ export default function ExploreScreen() {
         <View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tags}>
             {!following && !query ? (
-              <View style={[styles.month, { backgroundColor: c.surface, borderColor: c.border }]}>
-                <Pressable accessibilityRole="button" accessibilityLabel={tr('上一個月')} disabled={!older} onPress={() => older && setPeriod(older)} style={[styles.arrow, { opacity: older ? 1 : 0.3 }]}>
-                  <Feather name="chevron-left" size={18} color={c.text} />
-                </Pressable>
-                <AppText variant="caption" style={{ fontWeight: '700' }} accessibilityLiveRegion="polite">{isCurrent ? tr('{p0} 月 · 本月', { p0: monthOf(period) }) : periodLabel(period)}</AppText>
-                <Pressable accessibilityRole="button" accessibilityLabel={tr('下一個月')} disabled={!newer} onPress={() => newer && setPeriod(newer)} style={[styles.arrow, { opacity: newer ? 1 : 0.3 }]}>
-                  <Feather name="chevron-right" size={18} color={c.text} />
-                </Pressable>
-              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={tr('選月份，目前 {label}', { label: monthPillLabel(period) })}
+                onPress={() => setMonthOpen(true)}
+                style={[styles.month, { backgroundColor: c.surface, borderColor: c.border }]}>
+                <AppText variant="caption" style={{ fontWeight: '700' }}>{monthPillLabel(period)}</AppText>
+                <Feather name="chevron-down" size={16} color={c.text} />
+              </Pressable>
             ) : null}
             <Chip label={tr('全部主題')} selected={!tag} onPress={() => setTag(undefined)} />
             {tags?.map((t) => <Chip key={t.slug} label={tagLabel(t)} selected={tag === t.slug} onPress={() => setTag(tag === t.slug ? undefined : t.slug)} />)}
@@ -244,6 +235,7 @@ export default function ExploreScreen() {
           />
         )}
       </SafeAreaView>
+      <MonthSheet visible={monthOpen} value={period} months={months} onPick={setPeriod} onClose={() => setMonthOpen(false)} />
     </Screen>
   );
 }
@@ -324,8 +316,7 @@ function CompactCard({ item, showMonth }: { item: FeedCard; showMonth?: boolean 
 
 const styles = StyleSheet.create({
   header: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  month: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: Radius.pill, height: 36, paddingHorizontal: 2 },
-  arrow: { width: 30, height: 36, alignItems: 'center', justifyContent: 'center' },
+  month: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: Radius.pill, height: 36, paddingLeft: 14, paddingRight: 10 },
   tabs: { flexDirection: 'row', gap: Spacing.xxl, marginHorizontal: Spacing.xl, marginTop: Spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth },
   tab: { minHeight: MinTouch, justifyContent: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent', marginBottom: -StyleSheet.hairlineWidth },
   search: { marginHorizontal: Spacing.xl, marginTop: Spacing.md, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderWidth: 1, borderRadius: Radius.md, paddingLeft: 14, minHeight: 48 },

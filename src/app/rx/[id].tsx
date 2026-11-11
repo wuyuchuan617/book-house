@@ -45,9 +45,9 @@ export default function RxScreen() {
       },
     );
   const ownerActions = [
-    { label: tr('分享'), onPress: () => { setMenu(false); shareRx(data.id, data.title, { afterModal: true }); } },
-    ...(data.is_open && !data.extended ? [{ label: tr('延長 7 天'), onPress: () => { setMenu(false); run('extend'); } }] : []),
-    ...(data.is_open ? [{ label: tr('提早結案'), onPress: () => { setMenu(false); run('close'); } }] : []),
+    { label: tr('分享'), icon: 'share' as const, onPress: () => { setMenu(false); shareRx(data.id, data.title, { afterModal: true }); } },
+    ...(data.is_open && !data.extended ? [{ label: tr('延長 7 天'), icon: 'clock' as const, onPress: () => { setMenu(false); run('extend'); } }] : []),
+    ...(data.is_open ? [{ label: tr('提早結案'), icon: 'check-circle' as const, onPress: () => { setMenu(false); run('close'); } }] : []),
     {
       label: tr('刪除這張處方簽'),
       destructive: true,
@@ -65,8 +65,8 @@ export default function RxScreen() {
     },
   ];
   const readerActions = [
-    { label: tr('分享'), onPress: () => { setMenu(false); shareRx(data.id, data.title, { afterModal: true }); } },
-    { label: tr('檢舉這張處方簽'), destructive: true, onPress: () => { setMenu(false); setTimeout(() => setReportOpen(true), 400); } },
+    { label: tr('分享'), icon: 'share' as const, onPress: () => { setMenu(false); shareRx(data.id, data.title, { afterModal: true }); } },
+    { label: tr('檢舉這張處方簽'), icon: 'flag' as const, destructive: true, onPress: () => { setMenu(false); setTimeout(() => setReportOpen(true), 400); } },
   ];
 
   return (

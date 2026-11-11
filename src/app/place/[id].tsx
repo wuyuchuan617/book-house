@@ -175,6 +175,7 @@ export default function PlaceScreen() {
         actions={[
           {
             label: tr('檢舉這則貼文'),
+            icon: 'flag' as const,
             destructive: true,
             onPress: () => {
               const target = menuFor;

@@ -55,11 +55,12 @@ export function CurationActions({ curation, visible, onClose, inEditor, onDelete
     unpublish.mutate(curation.id, { onError: (e) => Alert.alert(tr('沒有成功'), friendlyError(e.message)) });
 
   const actions: SheetAction[] = [
-    ...(!inEditor ? [{ label: tr('編輯策展'), onPress: () => router.push({ pathname: '/curation/[id]', params: { id: curation.id } }) }] : []),
-    { label: tr('以讀者身分預覽'), onPress: () => router.push({ pathname: '/curation/preview/[id]', params: { id: curation.id } }) },
+    ...(!inEditor ? [{ label: tr('編輯策展'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/curation/[id]', params: { id: curation.id } }) }] : []),
+    { label: tr('以讀者身分預覽'), icon: 'eye' as const, onPress: () => router.push({ pathname: '/curation/preview/[id]', params: { id: curation.id } }) },
     ...(target
       ? [{
           label: tr('複製為 {p0} 月草稿', { p0: monthOf(target) }),
+          icon: 'copy' as const,
           sub: tr('保留書架與推薦理由'),
           onPress: () =>
             duplicate.mutate(

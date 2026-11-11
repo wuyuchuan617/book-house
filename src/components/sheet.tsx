@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react';
+import Feather from '@expo/vector-icons/Feather';
+import type { ComponentProps, ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppText, Button } from '@/components/ui';
+import { BottomSheet } from '@/components/bottom-sheet';
+import { AppText } from '@/components/ui';
 import { MinTouch, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { tr } from '@/lib/i18n';
@@ -10,49 +11,78 @@ import { tr } from '@/lib/i18n';
 export type SheetAction = {
   label: string;
   sub?: string;
+  /** 線條圖示（Feather）；危險動作沒給就用垃圾桶 */
+  icon?: ComponentProps<typeof Feather>['name'];
   destructive?: boolean;
   disabled?: boolean;
   onPress: () => void;
 };
 
-/** C7 更多操作：底部選單，最後一個是「取消」 */
-export function ActionSheet({ visible, title, subtitle, actions, onClose }: {
+/**
+ * C7 更多操作（v1.6）：米色底＋白色圓角群組、每列圓底圖示＋動作＋一行說明；
+ * 危險動作單獨一組放最後；不放「取消」，點背景或往下拉關閉。
+ */
+export function ActionSheet({ visible, title, subtitle, badge, actions, onClose }: {
   visible: boolean;
   title?: string;
   subtitle?: string;
+  /** 標題前面的類型標籤（例如「日記」） */
+  badge?: ReactNode;
   actions: SheetAction[];
   onClose: () => void;
 }) {
   const c = useTheme();
-  const insets = useSafeAreaInsets();
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel={tr('關閉')} />
-      <View style={[styles.sheet, { backgroundColor: c.surface, paddingBottom: Math.max(insets.bottom, 16) }]}>
-        {title ? (
-          <View style={[styles.head, { borderBottomColor: c.divider }]}>
-            <AppText variant="label" style={{ fontSize: 15 }}>{title}</AppText>
-            {subtitle ? <AppText variant="caption" muted>{subtitle}</AppText> : null}
-          </View>
-        ) : null}
-        {actions.map((a) => (
-          <Pressable
-            key={a.label}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !!a.disabled }}
-            disabled={a.disabled}
-            onPress={() => {
-              onClose();
-              a.onPress();
-            }}
-            style={({ pressed }) => [styles.item, { opacity: a.disabled ? 0.4 : pressed ? 0.6 : 1, borderBottomColor: c.divider }]}>
-            <AppText style={{ fontWeight: '600', color: a.destructive ? c.danger : c.text }}>{a.label}</AppText>
-            {a.sub ? <AppText variant="caption" muted>{a.sub}</AppText> : null}
-          </Pressable>
-        ))}
-        <Button kind="secondary" label={tr('取消')} onPress={onClose} style={{ marginTop: Spacing.md, marginHorizontal: Spacing.lg }} />
+  const normal = actions.filter((a) => !a.destructive);
+  const danger = actions.filter((a) => a.destructive);
+  const group = (list: SheetAction[]) =>
+    list.length ? (
+      <View style={[styles.group, { backgroundColor: c.surface }]}>
+        {list.map((a, i) => {
+          const fg = a.destructive ? c.danger : c.text;
+          const icon = a.icon ?? (a.destructive ? 'trash-2' : undefined);
+          return (
+            <Pressable
+              key={a.label}
+              accessibilityRole="button"
+              accessibilityHint={a.sub}
+              accessibilityState={{ disabled: !!a.disabled }}
+              disabled={a.disabled}
+              onPress={() => {
+                onClose();
+                a.onPress();
+              }}
+              style={({ pressed }) => [
+                styles.item,
+                { opacity: a.disabled ? 0.4 : pressed ? 0.6 : 1, borderBottomColor: c.divider, borderBottomWidth: i === list.length - 1 ? 0 : StyleSheet.hairlineWidth },
+              ]}>
+              {icon ? (
+                <View style={[styles.icon, { backgroundColor: a.destructive ? c.dangerSurface : c.divider }]}>
+                  <Feather name={icon} size={17} color={fg} />
+                </View>
+              ) : null}
+              <View style={{ flex: 1, gap: 1 }}>
+                <AppText style={{ fontWeight: '600', color: fg }}>{a.label}</AppText>
+                {a.sub ? <AppText variant="caption" muted>{a.sub}</AppText> : null}
+              </View>
+            </Pressable>
+          );
+        })}
       </View>
-    </Modal>
+    ) : null;
+  return (
+    <BottomSheet visible={visible} onClose={onClose} style={{ paddingHorizontal: Spacing.lg, gap: 10 }}>
+      {title || badge ? (
+        <View style={styles.head}>
+          {badge}
+          <View style={{ flex: 1 }}>
+            {title ? <AppText variant="label" numberOfLines={1} style={{ fontSize: 15 }}>{title}</AppText> : null}
+            {subtitle ? <AppText variant="caption" muted numberOfLines={1}>{subtitle}</AppText> : null}
+          </View>
+        </View>
+      ) : null}
+      {group(normal)}
+      {group(danger)}
+    </BottomSheet>
   );
 }
 
@@ -72,10 +102,10 @@ export function Dialog({ visible, onClose, children }: { visible: boolean; onClo
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(31,27,22,0.45)' },
-  sheet: { borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingTop: Spacing.sm },
-  head: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, gap: 2 },
-  item: { minHeight: MinTouch + 12, paddingHorizontal: Spacing.xl, justifyContent: 'center', borderBottomWidth: StyleSheet.hairlineWidth },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 4, paddingVertical: 2 },
+  group: { borderRadius: 16, overflow: 'hidden' },
+  item: { minHeight: MinTouch + 12, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 8 },
+  icon: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   center: { flex: 1, backgroundColor: 'rgba(31,27,22,0.45)', justifyContent: 'center', padding: 28 },
   dialog: { borderRadius: 20, padding: Spacing.xl, maxHeight: '80%' },
 });

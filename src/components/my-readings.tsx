@@ -14,7 +14,7 @@ import { timeAgo } from '@/lib/period';
 import { useDeleteReading, type MyReading } from '@/lib/readings';
 import { useToggleSave, wantSource, type SavedBook } from '@/lib/browse';
 import { SwipeRow, swipeA11y } from '@/components/swipe-row';
-import { WantSheet } from '@/components/want-sheet';
+import { LinkLine } from '@/components/link-line';
 import { tr } from '@/lib/i18n';
 
 type Filter = 'want' | 'reading' | 'finished';
@@ -74,7 +74,6 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
 }) {
   const c = useTheme();
   const [filter, setFilter] = useState<Filter>('reading');
-  const [openWant, setOpenWant] = useState<SavedBook | null>(null);
   const [menuFor, setMenuFor] = useState<MyReading | null>(null);
   const { pending, remove } = removal;
   const toggleSave = useToggleSave();
@@ -116,13 +115,13 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
         ? wantList.map((w) => {
             const from = wantSource(w);
             const actions = [
-              { label: tr('編輯'), icon: 'edit-2' as const, onPress: () => setOpenWant(w) },
+              { label: tr('編輯'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/want-book', params: { bookId: w.book_id } }) },
               { label: tr('移除'), icon: 'trash-2' as const, destructive: true, onPress: () => confirmUnsave(w) },
             ];
             return (
               <Card key={w.book_id} style={{ padding: 0, overflow: 'hidden' }}>
                 <SwipeRow actions={actions}>
-                <Pressable accessibilityRole="button" accessibilityHint={tr('編輯理由、開始讀')} {...swipeA11y(actions)} onPress={() => setOpenWant(w)} style={styles.main}>
+                <Pressable accessibilityRole="button" accessibilityHint={tr('編輯理由、開始讀')} {...swipeA11y(actions)} onPress={() => router.push({ pathname: '/want-book', params: { bookId: w.book_id } })} style={styles.main}>
                   <BookCover title={w.books.title} url={w.books.cover_url} color={color} />
                   <View style={{ flex: 1, gap: 3 }}>
                     <View style={[styles.pill, { backgroundColor: c.surfaceMuted, alignSelf: 'flex-start' }]}>
@@ -131,6 +130,7 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
                     <AppText variant="label" style={{ fontSize: 16 }}>{w.books.title}</AppText>
                     {from ? <AppText variant="caption" muted numberOfLines={1}>{tr('在哪看到：{from}', { from })}</AppText> : null}
                     <AppText variant="caption" muted numberOfLines={2}>{w.note ? tr('「{note}」', { note: w.note }) : tr('還沒寫為什麼想讀')}</AppText>
+                    <LinkLine url={w.link} />
                   </View>
                   <AppText variant="caption" style={{ color: c.primary, fontWeight: '700', alignSelf: 'center' }}>{tr('開始讀')}</AppText>
                 </Pressable>
@@ -140,7 +140,6 @@ export function ReadingSection({ readings, wants, color, loading, removal }: {
           })
         : null}
       {filter === 'want' && wantList.length === 0 ? <AppText muted style={{ textAlign: 'center', marginTop: Spacing.lg }}>{tr('還沒有想讀的書。\n在策展裡按書籤，或按右下角的＋加一本。')}</AppText> : null}
-      <WantSheet item={openWant} hasStore onClose={() => setOpenWant(null)} />
       {shown.map((r) => {
         const latest = r.reading_notes[0];
         const actions = [
