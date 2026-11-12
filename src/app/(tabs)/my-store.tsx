@@ -27,6 +27,8 @@ import { useMyPurchases } from '@/lib/purchases';
 import { useStoreInsights } from '@/lib/store-v16';
 import { AboutIntro, AboutLink } from '@/components/about';
 import type { AboutKey } from '@/lib/about';
+import { TripCard } from '@/components/trips';
+import { useMyTrips } from '@/lib/trips';
 
 type Tab = 'curation' | 'reading' | 'journal' | 'want' | 'place' | 'rx';
 const ABOUT_OF: Record<Tab, AboutKey> = { curation: 'curation', reading: 'reading', journal: 'diary', want: 'want', place: 'place', rx: 'rx' };
@@ -46,8 +48,10 @@ export default function MyStoreScreen() {
   const initial = params.tab === 'lists' ? 'want' : params.tab;
   const [tab, setTab] = useState<Tab>(TAB_KEYS.includes(initial as Tab) ? (initial as Tab) : 'curation');
   const insights = useStoreInsights();
+  const c = useTheme();
   const [wantSub, setWantSub] = useState<'want' | 'tbr'>('want');
-  const [placeSub, setPlaceSub] = useState<'want' | 'visited'>('want');
+  const [placeSub, setPlaceSub] = useState<'want' | 'visited' | 'trips'>('want');
+  const trips = useMyTrips();
   const journal = useStoreJournal(data?.store.id);
   const visited = useVisitedPlaces(data?.store.id);
   const purchases = useMyPurchases();
@@ -148,11 +152,23 @@ export default function MyStoreScreen() {
           ) : tab === 'place' ? (
             <>
               <SubChips
-                options={[['want', tr('想去 · {n}', { n: count('place') })], ['visited', tr('去過 · {n}', { n: visited.places.length })]]}
+                options={[['want', tr('想去 · {n}', { n: count('place') })], ['visited', tr('去過 · {n}', { n: visited.places.length })], ['trips', tr('書旅 · {n}', { n: trips.data?.mine.length ?? 0 })]]}
                 value={placeSub}
                 onChange={setPlaceSub}
               />
-              {placeSub === 'want' ? <StoreJournal bookstoreId={store.id} color={store.color} mine scope="place" /> : <VisitedPlaces bookstoreId={store.id} mine />}
+              {placeSub === 'want' ? (
+                <StoreJournal bookstoreId={store.id} color={store.color} mine scope="place" />
+              ) : placeSub === 'visited' ? (
+                <VisitedPlaces bookstoreId={store.id} mine />
+              ) : (
+                <View style={{ gap: Spacing.md }}>
+                  {store.show_trip === false ? <AppText variant="caption" muted>{tr('讀者看不到你的書旅；到公開設定可以打開。')}</AppText> : null}
+                  {(trips.data?.mine ?? []).map((t) => <TripCard key={t.id} t={t} />)}
+                  <Pressable accessibilityRole="button" onPress={() => router.push('/trip/edit')} style={[styles.newTrip, { borderColor: c.border }]}>
+                    <AppText variant="label" style={{ color: c.primary }}>{tr('＋ 整理一份書旅')}</AppText>
+                  </Pressable>
+                </View>
+              )}
             </>
           ) : (
             <OwnerRx />
@@ -216,5 +232,6 @@ function OwnerTbr({ color, hiddenFromReaders }: { color: StoreColor; hiddenFromR
 const styles = StyleSheet.create({
   titleRow: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg },
   hidden: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: Radius.md, paddingHorizontal: Spacing.md, minHeight: 40 },
+  newTrip: { borderWidth: 1.5, borderStyle: 'dashed', borderRadius: Radius.lg, minHeight: 52, alignItems: 'center', justifyContent: 'center' },
   tbr: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.lg, padding: Spacing.md },
 });

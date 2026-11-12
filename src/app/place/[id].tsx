@@ -19,6 +19,7 @@ import { usePlacePurchaseCount } from '@/lib/store-v16';
 import { REPORT_REASONS } from '@/lib/safety';
 import { EventInfo, sharersLine } from '@/components/event-card';
 import { usePlaceEvents } from '@/lib/events';
+import { usePlaceTripCount } from '@/lib/trips';
 
 /**
  * L1 地點頁（v1.7.1 Z3 重新設計）：上面是類型、名稱、地址（點了開地圖）；三格數字（打卡／想去／買過）；
@@ -39,6 +40,7 @@ export default function PlaceScreen() {
   const [adminOpen, setAdminOpen] = useState(false);
   const { data: purchaseCount } = usePlacePurchaseCount(id);
   const events = usePlaceEvents(id);
+  const tripCount = usePlaceTripCount(id);
 
   useEffect(() => {
     if (id) track('place_opened', {});
@@ -138,6 +140,8 @@ export default function PlaceScreen() {
             <AppText variant="label" style={{ color: c.onPrimary }}>{tr('打卡')}</AppText>
           </Pressable>
         </View>
+
+        {tripCount.data ? <AppText variant="caption" muted style={{ marginTop: -Spacing.sm }}>{tr('收錄在 {n} 份書旅', { n: tripCount.data })}</AppText> : null}
 
         {mine ? (
           <View style={[styles.mine, { backgroundColor: c.surface }]}>

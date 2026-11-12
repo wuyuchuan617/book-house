@@ -26,6 +26,8 @@ import { TeaserCard } from '@/components/teaser';
 import { useStoreTeaser } from '@/lib/teaser';
 import { SubChips, useVisitedPlaces, VisitedPlaces } from '@/components/store-lists';
 import { useStoreJournal } from '@/lib/diary';
+import { TripCard } from '@/components/trips';
+import { useStoreTrips } from '@/lib/trips';
 
 type Tab = 'curation' | 'reading' | 'journal' | 'want' | 'place' | 'rx';
 
@@ -47,7 +49,8 @@ export default function StoreScreen() {
   const current = data?.curations[index];
   const { data: readings } = useStoreReadings(data?.store.id);
   const [wantSub, setWantSub] = useState<'want' | 'tbr'>('want');
-  const [placeSub, setPlaceSub] = useState<'want' | 'visited'>('want');
+  const [placeSub, setPlaceSub] = useState<'want' | 'visited' | 'trips'>('want');
+  const trips = useStoreTrips(slug, data?.store.show_trip !== false);
   const journal = useStoreJournal(data?.store.id);
   const teaser = useStoreTeaser(slug);
   const visited = useVisitedPlaces(data?.store.id);
@@ -68,7 +71,7 @@ export default function StoreScreen() {
     ...(store.show_reading === false ? [] : (['reading'] as Tab[])),
     ...(store.show_post ? (['journal'] as Tab[]) : []),
     ...(store.show_want || store.show_owned ? (['want'] as Tab[]) : []),
-    ...(store.show_place ? (['place'] as Tab[]) : []),
+    ...(store.show_place || (trips.data?.length ?? 0) > 0 ? (['place'] as Tab[]) : []),
     ...(store.show_rx ? (['rx'] as Tab[]) : []),
   ];
   const LABEL: Record<Tab, string> = { curation: tr('策展'), reading: tr('閱讀'), journal: tr('手記'), want: tr('想讀'), place: tr('地點'), rx: tr('處方箋') };
@@ -79,6 +82,12 @@ export default function StoreScreen() {
     ...(store.show_want ? [['want', tr('想讀 · {n}', { n: count('want') })] as ['want', string]] : []),
     ...(store.show_owned ? [['tbr', tr('積讀 · {n}', { n: tbr.data?.length ?? 0 })] as ['tbr', string]] : []),
   ];
+  // 地點分頁：想去｜去過（公開設定「想去」）｜書旅（「書旅」，有才放）
+  const placeOpts: ['want' | 'visited' | 'trips', string][] = [
+    ...(store.show_place ? ([['want', tr('想去 · {n}', { n: count('place') })], ['visited', tr('去過 · {n}', { n: visited.places.length })]] as ['want' | 'visited', string][]) : []),
+    ...((trips.data?.length ?? 0) > 0 ? [['trips', tr('書旅 · {n}', { n: trips.data!.length })] as ['trips', string]] : []),
+  ];
+  const placeShown = placeOpts.some(([k]) => k === placeSub) ? placeSub : placeOpts[0]?.[0] ?? 'want';
   const wantShown = wantOpts.some(([k]) => k === wantSub) ? wantSub : wantOpts[0]?.[0] ?? 'want';
 
   return (
@@ -155,11 +164,17 @@ export default function StoreScreen() {
         ) : shown === 'place' ? (
           <View style={{ padding: Spacing.xl, gap: Spacing.md }}>
             <SubChips
-              options={[['want', tr('想去 · {n}', { n: count('place') })], ['visited', tr('去過 · {n}', { n: visited.places.length })]]}
-              value={placeSub}
+              options={placeOpts}
+              value={placeShown}
               onChange={setPlaceSub}
             />
-            {placeSub === 'want' ? <StoreJournal bookstoreId={store.id} color={store.color} scope="place" /> : <VisitedPlaces bookstoreId={store.id} />}
+            {placeShown === 'want' ? (
+              <StoreJournal bookstoreId={store.id} color={store.color} scope="place" />
+            ) : placeShown === 'visited' ? (
+              <VisitedPlaces bookstoreId={store.id} />
+            ) : (
+              (trips.data ?? []).map((t) => <TripCard key={t.id} t={t} />)
+            )}
           </View>
         ) : (
           <View style={{ padding: Spacing.xl }}>

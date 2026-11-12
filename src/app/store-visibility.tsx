@@ -29,6 +29,7 @@ export default function StoreVisibilityScreen() {
     ['show_owned', tr('積讀'), tr('買了還沒讀的書；只顯示書，不顯示金額和在哪買')],
     ['show_place', tr('想去的地點'), tr('只顯示公開場所與原因；私人地點、連結不公開')],
     ['show_post', tr('日記貼文'), tr('只顯示設成「公開」的日記（含打卡）')],
+    ['show_trip', tr('書旅'), tr('你整理的書旅（以城市整理的書店與順路的地方）；草稿不會出現')],
     ['show_rx', tr('閱讀處方箋'), tr('你開的處方、用書店身分發起的處方箋；匿名發起的不會出現')],
   ];
 

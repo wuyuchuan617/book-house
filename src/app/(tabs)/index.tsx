@@ -30,8 +30,9 @@ import { currentPeriod, monthOf, previousPeriod } from '@/lib/period';
 import { RX_TAGS, rxTagLabel, type RxFilter } from '@/lib/rx';
 import { useMyStore, type ExploreItem } from '@/lib/queries';
 import { tagLabel, tr } from '@/lib/i18n';
+import { TripsExplore } from '@/components/trips';
 
-type Tab = 'curations' | 'posts' | 'rx';
+type Tab = 'curations' | 'posts' | 'trips' | 'rx';
 type FeedCard = ExploreItem & { visited?: boolean; is_following?: boolean };
 
 const KIND_LABEL = (): Record<PostKindFilter, string> => ({ all: tr('全部'), diary: tr('日記'), checkin: tr('打卡'), note: tr('心得'), event: tr('活動') });
@@ -39,7 +40,7 @@ const KIND_LABEL = (): Record<PostKindFilter, string> => ({ all: tr('全部'), d
 const SORTS = (): [ExploreSort, string][] => [['recommend', tr('推薦')], ['latest', tr('最新')], ['popular', tr('熱門')]];
 
 /**
- * A2 探索（v1.6）：策展｜貼文｜處方箋；搜尋列三個分頁共用、一次搜全部（W9）；
+ * A2 探索（v1.6；v1.8 多「書旅」）：策展｜貼文｜書旅｜處方箋；搜尋列三個分頁共用、一次搜全部（W9）；
  * 「篩選」按鈕＋外面顯示生效中的條件（W6、W7）；策展多一顆月份（W8）；每個分頁最上面一張主題卡。
  */
 export default function ExploreScreen() {
@@ -105,7 +106,7 @@ export default function ExploreScreen() {
 
   const segment = (
     <View style={[styles.tabs, { borderBottomColor: c.border }]} accessibilityRole="tablist">
-      {([['curations', tr('策展')], ['posts', tr('貼文')], ['rx', tr('處方箋')]] as const).map(([t, label]) => (
+      {([['curations', tr('策展')], ['posts', tr('貼文')], ['trips', tr('書旅')], ['rx', tr('處方箋')]] as const).map(([t, label]) => (
         <Pressable key={t} accessibilityRole="tab" accessibilityState={{ selected: tab === t }} onPress={() => setTab(t)} style={[styles.tab, tab === t && { borderBottomColor: c.text }]}>
           <AppText style={{ fontSize: 15, fontWeight: tab === t ? '700' : '500', color: tab === t ? c.text : c.textSecondary }}>{label}</AppText>
         </Pressable>
@@ -195,7 +196,7 @@ export default function ExploreScreen() {
 
         {(
           <>
-            <View>
+            {tab === 'trips' ? null : <View>
               <FilterBar
                 active={active}
                 onOpen={() => setFilterOpen(true)}
@@ -212,9 +213,11 @@ export default function ExploreScreen() {
                   ) : undefined
                 }
               />
-            </View>
+            </View>}
 
-            {tab === 'posts' ? (
+            {tab === 'trips' ? (
+              <TripsExplore />
+            ) : tab === 'posts' ? (
               <PostsExplore filter={postF.filter} near={postF.near} onReset={() => postF.pick('all')} view={postView} kind={postKind} />
             ) : tab === 'rx' ? (
               <RxExplore filter={rxFilter} tag={rxTag} />

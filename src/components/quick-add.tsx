@@ -64,6 +64,7 @@ export function QuickAddSheet({ visible, onClose }: { visible: boolean; onClose:
     { key: 'purchase', icon: 'shopping-bag', title: tr('買了一本書'), sub: tr('記在哪買、多少錢，先放進積讀'), tint: '#8B6A1F', bg: '#F9EEDA', onPress: () => router.push('/purchase') },
     { key: 'post', icon: 'edit-3', title: tr('日記'), sub: tr('寫字、放照片；加地點就是打卡'), tint: '#5A4B8A', bg: '#ECE8F4', onPress: () => router.push({ pathname: '/diary/compose', params: { kind: 'post' } }) },
     { key: 'event', icon: 'calendar', title: tr('分享活動'), sub: tr('書市集、簽書會、講座，大家一起去'), tint: '#9A4A12', bg: '#FBEBDD', onPress: () => router.push('/event/share') },
+    { key: 'trip', icon: 'compass', title: tr('整理書旅'), sub: tr('一個城市的書店和順路的咖啡、景點'), tint: '#2E5A87', bg: '#E4ECF5', onPress: () => router.push('/trip/edit') },
     { key: 'rx', icon: 'message-circle', title: tr('閱讀處方箋'), sub: tr('說說你的狀況，請大家各開一本書'), tint: '#5A4B8A', bg: '#ECE8F4', onPress: () => router.push('/rx/new') },
     { key: 'curation', icon: 'grid', title: tr('新增策展'), sub: tr('放上書架，接在最後一檔之後'), tint: c.text, bg: c.surfaceMuted, onPress: newCuration },
   ];
