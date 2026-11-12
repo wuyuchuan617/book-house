@@ -5,7 +5,7 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { AutoItemRow, OwnEntryCard, visibilityOf } from '@/components/diary';
 import { ActionSheet } from '@/components/sheet';
-import { MoreButton, SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
+import { SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
 import { AppText } from '@/components/ui';
 import { Radius, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -87,12 +87,7 @@ export function DiaryTimeline({ items, isToday, color }: { items: DiaryItem[]; i
             return (
               <View key={e.id} {...swipeA11y(actions)}>
                 <SwipeRow actions={actions} background={c.background} hint={index === 0}>
-                  <View>
-                    <OwnEntryCard item={e} color={color} />
-                    <View style={styles.more}>
-                      <MoreButton onPress={() => setMenuFor(e)} />
-                    </View>
-                  </View>
+                  <OwnEntryCard item={e} color={color} onMore={() => setMenuFor(e)} />
                 </SwipeRow>
               </View>
             );
@@ -127,5 +122,4 @@ const styles = StyleSheet.create({
   section: { fontWeight: '700', paddingHorizontal: 2 },
   autoHead: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32 },
   autoBox: { borderWidth: 1, borderStyle: 'dashed', borderRadius: Radius.xl, paddingHorizontal: Spacing.lg },
-  more: { position: 'absolute', top: 6, right: 6 },
 });

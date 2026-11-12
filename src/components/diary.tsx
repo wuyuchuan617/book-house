@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { BookCover } from '@/components/book-cover';
 import { kindLabel } from '@/components/note-card';
 import { StoreAvatar } from '@/components/social';
+import { MoreButton } from '@/components/swipe-row';
 import { AppText, Card } from '@/components/ui';
 import { Radius, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -99,7 +100,7 @@ export function VisibilityBadge({ v, compact }: { v: Visibility; compact?: boole
 }
 
 /** 自己寫的（日記、打卡）：白底卡片，左邊時間 */
-export function OwnEntryCard({ item, color = 'moss' }: { item: DiaryEntry; color?: StoreColor }) {
+export function OwnEntryCard({ item, color = 'moss', onMore }: { item: DiaryEntry; color?: StoreColor; onMore?: () => void }) {
   const c = useTheme();
   const v = visibilityOf(item);
   const placeName = item.place_name ?? item.place_label;
@@ -114,6 +115,7 @@ export function OwnEntryCard({ item, color = 'moss' }: { item: DiaryEntry; color
           {item.page_ref ? <AppText variant="caption" muted>{`· ${item.page_ref}`}</AppText> : null}
           <View style={{ flex: 1 }} />
           <VisibilityBadge v={v} />
+          {onMore ? <MoreButton onPress={onMore} /> : null}
         </View>
         {item.type === 'checkin' ? (
           <Pressable
