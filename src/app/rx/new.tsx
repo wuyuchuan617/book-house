@@ -11,7 +11,7 @@ import { tr } from '@/lib/i18n';
 import { useMyStore } from '@/lib/queries';
 import { RX_BODY_MAX, RX_DURATIONS, RX_TAGS, RX_TITLE_MAX, rxError, rxTagLabel, useCreateRx, useRx, useUpdateRx, type RxDetail, type RxDuration } from '@/lib/rx';
 
-/** X2 發起閱讀處方簽：狀況（必填）、想多說一點、標籤（最多 3）、身分（書店／匿名）、開放多久；帶 id = 編輯（還沒有人開才行） */
+/** X2 發起閱讀處方箋：狀況（必填）、想多說一點、標籤（最多 3）、身分（書店／匿名）、開放多久；帶 id = 編輯（還沒有人開才行） */
 export default function NewRxScreen() {
   const { id, title } = useLocalSearchParams<{ id?: string; title?: string }>();
   const { data, isLoading } = useRx(id);
@@ -29,7 +29,7 @@ function RxForm({ existing, initialTitle }: { existing?: RxDetail; initialTitle?
   const [tags, setTags] = useState<string[]>(existing?.tags ?? []);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
-  // v1.6：預設用書店名稱發起，才會出現在書店頁的處方簽分頁；想匿名再切
+  // v1.6：預設用書店名稱發起，才會出現在書店頁的處方箋分頁；想匿名再切
   const [anonymous, setAnonymous] = useState(false);
   const [duration, setDuration] = useState<RxDuration>(14);
 
@@ -53,7 +53,7 @@ function RxForm({ existing, initialTitle }: { existing?: RxDetail; initialTitle?
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: existing ? tr('編輯處方簽') : tr('發起閱讀處方簽') }} />
+      <Stack.Screen options={{ title: existing ? tr('編輯處方箋') : tr('發起閱讀處方箋') }} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={90}>
         <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg }} keyboardShouldPersistTaps="handled">
           <AppText muted style={{ lineHeight: 22 }}>{tr('說說你現在的狀況或想找什麼書，大家會各開一本給你。')}</AppText>

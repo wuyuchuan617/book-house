@@ -25,13 +25,16 @@ import { shareStore } from '@/lib/links';
 import { bookTitle, tr } from '@/lib/i18n';
 import { useMyPurchases } from '@/lib/purchases';
 import { useStoreInsights } from '@/lib/store-v16';
+import { AboutIntro, AboutLink } from '@/components/about';
+import type { AboutKey } from '@/lib/about';
 
 type Tab = 'curation' | 'reading' | 'journal' | 'want' | 'place' | 'rx';
+const ABOUT_OF: Record<Tab, AboutKey> = { curation: 'curation', reading: 'reading', journal: 'diary', want: 'want', place: 'place', rx: 'rx' };
 const TAB_KEYS: Tab[] = ['curation', 'reading', 'journal', 'want', 'place', 'rx'];
 
 /**
  * W1 我的書店（v1.7.2 AA1–AA4）：精簡的書店資訊（背景圖變矮、名字在圖下面、追蹤數一行字、編輯／數據／讀者視角／分享是小按鈕，右上只留設定）；
- * 固定 6 格分頁 策展｜閱讀｜手記｜想讀｜想去｜處方簽（不放數字，往下捲黏在最上面）。
+ * 固定 6 格分頁 策展｜閱讀｜手記｜想讀｜想去｜處方箋（不放數字，往下捲黏在最上面）。
  * 自己看得到全部分頁；公開設定沒開的那一類，最上面一條「讀者看不到」。第一次進來跳出 G0 設定卡。
  */
 export default function MyStoreScreen() {
@@ -81,7 +84,7 @@ export default function MyStoreScreen() {
     ['journal', tr('手記')],
     ['want', tr('想讀')],
     ['place', tr('地點')],
-    ['rx', tr('處方簽')],
+    ['rx', tr('處方箋')],
   ];
   // 讀者看不到的分頁（公開設定沒開）
   const hidden: Partial<Record<Tab, [keyof StoreShow, string]>> = {
@@ -89,7 +92,7 @@ export default function MyStoreScreen() {
     journal: ['show_post', tr('手記')],
     want: ['show_want', tr('想讀')],
     place: ['show_place', tr('地點')],
-    rx: ['show_rx', tr('處方簽')],
+    rx: ['show_rx', tr('處方箋')],
   };
   const count = (t: 'want' | 'place') => (journal.data ?? []).filter((i) => i.type === t).length;
   const tbrCount = (purchases.data?.items ?? []).filter((p) => p.status === 'unread').length;
@@ -126,6 +129,7 @@ export default function MyStoreScreen() {
 
         <View style={{ paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, gap: Spacing.md }}>
           {off ? <HiddenBar what={off} /> : null}
+          <AboutLink feature={ABOUT_OF[tab]} style={{ alignSelf: 'flex-end', marginBottom: -Spacing.xs }} />
           {tab === 'curation' ? (
             <CurationSection />
           ) : tab === 'reading' ? (
@@ -157,6 +161,7 @@ export default function MyStoreScreen() {
       </ScrollView>
       <ReadingRemovalToast removal={removal} />
       <StoreSetupSheet store={store} />
+      {store.setup_done ? <AboutIntro feature={ABOUT_OF[tab]} /> : null}
     </Screen>
   );
 }

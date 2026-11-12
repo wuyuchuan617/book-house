@@ -53,6 +53,10 @@ export function CurationActions({ curation, visible, onClose, inEditor, onDelete
   const actions: SheetAction[] = [
     ...(!inEditor ? [{ label: tr('編輯策展'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/curation/[id]', params: { id: curation.id } }) }] : []),
     { label: tr('以讀者身分預覽'), icon: 'eye' as const, onPress: () => router.push({ pathname: '/curation/preview/[id]', params: { id: curation.id } }) },
+    // v1.8 AD2：下個月以後、還沒上架的可以先預告
+    ...(curation.period > currentPeriod() && curation.status !== 'published'
+      ? [{ label: tr('預告這檔策展'), icon: 'bell' as const, sub: tr('先在書店頁放預告，讀者可以按上架提醒'), onPress: () => router.push({ pathname: '/curation/teaser', params: { id: curation.id } }) }]
+      : []),
     ...(target
       ? [{
           label: tr('複製為 {p0} 月草稿', { p0: monthOf(target) }),

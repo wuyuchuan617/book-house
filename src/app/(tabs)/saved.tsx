@@ -20,10 +20,11 @@ import { ActionSheet } from '@/components/sheet';
 import { MoreButton, SwipeRow, swipeA11y } from '@/components/swipe-row';
 import { LinkLine } from '@/components/link-line';
 import { bookTitle, tr } from '@/lib/i18n';
+import { AboutIntro, AboutLink } from '@/components/about';
 
 type Tab = 'books' | 'tbr' | 'places';
 
-/** 書櫃（v1.6）：只留想讀（預設）、地點；追蹤的書店移到我的書店的「追蹤中」，處方簽移到我的書店的「處方簽」分頁 */
+/** 書櫃（v1.6）：只留想讀（預設）、地點；追蹤的書店移到我的書店的「追蹤中」，處方箋移到我的書店的「處方箋」分頁 */
 export default function SavedScreen() {
   const c = useTheme();
   const { session, requireAuth } = useAuth();
@@ -90,6 +91,10 @@ export default function SavedScreen() {
             );
           })}
         </View>
+        <View style={{ alignItems: 'flex-end', paddingHorizontal: Spacing.xl, paddingTop: Spacing.sm }}>
+          <AboutLink feature={tab === 'places' ? 'place' : 'want'} />
+        </View>
+        <AboutIntro feature={tab === 'places' ? 'place' : 'want'} />
 
         {tab === 'tbr' ? (
           <TbrShelf />

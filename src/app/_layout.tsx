@@ -94,6 +94,7 @@ function RootStack() {
         <Stack.Screen name="open-store/done" options={{ title: '' }} />
         <Stack.Screen name="open-store/reasons" options={{ title: tr('推薦理由') }} />
         <Stack.Screen name="curation/[id]" options={{ title: tr('策展') }} />
+        <Stack.Screen name="curation/teaser" options={{ title: '' }} />
         <Stack.Screen name="curation/preview/[id]" options={{ title: tr('預覽') }} />
         <Stack.Screen name="store/[slug]" options={{ title: '' }} />
         <Stack.Screen name="reading/[id]" options={{ title: '' }} />
@@ -118,11 +119,12 @@ function RootStack() {
         <Stack.Screen name="search" options={{ headerShown: false, animation: 'fade' }} />
         <Stack.Screen name="purchase" options={{ title: tr('買了一本書') }} />
         <Stack.Screen name="purchases" options={{ title: tr('購書紀錄') }} />
-        <Stack.Screen name="rx/new" options={{ title: tr('發起閱讀處方簽') }} />
-        <Stack.Screen name="rx/[id]" options={{ title: tr('閱讀處方簽') }} />
+        <Stack.Screen name="rx/new" options={{ title: tr('發起閱讀處方箋') }} />
+        <Stack.Screen name="rx/[id]" options={{ title: tr('閱讀處方箋') }} />
         <Stack.Screen name="rx/reply" options={{ title: tr('開一張處方') }} />
         <Stack.Screen name="report/[id]" options={{ title: tr('檢舉書店'), presentation: 'modal' }} />
         <Stack.Screen name="blocked" options={{ title: tr('已封鎖的帳號') }} />
+        <Stack.Screen name="about/[feature]" options={{ title: '' }} />
         <Stack.Screen name="help" options={{ title: tr('說明與意見回饋') }} />
         <Stack.Screen name="admin" options={{ title: tr('審核後台') }} />
         <Stack.Screen name="legal/[doc]" options={{ title: '', presentation: 'modal' }} />

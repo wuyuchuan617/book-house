@@ -21,7 +21,7 @@ export const RX_FILTERS = (): [RxFilter, string][] => [
 ];
 
 /**
- * X1 探索 › 處方簽（v1.6）：排序與標籤由上面的「篩選」決定；
+ * X1 探索 › 處方箋（v1.6）：排序與標籤由上面的「篩選」決定；
  * 最上面一張主題卡＝最需要人開的（開放中、處方最少）。
  */
 export function RxExplore({ filter, tag }: { filter: RxFilter; tag?: string }) {
@@ -47,9 +47,9 @@ export function RxExplore({ filter, tag }: { filter: RxFilter; tag?: string }) {
           ListEmptyComponent={
             need ? undefined : (
               <EmptyState
-                title={filter === 'unanswered' ? tr('每一張都有人開了') : tr('還沒有處方簽')}
+                title={filter === 'unanswered' ? tr('每一張都有人開了') : tr('還沒有處方箋')}
                 body={tr('說說你最近的狀況或想找什麼書，請大家各開一本。')}
-                actionLabel={tr('發起閱讀處方簽')}
+                actionLabel={tr('發起閱讀處方箋')}
                 onAction={() => requireAuth(() => router.push('/rx/new'))}
               />
             )
@@ -61,7 +61,7 @@ export function RxExplore({ filter, tag }: { filter: RxFilter; tag?: string }) {
   );
 }
 
-/** 主題卡：最需要人開的處方簽（深紫底） */
+/** 主題卡：最需要人開的處方箋（深紫底） */
 function NeedCard({ item }: { item: RxListItem }) {
   const { requireAuth } = useAuth();
   return (
@@ -81,14 +81,14 @@ function NeedCard({ item }: { item: RxListItem }) {
   );
 }
 
-/** 書店頁 › 處方簽（v1.6）：這間書店的店主發起的（不含匿名） */
+/** 書店頁 › 處方箋（v1.6）：這間書店的店主發起的（不含匿名） */
 export function StoreRxTab({ slug }: { slug: string }) {
   const list = useStoreRx(slug);
   if (list.isPending) return <ActivityIndicator style={{ marginTop: 24 }} />;
   if (!list.data?.length)
     return (
       <View style={{ minHeight: 360, justifyContent: 'center' }}>
-        <EmptyState title={tr('店主還沒有公開的處方簽')} body={tr('店主發起的閱讀處方簽會出現在這裡。')} />
+        <EmptyState title={tr('店主還沒有公開的處方箋')} body={tr('店主發起的閱讀處方箋會出現在這裡。')} />
       </View>
     );
   return <View style={{ gap: Spacing.md }}>{list.data.map((r) => <RxCard key={r.id} item={r} />)}</View>;

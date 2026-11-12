@@ -2,6 +2,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { TeaserStrip } from '@/components/teaser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
@@ -38,7 +39,7 @@ const KIND_LABEL = (): Record<PostKindFilter, string> => ({ all: tr('全部'), d
 const SORTS = (): [ExploreSort, string][] => [['recommend', tr('推薦')], ['latest', tr('最新')], ['popular', tr('熱門')]];
 
 /**
- * A2 探索（v1.6）：策展｜貼文｜處方簽；搜尋列三個分頁共用、一次搜全部（W9）；
+ * A2 探索（v1.6）：策展｜貼文｜處方箋；搜尋列三個分頁共用、一次搜全部（W9）；
  * 「篩選」按鈕＋外面顯示生效中的條件（W6、W7）；策展多一顆月份（W8）；每個分頁最上面一張主題卡。
  */
 export default function ExploreScreen() {
@@ -104,7 +105,7 @@ export default function ExploreScreen() {
 
   const segment = (
     <View style={[styles.tabs, { borderBottomColor: c.border }]} accessibilityRole="tablist">
-      {([['curations', tr('策展')], ['posts', tr('貼文')], ['rx', tr('處方簽')]] as const).map(([t, label]) => (
+      {([['curations', tr('策展')], ['posts', tr('貼文')], ['rx', tr('處方箋')]] as const).map(([t, label]) => (
         <Pressable key={t} accessibilityRole="tab" accessibilityState={{ selected: tab === t }} onPress={() => setTab(t)} style={[styles.tab, tab === t && { borderBottomColor: c.text }]}>
           <AppText style={{ fontSize: 15, fontWeight: tab === t ? '700' : '500', color: tab === t ? c.text : c.textSecondary }}>{label}</AppText>
         </Pressable>
@@ -177,7 +178,7 @@ export default function ExploreScreen() {
       setRxTag(undefined);
     }
   };
-  const resultLabel = tab === 'curations' ? tr('看 {n} 檔策展', { n: count }) : tab === 'posts' ? tr('看貼文') : tr('看處方簽');
+  const resultLabel = tab === 'curations' ? tr('看 {n} 檔策展', { n: count }) : tab === 'posts' ? tr('看貼文') : tr('看處方箋');
 
   return (
     <Screen>
@@ -232,6 +233,7 @@ export default function ExploreScreen() {
                 ListHeaderComponent={
                   first ? (
                     <View style={{ gap: Spacing.md }}>
+                      {!following ? <TeaserStrip /> : null}
                       <FeaturedCard item={first} ownStoreId={mine?.store.id} />
                       {rest.length && prevStart !== 0 ? <AppText variant="label" style={{ marginTop: Spacing.md }}>{tr('更多 {p0} 月策展', { p0: monthOf(period) })}</AppText> : null}
                     </View>
@@ -252,7 +254,7 @@ export default function ExploreScreen() {
       <MonthSheet visible={monthOpen} value={period} months={months} onPick={setPeriod} onClose={() => setMonthOpen(false)} />
       <FilterSheet
         visible={filterOpen}
-        title={tab === 'curations' ? tr('篩選 · 策展') : tab === 'posts' ? tr('篩選 · 貼文') : tr('篩選 · 處方簽')}
+        title={tab === 'curations' ? tr('篩選 · 策展') : tab === 'posts' ? tr('篩選 · 貼文') : tr('篩選 · 處方箋')}
         groups={groups}
         onClear={clearAll}
         onClose={() => setFilterOpen(false)}

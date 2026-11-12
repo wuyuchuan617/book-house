@@ -21,7 +21,7 @@ import { bookTitle, tr } from '@/lib/i18n';
 type Filter = 'all' | 'want' | 'place' | 'post';
 
 /**
- * 店主手記：想讀、想去、日記貼文依時間混在一起（v1.6：處方簽獨立成書店的「處方簽」分頁）。
+ * 店主手記：想讀、想去、日記貼文依時間混在一起（v1.6：處方箋獨立成書店的「處方箋」分頁）。
  * mine（G2）：自己看全部，每一則標出書店頁看不看得到；每一則右邊「⋯」＋往左滑；讀者（G4）：只看公開的。
  */
 export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bookstoreId: string; color: StoreColor; mine?: boolean; scope?: 'posts' | 'want' | 'place' }) {
@@ -92,7 +92,7 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bo
     ]);
 
   // 往左滑：想讀、想去＝編輯／移除（可復原）；日記貼文＝今天的編輯／改私人／刪除，過去的改私人／刪除；
-  // 我開的處方＝修改／撤回；我發起的處方簽＝（沒人開才有）編輯／結案／刪除
+  // 我開的處方＝修改／撤回；我發起的處方箋＝（沒人開才有）編輯／結案／刪除
   const actionsFor = (item: JournalItem): (SwipeAction & { sub?: string })[] => {
     switch (item.type) {
       case 'want':
@@ -149,7 +149,7 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bo
             label: tr('刪除'),
             icon: 'trash-2',
             destructive: true,
-            onPress: () => confirm(tr('刪除這張處方簽？'), tr('大家開的處方會一起刪除，無法復原。'), tr('刪除'), () => rxAction.mutate({ id: item.id, action: 'delete' }, { onError: fail })),
+            onPress: () => confirm(tr('刪除這張處方箋？'), tr('大家開的處方會一起刪除，無法復原。'), tr('刪除'), () => rxAction.mutate({ id: item.id, action: 'delete' }, { onError: fail })),
           },
         ];
     }
@@ -221,7 +221,7 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bo
 const item_error = (m: string) => (/prescription|處方/.test(m) ? rxError(m) : diaryError(m));
 
 function kindOf(item: JournalItem, c: ReturnType<typeof useTheme>) {
-  return item.type === 'rx' || item.type === 'rx_reply' ? { label: item.type === 'rx' ? tr('發起處方簽') : tr('開了處方'), fg: '#5A4B8A', icon: 'message-circle' as const } : item.type === 'want' ? { label: tr('想讀'), fg: c.primary, icon: 'bookmark' as const } : item.type === 'place' ? { label: tr('想去'), fg: '#2F5D6B', icon: 'map-pin' as const } : item.book ? { label: tr('正在讀'), fg: c.success, icon: 'play' as const } : item.kind === 'checkin' ? { label: tr('打卡'), fg: '#5A4B8A', icon: 'map-pin' as const } : { label: tr('日記'), fg: '#5A4B8A', icon: 'edit-3' as const };
+  return item.type === 'rx' || item.type === 'rx_reply' ? { label: item.type === 'rx' ? tr('發起處方箋') : tr('開了處方'), fg: '#5A4B8A', icon: 'message-circle' as const } : item.type === 'want' ? { label: tr('想讀'), fg: c.primary, icon: 'bookmark' as const } : item.type === 'place' ? { label: tr('想去'), fg: '#2F5D6B', icon: 'map-pin' as const } : item.book ? { label: tr('正在讀'), fg: c.success, icon: 'play' as const } : item.kind === 'checkin' ? { label: tr('打卡'), fg: '#5A4B8A', icon: 'map-pin' as const } : { label: tr('日記'), fg: '#5A4B8A', icon: 'edit-3' as const };
 }
 
 const journalTitle = (item: JournalItem) =>

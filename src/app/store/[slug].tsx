@@ -22,6 +22,8 @@ import { useStoreTbr } from '@/lib/store-v16';
 import { bookTitle, tr } from '@/lib/i18n';
 import { StoreRxTab } from '@/components/rx-explore';
 import { StoreJournal } from '@/components/store-journal';
+import { TeaserCard } from '@/components/teaser';
+import { useStoreTeaser } from '@/lib/teaser';
 import { SubChips, useVisitedPlaces, VisitedPlaces } from '@/components/store-lists';
 import { useStoreJournal } from '@/lib/diary';
 
@@ -47,6 +49,7 @@ export default function StoreScreen() {
   const [wantSub, setWantSub] = useState<'want' | 'tbr'>('want');
   const [placeSub, setPlaceSub] = useState<'want' | 'visited'>('want');
   const journal = useStoreJournal(data?.store.id);
+  const teaser = useStoreTeaser(slug);
   const visited = useVisitedPlaces(data?.store.id);
   const tbr = useStoreTbr(data?.store.show_owned ? data.store.slug : undefined);
 
@@ -68,7 +71,7 @@ export default function StoreScreen() {
     ...(store.show_place ? (['place'] as Tab[]) : []),
     ...(store.show_rx ? (['rx'] as Tab[]) : []),
   ];
-  const LABEL: Record<Tab, string> = { curation: tr('策展'), reading: tr('閱讀'), journal: tr('手記'), want: tr('想讀'), place: tr('地點'), rx: tr('處方簽') };
+  const LABEL: Record<Tab, string> = { curation: tr('策展'), reading: tr('閱讀'), journal: tr('手記'), want: tr('想讀'), place: tr('地點'), rx: tr('處方箋') };
   const shown: Tab = tabs.includes(tab) ? tab : 'curation';
   const count = (t: 'want' | 'place') => (journal.data ?? []).filter((i) => i.type === t).length;
   // 想讀分頁：想讀（公開設定「想讀」）｜積讀（「積讀」），只放有開的
@@ -103,9 +106,14 @@ export default function StoreScreen() {
 
         <UnderlineTabs tabs={tabs.map((t) => [t, LABEL[t]] as [Tab, string])} value={shown} onChange={setTab} />
 
+        {shown === 'curation' && teaser.data ? (
+          <View style={{ paddingHorizontal: Spacing.xl, paddingTop: Spacing.xl }}>
+            <TeaserCard teaser={teaser.data} mine={isMine} />
+          </View>
+        ) : null}
         {shown === 'curation' ? (
           curations.length === 0 ? (
-            <Centered><EmptyState title={tr('這間書店還沒有策展')} body={tr('追蹤後，新策展上架時會通知你。')} /></Centered>
+            teaser.data ? null : <Centered><EmptyState title={tr('這間書店還沒有策展')} body={tr('追蹤後，新策展上架時會通知你。')} /></Centered>
           ) : (
             <View style={{ padding: Spacing.xl, gap: Spacing.lg }}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.sm }}>

@@ -37,8 +37,8 @@ function useStoreSearch(q: string) {
 }
 
 /**
- * Y11 全域搜尋（v1.7）：每一頁右上的搜尋都開這頁；一次搜書、策展、貼文、處方簽、書店，上面可以切類別。
- * 找不到時給「加入想讀／發起處方簽」。
+ * Y11 全域搜尋（v1.7）：每一頁右上的搜尋都開這頁；一次搜書、策展、貼文、處方箋、書店，上面可以切類別。
+ * 找不到時給「加入想讀／發起處方箋」。
  */
 export default function SearchScreen() {
   const c = useTheme();
@@ -67,7 +67,7 @@ export default function SearchScreen() {
     ['books', tr('書')],
     ['curations', tr('策展')],
     ['posts', tr('貼文')],
-    ['rx', tr('處方簽')],
+    ['rx', tr('處方箋')],
     ['stores', tr('書店')],
   ];
 
@@ -150,7 +150,7 @@ export default function SearchScreen() {
               ) : null}
               {show('rx') ? (
                 <>
-                  <Section title={tr('處方簽 · {n}', { n: has.rx })} more={cat === 'all' && has.rx > 3 ? () => setCat('rx') : undefined} />
+                  <Section title={tr('處方箋 · {n}', { n: has.rx })} more={cat === 'all' && has.rx > 3 ? () => setCat('rx') : undefined} />
                   {rx.data!.slice(0, limit).map((r) => <RxCard key={r.id} item={r} />)}
                 </>
               ) : null}
@@ -174,7 +174,7 @@ export default function SearchScreen() {
                 <AppText variant="label" style={{ textAlign: 'center' }}>{none ? tr('找不到「{query}」', { query: q }) : tr('沒找到想要的？')}</AppText>
                 <View style={[chipRow, { justifyContent: 'center' }]}>
                   <Chip label={tr('加入想讀')} selected onPress={() => requireAuth(() => router.push({ pathname: '/want-book', params: { q } }))} />
-                  <Chip label={tr('發起處方簽')} onPress={() => requireAuth(() => router.push({ pathname: '/rx/new', params: { title: tr('想找：{q}', { q }) } }))} />
+                  <Chip label={tr('發起處方箋')} onPress={() => requireAuth(() => router.push({ pathname: '/rx/new', params: { title: tr('想找：{q}', { q }) } }))} />
                 </View>
               </Card>
             </>

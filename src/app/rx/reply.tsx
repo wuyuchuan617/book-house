@@ -22,9 +22,9 @@ export default function RxReplyScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, isLoading } = useRx(id);
   if (isLoading) return <ActivityIndicator style={{ marginTop: 48 }} />;
-  if (!data) return <EmptyState title={tr('找不到這張處方簽')} body={tr('它可能已經被刪除了。')} />;
+  if (!data) return <EmptyState title={tr('找不到這張處方箋')} body={tr('它可能已經被刪除了。')} />;
   if (data.is_mine) return <EmptyState title={tr('不能開處方給自己')} body={tr('等大家幫你開吧。')} />;
-  if (!data.is_open) return <EmptyState title={tr('這張處方簽已經結案了')} body={tr('結案後只能看，不能再開處方。')} />;
+  if (!data.is_open) return <EmptyState title={tr('這張處方箋已經結案了')} body={tr('結案後只能看，不能再開處方。')} />;
   return <ReplyForm rx={data} />;
 }
 
@@ -97,7 +97,7 @@ function ReplyForm({ rx }: { rx: RxDetail }) {
             hint={len > 0 && len < RX_REASON_MIN ? tr('再多寫幾個字（至少 {n} 字）', { n: RX_REASON_MIN }) : undefined}
           />
           <AppText variant="caption" muted>{tr('以「{name}」開出，大家可以點進你的書店。', { name: mine?.store.name ?? tr('我的書店') })}</AppText>
-          <AppText variant="caption" style={{ color: c.textTertiary, lineHeight: 19 }}>{tr('每張處方簽每人只能開一次、一本書。開了之後可以修改書或理由、也可以撤回，但不能再開第二本。')}</AppText>
+          <AppText variant="caption" style={{ color: c.textTertiary, lineHeight: 19 }}>{tr('每張處方箋每人只能開一次、一本書。開了之後可以修改書或理由、也可以撤回，但不能再開第二本。')}</AppText>
           {editing ? <Button kind="link" label={tr('撤回這張處方')} onPress={remove} /> : null}
         </ScrollView>
       </KeyboardAvoidingView>

@@ -21,7 +21,7 @@ type Section = 'curations' | 'readers' | 'rx' | 'posts';
 
 /**
  * Y6 書的單頁（v1.7）：作者下面一行「出版社 · 年份 · ISBN」；自己的狀態（想讀／積讀／正在讀／讀完）與對應按鈕；
- * 「這本書出現在」一張卡收齊：策展、店主正在讀、處方簽、貼文，每一列點了展開。
+ * 「這本書出現在」一張卡收齊：策展、店主正在讀、處方箋、貼文，每一列點了展開。
  */
 export default function BookScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -116,7 +116,7 @@ export default function BookScreen() {
               </Pressable>
             ))}
           </Row>
-          <Row icon="message-circle" color="#5A4B8A" title={rx.length ? tr('被開進 {n} 張處方簽', { n: rx.length }) : tr('還沒被開進處方簽')} open={open === 'rx'} onPress={rx.length ? () => toggle('rx') : undefined}>
+          <Row icon="message-circle" color="#5A4B8A" title={rx.length ? tr('被開進 {n} 張處方箋', { n: rx.length }) : tr('還沒被開進處方箋')} open={open === 'rx'} onPress={rx.length ? () => toggle('rx') : undefined}>
             {rx.map((r) => (
               <Pressable key={r.id} accessibilityRole="link" onPress={() => router.push({ pathname: '/rx/[id]', params: { id: r.id } })} style={styles.item}>
                 <AppText variant="caption" style={{ flex: 1, lineHeight: 19 }}>{`℞ ${r.title}`}</AppText>

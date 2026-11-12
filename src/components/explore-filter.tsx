@@ -86,8 +86,8 @@ export function FilterSheet({ visible, title, groups, onClear, onClose, resultLa
 }
 
 /**
- * W9 搜尋結果：三個分頁共用一個搜尋列，一次搜策展、貼文、處方簽；
- * 都找不到時給三個動作：加入想讀、發起處方簽（帶入「想找：…」）、看看其他主題。
+ * W9 搜尋結果：三個分頁共用一個搜尋列，一次搜策展、貼文、處方箋；
+ * 都找不到時給三個動作：加入想讀、發起處方箋（帶入「想找：…」）、看看其他主題。
  */
 export function SearchResults({ query, onSeeCurations, onClear, renderCuration }: {
   query: string;
@@ -124,7 +124,7 @@ export function SearchResults({ query, onSeeCurations, onClear, renderCuration }
       ) : null}
       {rs.length ? (
         <>
-          <Section title={tr('處方簽 · {n}', { n: rs.length })} />
+          <Section title={tr('處方箋 · {n}', { n: rs.length })} />
           {rs.slice(0, 3).map((r) => <RxCard key={r.id} item={r} />)}
         </>
       ) : null}
@@ -132,10 +132,10 @@ export function SearchResults({ query, onSeeCurations, onClear, renderCuration }
         <AppText variant="label" style={{ textAlign: 'center' }}>{none ? tr('找不到「{query}」', { query }) : tr('沒找到想要的？')}</AppText>
         <View style={[chipRow, { justifyContent: 'center' }]}>
           <Chip label={tr('加入想讀')} selected onPress={() => requireAuth(() => router.push({ pathname: '/want-book', params: { q: query } }))} />
-          <Chip label={tr('發起處方簽')} onPress={() => requireAuth(() => router.push({ pathname: '/rx/new', params: { title: tr('想找：{q}', { q: query }) } }))} />
+          <Chip label={tr('發起處方箋')} onPress={() => requireAuth(() => router.push({ pathname: '/rx/new', params: { title: tr('想找：{q}', { q: query }) } }))} />
           <Chip label={tr('看看其他主題')} onPress={onClear} />
         </View>
-        <AppText variant="caption" muted style={{ textAlign: 'center' }}>{tr('「加入想讀」直接用這個關鍵字搜書；「發起處方簽」請大家幫你找。')}</AppText>
+        <AppText variant="caption" muted style={{ textAlign: 'center' }}>{tr('「加入想讀」直接用這個關鍵字搜書；「發起處方箋」請大家幫你找。')}</AppText>
       </Card>
     </ScrollView>
   );

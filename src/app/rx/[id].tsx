@@ -19,7 +19,7 @@ import { taipeiDate, timeAgo } from '@/lib/period';
 import { authorName, daysLeft, rxError, rxTagLabel, useRx, useRxAction, useRxReport, type RxBookGroup, type RxDetail } from '@/lib/rx';
 import { REPORT_REASONS } from '@/lib/safety';
 
-/** X3 處方簽詳情：同一本書合併成一張卡（依人數），每本都能「想讀」；底部：開一張處方／修改處方；發起人的 ⋯：分享、延長、結案、刪除 */
+/** X3 處方箋詳情：同一本書合併成一張卡（依人數），每本都能「想讀」；底部：開一張處方／修改處方；發起人的 ⋯：分享、延長、結案、刪除 */
 export default function RxScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const c = useTheme();
@@ -32,7 +32,7 @@ export default function RxScreen() {
   const [showOthers, setShowOthers] = useState(false);
 
   if (isLoading) return <ActivityIndicator style={{ marginTop: 48 }} />;
-  if (!data) return <EmptyState title={tr('找不到這張處方簽')} body={tr('它可能已經被刪除了。')} actionLabel={tr('回探索')} onAction={() => router.navigate('/')} />;
+  if (!data) return <EmptyState title={tr('找不到這張處方箋')} body={tr('它可能已經被刪除了。')} actionLabel={tr('回探索')} onAction={() => router.navigate('/')} />;
 
   const left = daysLeft(data.closes_at, data.is_open);
   // 結案後：發起人加入想讀的排前面，其他收起來
@@ -61,13 +61,13 @@ export default function RxScreen() {
     ...(data.is_open && !data.extended ? [{ label: tr('延長 7 天'), icon: 'clock' as const, onPress: () => { setMenu(false); run('extend'); } }] : []),
     ...(data.is_open ? [{ label: tr('提早結案'), icon: 'check-circle' as const, onPress: () => { setMenu(false); run('close'); } }] : []),
     {
-      label: tr('刪除這張處方簽'),
+      label: tr('刪除這張處方箋'),
       destructive: true,
       onPress: () => {
         setMenu(false);
         setTimeout(
           () =>
-            Alert.alert(tr('刪除這張處方簽？'), tr('大家開的處方會一起刪除，無法復原。'), [
+            Alert.alert(tr('刪除這張處方箋？'), tr('大家開的處方會一起刪除，無法復原。'), [
               { text: tr('取消'), style: 'cancel' },
               { text: tr('刪除'), style: 'destructive', onPress: () => run('delete') },
             ]),
@@ -78,14 +78,14 @@ export default function RxScreen() {
   ];
   const readerActions = [
     { label: tr('分享'), icon: 'share' as const, onPress: () => { setMenu(false); shareRx(data.id, data.title, { afterModal: true }); } },
-    { label: tr('檢舉這張處方簽'), icon: 'flag' as const, destructive: true, onPress: () => { setMenu(false); setTimeout(() => setReportOpen(true), 400); } },
+    { label: tr('檢舉這張處方箋'), icon: 'flag' as const, destructive: true, onPress: () => { setMenu(false); setTimeout(() => setReportOpen(true), 400); } },
   ];
 
   return (
     <Screen>
       <Stack.Screen
         options={{
-          title: tr('閱讀處方簽'),
+          title: tr('閱讀處方箋'),
           headerRight: () => (
             <Pressable accessibilityRole="button" accessibilityLabel={tr('更多操作')} onPress={() => requireAuth(() => setMenu(true))} style={{ padding: 8 }}>
               <Feather name="more-horizontal" size={22} color={c.text} />
@@ -146,7 +146,7 @@ export default function RxScreen() {
         ) : (
           <Card style={{ alignItems: 'center', gap: 6, paddingVertical: 24 }}>
             <AppText variant="label">{tr('還沒有人開處方')}</AppText>
-            <AppText variant="caption" muted style={{ textAlign: 'center' }}>{!data.is_open ? tr('這張處方簽已經結案。') : data.is_mine ? tr('分享給朋友，請他們各開一本。') : tr('你可以搶先開第一張。')}</AppText>
+            <AppText variant="caption" muted style={{ textAlign: 'center' }}>{!data.is_open ? tr('這張處方箋已經結案。') : data.is_mine ? tr('分享給朋友，請他們各開一本。') : tr('你可以搶先開第一張。')}</AppText>
           </Card>
         )}
         {data.is_mine && data.books.length ? <AppText variant="caption" style={{ color: c.textTertiary, textAlign: 'center' }}>{tr('按「想讀」會加入你的想讀清單，開這本的人會收到通知。')}</AppText> : null}
@@ -221,7 +221,7 @@ function BookGroup({ group, rx, onReport }: { group: RxBookGroup; rx: RxDetail; 
           onPress={() =>
             requireAuth(() =>
               toggleSave.mutate(
-                { bookId: group.book.id, save: !saved, sourceText: saved ? null : tr('閱讀處方簽') },
+                { bookId: group.book.id, save: !saved, sourceText: saved ? null : tr('閱讀處方箋') },
                 { onSuccess: () => void qc.invalidateQueries({ queryKey: ['rx'] }) },
               ),
             )

@@ -17,6 +17,7 @@ import { addDays, dayLabel, useActiveDays, useDiaryDay, useDiaryStreak } from '@
 import { tr } from '@/lib/i18n';
 import { taipeiToday } from '@/lib/period';
 import { useMyStore } from '@/lib/queries';
+import { AboutIntro, AboutLink } from '@/components/about';
 
 /**
  * D1 日記（只有自己看得到）：連續記錄、今天的時間軸（自己記的＋當天的心得、想讀、開始讀、讀完）、
@@ -81,7 +82,8 @@ export default function DiaryScreen() {
 
           <View style={styles.sectionHead}>
             <AppText variant="heading">{tr('今天')}</AppText>
-            <AppText variant="caption" muted>{dayLabel(today)}</AppText>
+            <AppText variant="caption" muted style={{ flex: 1 }}>{dayLabel(today)}</AppText>
+            <AboutLink feature="diary" />
           </View>
           {day.isLoading ? (
             <ActivityIndicator style={{ marginTop: 24 }} />
@@ -121,6 +123,7 @@ export default function DiaryScreen() {
           ) : null}
         </ScrollView>
       </SafeAreaView>
+      <AboutIntro feature="diary" />
     </Screen>
   );
 }
@@ -129,7 +132,7 @@ export default function DiaryScreen() {
 const styles = StyleSheet.create({
   header: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   icon: { width: MinTouch, height: MinTouch, alignItems: 'center', justifyContent: 'center', marginRight: -10 },
-  sectionHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: Spacing.sm },
+  sectionHead: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.sm, justifyContent: 'space-between', marginTop: Spacing.sm },
   empty: { borderWidth: 1.5, borderStyle: 'dashed', borderRadius: Radius.lg, alignItems: 'center', padding: Spacing.xl, gap: 6 },
   dayRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, minHeight: 52 },
 });

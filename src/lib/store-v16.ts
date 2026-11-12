@@ -1,5 +1,5 @@
 /**
- * v1.6 我的書店與通知：追蹤者／追蹤中名單、數據、書店的處方簽分頁、通知列表、搜尋處方簽。
+ * v1.6 我的書店與通知：追蹤者／追蹤中名單、數據、書店的處方箋分頁、通知列表、搜尋處方箋。
  * 伺服器還沒套用 v1.6 migration 時，這些查詢會回空的（不讓整頁壞掉）。
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -10,9 +10,9 @@ import { unwrap } from '@/lib/queries';
 import type { RxListItem } from '@/lib/rx';
 import { supabase } from '@/lib/supabase';
 
-const missing = (m: string) => /function|does not exist|schema cache/i.test(m);
+export const missing = (m: string) => /function|does not exist|schema cache/i.test(m);
 
-async function rpcOr<T>(fn: string, args: Record<string, unknown>, fallback: T): Promise<T> {
+export async function rpcOr<T>(fn: string, args: Record<string, unknown>, fallback: T): Promise<T> {
   const res = await supabase.rpc(fn, args);
   if (res.error && missing(res.error.message)) return fallback;
   return unwrap<T>(res);
@@ -63,7 +63,7 @@ export function useStoreInsights() {
 
 export type StoreRxItem = RxListItem & { closed_at: string | null; anonymous: boolean; wanted_count: number };
 
-/** 書店頁 › 處方簽：店主發起的（不含匿名） */
+/** 書店頁 › 處方箋：店主發起的（不含匿名） */
 export function useStoreRx(slug: string | undefined) {
   const { session } = useAuth();
   return useQuery({
@@ -128,7 +128,7 @@ export type BookMentions = {
   mine: { want: boolean; purchase: { status: string; bought_on: string } | null; reading: { id: string; status: 'reading' | 'finished' } | null };
 };
 
-/** v1.7 Y6 書的單頁：處方簽、貼文、我的狀態 */
+/** v1.7 Y6 書的單頁：處方箋、貼文、我的狀態 */
 export function useBookMentions(bookId: string | undefined) {
   const { session } = useAuth();
   return useQuery({

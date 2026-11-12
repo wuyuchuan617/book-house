@@ -1,5 +1,5 @@
 /**
- * v1.5 閱讀處方簽：一個人說出狀況，大家各開一本書（每人每張一次、一本書）。
+ * v1.5 閱讀處方箋：一個人說出狀況，大家各開一本書（每人每張一次、一本書）。
  * 讀取都走 rx_* 函式（匿名發起時不外洩是誰）；發起直接寫 prescriptions（RLS 只能寫自己的）。
  */
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
@@ -220,11 +220,11 @@ export function useRxReport() {
 
 /** 把資料庫錯誤換成中文 */
 export function rxError(message: string) {
-  if (message.includes('too many open')) return tr('同時最多開放 3 張處方簽，先結案一張再發起。');
+  if (message.includes('too many open')) return tr('同時最多開放 3 張處方箋，先結案一張再發起。');
   if (message.includes('content not allowed')) return tr('內容含有不適合公開的字詞，請修改後再試。');
-  if (message.includes('cannot reply to your own')) return tr('不能開處方給自己發起的處方簽。');
-  if (message.includes('is closed')) return tr('這張處方簽已經結案了。');
-  if (message.includes('cannot extend')) return tr('每張處方簽只能延長一次。');
+  if (message.includes('cannot reply to your own')) return tr('不能開處方給自己發起的處方箋。');
+  if (message.includes('is closed')) return tr('這張處方箋已經結案了。');
+  if (message.includes('cannot extend')) return tr('每張處方箋只能延長一次。');
   if (message.includes('already has replies')) return tr('已經有人開處方了，不能再改內容。');
   if (message.includes('already reported')) return tr('你已經檢舉過了，我們會盡快處理。');
   if (message.includes('prescription_replies_reason_check')) return tr('理由要 {min}–{max} 字。', { min: RX_REASON_MIN, max: RX_REASON_MAX });

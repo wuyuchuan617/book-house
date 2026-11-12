@@ -10,9 +10,11 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { tr } from '@/lib/i18n';
+import Feather from '@expo/vector-icons/Feather';
+import { openAbout } from '@/components/about';
+import { about, ABOUT_KEYS } from '@/lib/about';
 
 const FAQ = () => [
-  [tr('策展是什麼？'), tr('每個月用一個主題挑幾本書，每本附上你為什麼推薦。1 本就能發布，建議 3–7 本。')],
   [tr('為什麼讀者看不到我的書店？'), tr('發布第一檔策展後，書店才會出現在探索頁。草稿與預約中的策展讀者看不到。')],
   [tr('可以預約下個月的策展嗎？'), tr('可以。下個月的策展按「預約發布」，會在月初自動上架，上架前都能修改。')],
   [tr('店主閱讀是公開的嗎？'), tr('預設公開，每一本都能改成只有自己看得到；在「設定 › 店主閱讀預設公開」可以改預設值。')],
@@ -50,6 +52,22 @@ export default function HelpScreen() {
       <Stack.Screen options={{ title: tr('說明與意見回饋') }} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={90}>
         <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg }} keyboardShouldPersistTaps="handled">
+          <AppText variant="label">{tr('功能說明')}</AppText>
+          <Card style={{ paddingVertical: 0 }}>
+            {ABOUT_KEYS.map((k, i) => {
+              const a = about(k);
+              return (
+                <Pressable key={k} accessibilityRole="link" onPress={() => openAbout(k, 'settings')} style={[styles.about, i < ABOUT_KEYS.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.divider }]}>
+                  <View style={[styles.aboutIcon, { backgroundColor: a.color }]}><Feather name={a.icon} size={16} color="#FFFFFF" /></View>
+                  <View style={{ flex: 1 }}>
+                    <AppText style={{ fontWeight: '700' }}>{tr('什麼是{name}？', { name: a.name })}</AppText>
+                    <AppText variant="caption" muted numberOfLines={1}>{a.one}</AppText>
+                  </View>
+                  <Feather name="chevron-right" size={16} color={c.textTertiary} />
+                </Pressable>
+              );
+            })}
+          </Card>
           <AppText variant="label">{tr('常見問題')}</AppText>
           <Card style={{ paddingVertical: 0 }}>
             {FAQ().map(([q, a], i) => (
@@ -93,6 +111,8 @@ export default function HelpScreen() {
 }
 
 const styles = StyleSheet.create({
+  about: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md, minHeight: 56 },
+  aboutIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   faq: { gap: 2 },
   q: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
 });

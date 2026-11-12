@@ -31,7 +31,7 @@ export function shareStore(name: string, slug: string, opts: { afterModal?: bool
   else open();
 }
 
-/** 分享處方簽：App 連結（網頁版之後再做） */
+/** 分享處方箋：App 連結（網頁版之後再做） */
 export function shareRx(id: string, title: string, opts: { afterModal?: boolean } = {}) {
   const open = () => {
     track('rx_shared', { channel: 'system' });

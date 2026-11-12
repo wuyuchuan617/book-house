@@ -11,7 +11,7 @@ export type NotificationPrefs = {
   monthly_reminder: boolean;
   reminder_day: 20 | 25 | -3 | null;
   weekly_review: boolean;
-  /** v1.5 閱讀處方簽（伺服器還沒更新時沒有這欄） */
+  /** v1.5 閱讀處方箋（伺服器還沒更新時沒有這欄） */
   prescription?: boolean;
 };
 

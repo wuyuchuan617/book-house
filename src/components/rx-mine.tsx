@@ -17,8 +17,8 @@ import { daysLeft, rxError, useRxAction, useRxMine, useRxSetAnonymous, useRxWith
 type Item = RxMineStarted | RxMineReplied;
 
 /**
- * W4 我的書店 › 處方簽（v1.6，從手記和書櫃獨立出來）：我發起的／我開的。
- * 新增走右下＋；只有還沒發起過時，空狀態放一顆「發起第一張處方簽」。
+ * W4 我的書店 › 處方箋（v1.6，從手記和書櫃獨立出來）：我發起的／我開的。
+ * 新增走右下＋；只有還沒發起過時，空狀態放一顆「發起第一張處方箋」。
  */
 export function OwnerRx() {
   const [kind, setKind] = useState<'started' | 'replied'>('started');
@@ -53,7 +53,7 @@ export function OwnerRx() {
     return [
       ...(item.is_open && item.reply_count === 0 ? [{ label: tr('編輯'), sub: tr('還沒有人開處方時可以改'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/rx/new', params: { id: item.id } }) }] : []),
       item.anonymous
-        ? { label: tr('改成顯示書店名稱'), sub: tr('會出現在你的書店頁「處方簽」'), icon: 'eye' as const, onPress: () => setAnon.mutate({ id: item.id, anonymous: false }, { onError: fail }) }
+        ? { label: tr('改成顯示書店名稱'), sub: tr('會出現在你的書店頁「處方箋」'), icon: 'eye' as const, onPress: () => setAnon.mutate({ id: item.id, anonymous: false }, { onError: fail }) }
         : { label: tr('改成匿名'), sub: tr('從你的書店頁拿掉，別人看不到是誰發起的'), icon: 'eye-off' as const, onPress: () => setAnon.mutate({ id: item.id, anonymous: true }, { onError: fail }) },
       ...(item.is_open ? [{ label: tr('結案'), sub: tr('不再收新的處方'), icon: 'check-circle' as const, onPress: () => action.mutate({ id: item.id, action: 'close' }, { onError: fail }) }] : []),
       { label: tr('分享'), icon: 'share' as const, onPress: () => shareRx(item.id, item.title, { afterModal: true }) },
@@ -62,7 +62,7 @@ export function OwnerRx() {
         sub: tr('大家開的處方會一起刪除'),
         icon: 'trash-2' as const,
         destructive: true,
-        onPress: () => confirm(tr('刪除這張處方簽？'), tr('大家開的處方會一起刪除，無法復原。'), tr('刪除'), () => action.mutate({ id: item.id, action: 'delete' }, { onError: fail })),
+        onPress: () => confirm(tr('刪除這張處方箋？'), tr('大家開的處方會一起刪除，無法復原。'), tr('刪除'), () => action.mutate({ id: item.id, action: 'delete' }, { onError: fail })),
       },
     ];
   };
@@ -85,14 +85,14 @@ export function OwnerRx() {
         <Card style={{ alignItems: 'center', gap: Spacing.sm, paddingVertical: 24 }}>
           {kind === 'started' ? (
             <>
-              <AppText variant="label">{tr('還沒有發起處方簽')}</AppText>
+              <AppText variant="label">{tr('還沒有發起處方箋')}</AppText>
               <AppText variant="caption" muted style={{ textAlign: 'center' }}>{tr('說說你最近的狀況，請大家各開一本書。')}</AppText>
-              <Button label={tr('發起第一張處方簽')} onPress={() => router.push('/rx/new')} style={{ alignSelf: 'stretch', marginTop: Spacing.sm }} />
+              <Button label={tr('發起第一張處方箋')} onPress={() => router.push('/rx/new')} style={{ alignSelf: 'stretch', marginTop: Spacing.sm }} />
             </>
           ) : (
             <>
               <AppText variant="label">{tr('還沒有開過處方')}</AppText>
-              <AppText variant="caption" muted style={{ textAlign: 'center' }}>{tr('到探索 › 處方簽看看誰需要一本書。')}</AppText>
+              <AppText variant="caption" muted style={{ textAlign: 'center' }}>{tr('到探索 › 處方箋看看誰需要一本書。')}</AppText>
               <Button kind="secondary" label={tr('去看看')} onPress={() => router.navigate({ pathname: '/', params: { tab: 'rx' } })} style={{ alignSelf: 'stretch', marginTop: Spacing.sm }} />
             </>
           )}
