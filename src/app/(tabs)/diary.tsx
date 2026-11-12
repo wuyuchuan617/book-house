@@ -5,9 +5,9 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, V
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IconButton } from '@/components/icon-button';
-import { StreakCard } from '@/components/diary';
 import { DiaryTimeline } from '@/components/diary-timeline';
 import { WeekCard } from '@/components/week-card';
+import { MonthWrapCard } from '@/components/month-wrap';
 import { AppText, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -38,7 +38,6 @@ export default function DiaryScreen() {
     }, [session]),
   );
 
-  const activeSet = useMemo(() => new Set((active.data ?? []).map((d) => d.day)), [active.data]);
   const recent = useMemo(() => (active.data ?? []).filter((d) => d.day < today).sort((a, b) => b.day.localeCompare(a.day)).slice(0, 7), [active.data, today]);
 
   const header = (
@@ -74,13 +73,28 @@ export default function DiaryScreen() {
           contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.md, gap: Spacing.md, paddingBottom: 96 }}
           refreshControl={<RefreshControl refreshing={day.isRefetching} onRefresh={refetch} />}>
           <WeekCard color={mine?.store.color} />
-          {streak.data ? <StreakCard streak={streak.data} today={today} activeDays={activeSet} onPress={() => router.push('/diary/calendar')} /> : null}
-
-
-          <View style={styles.sectionHead}>
+          {mine ? <MonthWrapCard color={mine.store.color} /> : null}
+          {/* v1.9 AL7：連續天數縮成「今天」那一行的小標；最上面一條「今天讀了什麼？」直接寫 */}
+          <View style={[styles.sectionHead, { alignItems: 'center', marginTop: 0 }]}>
             <AppText variant="heading">{tr('今天')}</AppText>
             <AppText variant="caption" muted style={{ flex: 1 }}>{dayLabel(today)}</AppText>
+            {streak.data?.current_streak ? (
+              <Pressable accessibilityRole="link" accessibilityLabel={tr('連續 {n} 天，看月曆', { n: streak.data.current_streak })} hitSlop={8} onPress={() => router.push('/diary/calendar')} style={[styles.streak, { backgroundColor: c.surfaceMuted }]}>
+                <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('連續 {n} 天', { n: streak.data.current_streak })}</AppText>
+              </Pressable>
+            ) : null}
             <AboutLink feature="diary" />
+          </View>
+          <View style={[styles.quick, { backgroundColor: c.surface, borderColor: c.border }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel={tr('寫日記')} onPress={() => router.push({ pathname: '/diary/compose', params: { kind: 'post' } })} style={{ flex: 1, minHeight: MinTouch, justifyContent: 'center' }}>
+              <AppText style={{ color: c.textSecondary }}>{tr('今天讀了什麼？')}</AppText>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={tr('正在讀：記讀到哪')} onPress={() => router.push({ pathname: '/diary/compose', params: { kind: 'reading' } })} style={[styles.quickBtn, { backgroundColor: c.background }]}>
+              <Feather name="book-open" size={17} color={c.text} />
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={tr('打卡')} onPress={() => router.push({ pathname: '/diary/compose', params: { kind: 'checkin' } })} style={[styles.quickBtn, { backgroundColor: c.background }]}>
+              <Feather name="map-pin" size={17} color={c.text} />
+            </Pressable>
           </View>
           {day.isLoading ? (
             <ActivityIndicator style={{ marginTop: 24 }} />
@@ -90,7 +104,7 @@ export default function DiaryScreen() {
             <View style={[styles.empty, { borderColor: c.border }]}>
               <AppText variant="label">{tr('今天還沒有記錄')}</AppText>
               <AppText variant="caption" muted style={{ textAlign: 'center' }}>
-                {tr('按右下角的＋寫日記、記正在讀的書；今天寫的心得、加入的想讀也會自動出現在這裡。')}
+                {tr('在上面寫一句就開始；今天寫的心得、加入的想讀也會自動出現在這裡。')}
               </AppText>
             </View>
           )}
@@ -130,6 +144,9 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   icon: { width: MinTouch, height: MinTouch, alignItems: 'center', justifyContent: 'center', marginRight: -10 },
   sectionHead: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.sm, justifyContent: 'space-between', marginTop: Spacing.sm },
+  streak: { borderRadius: Radius.pill, paddingHorizontal: 10, minHeight: 28, justifyContent: 'center' },
+  quick: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: Radius.xl, borderWidth: 1, paddingLeft: Spacing.lg, paddingRight: Spacing.sm, minHeight: 56 },
+  quickBtn: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   empty: { borderWidth: 1.5, borderStyle: 'dashed', borderRadius: Radius.lg, alignItems: 'center', padding: Spacing.xl, gap: 6 },
   dayRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, minHeight: 52 },
 });

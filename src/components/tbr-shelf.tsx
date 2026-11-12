@@ -1,6 +1,7 @@
+import { ListSkeleton } from '@/components/skeleton';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { BookCover } from '@/components/book-cover';
 import { ActionSheet, type SheetAction } from '@/components/sheet';
@@ -26,7 +27,7 @@ export function TbrShelf({ right }: { right?: React.ReactNode } = {}) {
   const del = useDeletePurchase();
   const add = useAddReading();
   const fail = (e: Error) => Alert.alert(tr('沒有成功'), userMessage(e));
-  if (isPending) return <ActivityIndicator style={{ marginTop: 48 }} />;
+  if (isPending) return <ListSkeleton />;
   const unread = (data?.items ?? []).filter((p) => p.status === 'unread').sort((a, b) => a.bought_on.localeCompare(b.bought_on));
 
   const actionsFor = (p: Purchase): SheetAction[] => [

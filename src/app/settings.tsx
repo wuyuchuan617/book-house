@@ -7,6 +7,7 @@ import { AppText, Button, Card, Screen } from '@/components/ui';
 import { MinTouch, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useMyStore } from '@/lib/queries';
+import { useDiaryPublicDefault, useSetDiaryPublicDefault } from '@/lib/flow';
 import { useUpdateStore } from '@/lib/readings';
 import { useBlockedAccounts } from '@/lib/safety';
 import { useIsAdmin } from '@/lib/admin';
@@ -28,6 +29,8 @@ export default function SettingsScreen() {
   const { data: mine } = useMyStore();
   const updateStore = useUpdateStore();
   const store = mine?.store;
+  const pubDefault = useDiaryPublicDefault();
+  const setPubDefault = useSetDiaryPublicDefault();
   const { data: blocked } = useBlockedAccounts();
   const { data: isAdmin } = useIsAdmin();
   const appearance = useAppearancePref();
@@ -81,6 +84,15 @@ export default function SettingsScreen() {
                   onValueChange={(v) => updateStore.mutate({ reading_public_default: v }, { onError: (e) => Alert.alert(tr('沒有成功'), userMessage(e)) })}
                 />
               </View>
+              {pubDefault.data !== undefined && pubDefault.data !== 'missing' ? (
+                <View style={[styles.row, { borderBottomColor: c.divider }]}>
+                  <View style={{ flex: 1 }}>
+                    <AppText>{tr('日記預設公開')}</AppText>
+                    <AppText variant="caption" muted>{tr('寫日記時預設公開；每一則發布前都能再改')}</AppText>
+                  </View>
+                  <Toggle accessibilityLabel={tr('日記預設公開')} value={pubDefault.data !== false} onValueChange={(v) => setPubDefault.mutate(v, { onError: (e) => Alert.alert(tr('沒有成功'), userMessage(e)) })} />
+                </View>
+              ) : null}
               <Pressable
                 accessibilityRole="button"
                 onPress={() => shareStore(store.name, store.slug)}

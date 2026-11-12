@@ -1,4 +1,5 @@
 /** M3 逛店與互動：探索、追蹤、收藏、店主閱讀（讀者唯讀）、書籍視角 */
+import { tick } from '@/lib/haptics';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { StoreColor } from '@/constants/theme';
@@ -89,6 +90,7 @@ export function useToggleFollow() {
     },
     // 按下就先變成「追蹤中」，失敗再還原
     onMutate: async ({ bookstoreId, follow }) => {
+      tick();
       const key = ['follow-ids', session?.user.id];
       await qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<Set<string>>(key);
@@ -108,6 +110,7 @@ export function useToggleFollow() {
       qc.invalidateQueries({ queryKey: ['feed'] });
       qc.invalidateQueries({ queryKey: ['feed-unread'] });
       qc.invalidateQueries({ queryKey: ['suggest-stores'] });
+      qc.invalidateQueries({ queryKey: ['onboarding'] });
       qc.invalidateQueries({ queryKey: ['store'] });
     },
   });
@@ -228,6 +231,7 @@ export function useToggleSave() {
       if (save) track('book_saved', { store_id: bookstoreId ?? null, curation_id: curationId ?? null });
     },
     onMutate: async ({ bookId, save }) => {
+      tick();
       const key = ['save-ids', session?.user.id];
       await qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<Set<string>>(key);
@@ -241,6 +245,7 @@ export function useToggleSave() {
       if (ctx) qc.setQueryData(ctx.key, ctx.prev);
     },
     onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['onboarding'] });
       qc.invalidateQueries({ queryKey: ['save-ids'] });
       qc.invalidateQueries({ queryKey: ['saves'] });
     },

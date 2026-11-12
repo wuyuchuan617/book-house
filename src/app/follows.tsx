@@ -1,6 +1,7 @@
+import { ListSkeleton } from '@/components/skeleton';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { FollowButton, StoreAvatar } from '@/components/social';
 import { AppText, Card, EmptyState, Screen } from '@/components/ui';
@@ -42,7 +43,7 @@ export default function FollowsScreen() {
         })}
       </View>
       {list.isPending ? (
-        <ActivityIndicator style={{ marginTop: 48 }} />
+        <ListSkeleton />
       ) : list.error ? (
         <EmptyState title={tr('沒有載入成功')} body={tr('檢查網路後再試一次。')} actionLabel={tr('重試')} onAction={() => void list.refetch()} />
       ) : (

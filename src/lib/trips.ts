@@ -5,7 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Linking } from 'react-native';
 
-import type { StoreColor } from '@/constants/theme';
+import { Colors, type StoreColor, type ThemeColors } from '@/constants/theme';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
 import { tr } from '@/lib/i18n';
@@ -183,19 +183,19 @@ export function openTripMap(stops: TripStop[]) {
 }
 
 /** 書店／咖啡／餐廳／景點的圖示與顏色 */
-export function stopKind(category: string | null) {
+export function stopKind(category: string | null, c: ThemeColors = Colors.light) {
   switch (category) {
     case 'bookstore':
     case 'indie':
-      return { icon: 'book' as const, fg: '#8B4F37', bg: '#F3E7DF', label: tr('書店') };
+      return { icon: 'book' as const, fg: c.primary, bg: c.surfaceMuted, label: tr('書店') };
     case 'library':
-      return { icon: 'book-open' as const, fg: '#8B4F37', bg: '#F3E7DF', label: tr('圖書館') };
+      return { icon: 'book-open' as const, fg: c.primary, bg: c.surfaceMuted, label: tr('圖書館') };
     case 'cafe':
-      return { icon: 'coffee' as const, fg: '#9A4A12', bg: '#FBEBDD', label: tr('咖啡') };
+      return { icon: 'coffee' as const, fg: c.event, bg: c.eventSurface, label: tr('咖啡') };
     case 'park':
     case 'museum':
-      return { icon: 'flag' as const, fg: '#2F5D6B', bg: '#E1ECEF', label: tr('景點') };
+      return { icon: 'flag' as const, fg: c.place, bg: c.placeSurface, label: tr('景點') };
     default:
-      return { icon: 'map-pin' as const, fg: '#5F574E', bg: '#EFE8DE', label: tr('地點') };
+      return { icon: 'map-pin' as const, fg: c.textSecondary, bg: c.divider, label: tr('地點') };
   }
 }

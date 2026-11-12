@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#12100D' },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md },
   icon: { minWidth: MinTouch, height: MinTouch, alignItems: 'center', justifyContent: 'center' },
-  title: { flex: 1, color: '#FFFFFF', fontSize: 17, fontWeight: '700' },
+  title: { flex: 1, color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   thumb: { width: '100%', height: 160, borderRadius: Radius.md, backgroundColor: '#2A251F' },
   page: { backgroundColor: '#E9E2D6', borderRadius: 6, paddingVertical: Spacing.md, paddingHorizontal: Spacing.sm },

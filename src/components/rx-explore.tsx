@@ -1,3 +1,4 @@
+import { ListSkeleton } from '@/components/skeleton';
 import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
@@ -12,7 +13,6 @@ import { timeAgo } from '@/lib/period';
 import { useStoreRx } from '@/lib/store-v16';
 import { authorName, daysLeft, rxTagLabel, useRxList, type RxFilter, type RxListItem } from '@/lib/rx';
 
-export const RX_PURPLE = '#5A4B8A';
 
 export const RX_FILTERS = (): [RxFilter, string][] => [
   ['latest', tr('最新')],
@@ -34,7 +34,7 @@ export function RxExplore({ filter, tag }: { filter: RxFilter; tag?: string }) {
   return (
     <View style={{ flex: 1 }}>
       {list.isPending ? (
-        <ActivityIndicator style={{ marginTop: 48 }} />
+        <ListSkeleton />
       ) : list.error ? (
         <EmptyState title={tr('沒有載入成功')} body={tr('檢查網路後再試一次。')} actionLabel={tr('重試')} onAction={() => void list.refetch()} />
       ) : (
@@ -101,7 +101,7 @@ export function RxCard({ item }: { item: RxListItem }) {
     <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/rx/[id]', params: { id: item.id } })}>
       <Card style={{ gap: Spacing.sm }}>
         <View style={{ flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start' }}>
-          <AppText style={{ fontSize: 20, color: RX_PURPLE, fontWeight: '700', lineHeight: 24 }}>℞</AppText>
+          <AppText style={{ fontSize: 20, color: c.checkin, fontWeight: '700', lineHeight: 24 }}>℞</AppText>
           <AppText variant="heading" style={{ flex: 1, fontSize: 16, lineHeight: 23 }}>{item.title}</AppText>
           {!item.is_open ? (
             <View style={[styles.tag, { backgroundColor: c.surfaceMuted }]}><AppText variant="caption" muted style={{ fontSize: 11, fontWeight: '700' }}>{tr('已結案')}</AppText></View>

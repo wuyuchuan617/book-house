@@ -1,3 +1,4 @@
+import { ListSkeleton } from '@/components/skeleton';
 import Feather from '@expo/vector-icons/Feather';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -60,7 +61,7 @@ export default function StoreScreen() {
     if (current) void recordVisit(current.id);
   }, [current]);
 
-  if (isLoading) return <ActivityIndicator style={{ marginTop: 48 }} />;
+  if (isLoading) return <ListSkeleton />;
   if (!data) return <EmptyState title={tr('找不到這間書店')} body={tr('它可能暫停營業或已經關閉。')} actionLabel={tr('回探索')} onAction={() => router.navigate('/')} />;
 
   const { store, curations } = data;

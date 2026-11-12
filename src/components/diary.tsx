@@ -126,7 +126,7 @@ export function OwnEntryCard({ item, color = 'moss', onMore, hideBadge }: { item
             accessibilityRole={item.place_id ? 'link' : undefined}
             disabled={!item.place_id}
             onPress={() => item.place_id && router.push({ pathname: '/place/[id]', params: { id: item.place_id } })}>
-            <AppText numberOfLines={1} style={{ fontSize: 17, fontWeight: '700', color: item.place_id ? c.primary : c.text }}>
+            <AppText numberOfLines={1} style={{ fontSize: 16, fontWeight: '700', color: item.place_id ? c.primary : c.text }}>
               {item.place_id ? `${placeName} ›` : placeName}
             </AppText>
           </Pressable>

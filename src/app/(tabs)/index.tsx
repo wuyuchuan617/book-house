@@ -1,7 +1,8 @@
+import { ListSkeleton } from '@/components/skeleton';
 import Feather from '@expo/vector-icons/Feather';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { TeaserStrip } from '@/components/teaser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,7 +13,7 @@ import { FilterBar, FilterSheet, type ActiveFilter, type FilterGroup } from '@/c
 import { NotificationBell, SearchButton } from '@/components/icon-button';
 import { PostsExplore, usePostFilter, type PostKindFilter } from '@/components/posts-explore';
 import { RX_FILTERS, RxExplore } from '@/components/rx-explore';
-import { StoreAvatar } from '@/components/social';
+import { FollowButton, StoreAvatar } from '@/components/social';
 import { AppText, Card, EmptyState, Screen } from '@/components/ui';
 import { Fonts, MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -34,6 +35,8 @@ import { tagLabel, tr } from '@/lib/i18n';
 import { TripsExplore } from '@/components/trips';
 import { FollowingFeed } from '@/components/following-feed';
 import { useFeedUnread } from '@/lib/feed';
+import { TAB_MIN, useExploreCounts } from '@/lib/flow';
+import { OnboardingCard } from '@/components/onboarding';
 
 type Tab = 'following' | 'curations' | 'posts' | 'trips' | 'rx';
 type FeedCard = ExploreItem & { visited?: boolean; is_following?: boolean };
@@ -65,6 +68,13 @@ export default function ExploreScreen() {
   const postF = usePostFilter();
   // v1.8.3 AK21：追蹤分頁的小紅點
   const unread = useFeedUnread();
+  // v1.9 AL2：書旅、處方箋全站滿 10 則才佔分頁；不到時是策展列表裡的入口（正在看那個分頁時照樣顯示）
+  const counts = useExploreCounts();
+  const showTrips = !counts.data || counts.data.trips >= TAB_MIN || tab === 'trips';
+  const showRx = !counts.data || counts.data.rx >= TAB_MIN || tab === 'rx';
+  const entries = counts.data
+    ? ([['trips', tr('書旅 · {n}', { n: counts.data.trips }), 'compass', showTrips], ['rx', tr('處方箋 · {n}', { n: counts.data.rx }), 'message-circle', showRx]] as const).filter((e) => !e[3])
+    : [];
   const [postView, setPostView] = useState<'posts' | 'places'>('posts');
   const [postKind, setPostKind] = useState<PostKindFilter>('all');
   const [sort, setSort] = useState<ExploreSort>('recommend');
@@ -111,7 +121,7 @@ export default function ExploreScreen() {
 
   const segment = (
     <View style={[styles.tabs, { borderBottomColor: c.border }]} accessibilityRole="tablist">
-      {([['following', tr('追蹤')], ['curations', tr('策展')], ['posts', tr('手記')], ['trips', tr('書旅')], ['rx', tr('處方箋')]] as const).map(([t, label]) => (
+      {([['following', tr('追蹤')], ['curations', tr('策展')], ['posts', tr('手記')], ['trips', tr('書旅')], ['rx', tr('處方箋')]] as const).filter(([t]) => (t !== 'trips' || showTrips) && (t !== 'rx' || showRx)).map(([t, label]) => (
         <Pressable
           key={t}
           accessibilityRole="tab"
@@ -234,7 +244,7 @@ export default function ExploreScreen() {
             ) : tab === 'rx' ? (
               <RxExplore filter={rxFilter} tag={rxTag} />
             ) : loading ? (
-              <ActivityIndicator style={{ marginTop: 48 }} />
+              <ListSkeleton />
             ) : paused ? (
               <EmptyState title={tr('目前沒有網路連線')} body={tr('連上網路後會自動重新載入。')} actionLabel={tr('重試')} onAction={refetch} />
             ) : list.error ? (
@@ -248,8 +258,20 @@ export default function ExploreScreen() {
                 ListHeaderComponent={
                   // 「即將上架」不管這個月有沒有策展都要顯示（之前沒有精選策展時整段不見）
                   <View style={{ gap: Spacing.md }}>
+                    {!following && isCurrent ? <OnboardingCard onFollow={() => setTab('following')} /> : null}
                     {!following && isCurrent ? <TeaserStrip /> : null}
                     {first ? <FeaturedCard item={first} ownStoreId={mine?.store.id} /> : null}
+                    {entries.length ? (
+                      <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                        {entries.map(([t, label, icon]) => (
+                          <Pressable key={t} accessibilityRole="link" onPress={() => setTab(t)} style={[styles.entry, { backgroundColor: c.surface }]}>
+                            <Feather name={icon} size={17} color={c.primary} />
+                            <AppText variant="label" style={{ flex: 1, fontSize: 14 }}>{label}</AppText>
+                            <Feather name="chevron-right" size={15} color={c.textTertiary} />
+                          </Pressable>
+                        ))}
+                      </View>
+                    ) : null}
                     {first && rest.length && prevStart !== 0 ? <AppText variant="label" style={{ marginTop: Spacing.md }}>{tr('更多 {p0} 月策展', { p0: monthOf(period) })}</AppText> : null}
                   </View>
                 }
@@ -290,7 +312,7 @@ function VisitedBadge() {
 }
 
 /** v1.8.3 AK17 本月精選（精簡）：左邊標題與一句介紹、右邊三本小書封；下面書店一行（約 150pt，原本約 300pt） */
-function FeaturedCard({ item }: { item: FeedCard; ownStoreId?: string }) {
+function FeaturedCard({ item, ownStoreId }: { item: FeedCard; ownStoreId?: string }) {
   const c = useTheme();
   return (
     <Pressable
@@ -316,6 +338,8 @@ function FeaturedCard({ item }: { item: FeedCard; ownStoreId?: string }) {
           <StoreAvatar name={item.store_name} color={item.color} size={20} path={item.avatar_path} />
           <AppText variant="caption" style={{ fontWeight: '600', flex: 1 }} numberOfLines={1}>{item.store_name}</AppText>
           <AppText variant="caption" muted>{tr('{book_count} 本書 · {n} 人追蹤', { book_count: item.book_count, n: item.follower_count })}</AppText>
+          {/* v1.9 AL5：加回追蹤（追蹤動態要靠它） */}
+          {item.bookstore_id !== ownStoreId ? <FollowButton bookstoreId={item.bookstore_id} storeName={item.store_name} /> : null}
         </View>
       </Card>
     </Pressable>
@@ -353,6 +377,7 @@ const styles = StyleSheet.create({
   month: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: Radius.pill, height: 36, paddingLeft: 14, paddingRight: 10 },
   tabs: { flexDirection: 'row', gap: Spacing.xxl, marginHorizontal: Spacing.xl, marginTop: Spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth },
   tab: { minHeight: MinTouch, justifyContent: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent', marginBottom: -StyleSheet.hairlineWidth },
+  entry: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: Radius.lg, paddingHorizontal: Spacing.md, minHeight: 46 },
   unread: { position: 'absolute', top: 10, right: -8, width: 7, height: 7, borderRadius: 4 },
   search: { marginHorizontal: Spacing.xl, marginTop: Spacing.md, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderWidth: 1, borderRadius: Radius.md, paddingLeft: 14, minHeight: 48 },
   searchInput: { flex: 1, fontSize: 16, minHeight: 48, outlineWidth: 0 },

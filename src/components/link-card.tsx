@@ -8,12 +8,12 @@ import { useTheme } from '@/hooks/use-theme';
 import { linkHost, linkPlatform, type LinkPlatform } from '@/lib/diary-link';
 import { tr } from '@/lib/i18n';
 
-const LOOK: Record<LinkPlatform, { icon: React.ComponentProps<typeof Feather>['name']; fg: string; bg: string; label: () => string }> = {
+const LOOK: Record<LinkPlatform, { icon: React.ComponentProps<typeof Feather>['name']; fg?: string; bg?: string; label: () => string }> = {
   youtube: { icon: 'play-circle', fg: '#C4302B', bg: '#FBE7E6', label: () => 'YouTube' },
   spotify: { icon: 'headphones', fg: '#1D8A4A', bg: '#E2F3E8', label: () => 'Spotify' },
   apple_podcasts: { icon: 'mic', fg: '#7A3FA0', bg: '#F1E6F7', label: () => 'Podcast' },
   podcast: { icon: 'mic', fg: '#7A3FA0', bg: '#F1E6F7', label: () => 'Podcast' },
-  web: { icon: 'file-text', fg: '#2E5A87', bg: '#E4ECF5', label: () => tr('文章') },
+  web: { icon: 'file-text', label: () => tr('文章') },
 };
 
 export const openLink = (url: string) => void WebBrowser.openBrowserAsync(url).catch(() => Linking.openURL(url).catch(() => {}));
@@ -29,12 +29,12 @@ export function LinkCard({ url, title, onRemove, loading }: { url: string; title
       accessibilityLabel={tr('打開連結：{title}', { title: title || host })}
       onPress={() => openLink(url)}
       style={({ pressed }) => [styles.card, { backgroundColor: c.background, opacity: pressed ? 0.8 : 1 }]}>
-      <View style={[styles.icon, { backgroundColor: look.bg }]}>
-        <Feather name={look.icon} size={18} color={look.fg} />
+      <View style={[styles.icon, { backgroundColor: look.bg ?? c.tripSurface }]}>
+        <Feather name={look.icon} size={18} color={look.fg ?? c.trip} />
       </View>
       <View style={{ flex: 1 }}>
         <AppText variant="label" numberOfLines={1} style={{ fontSize: 14 }}>{title || (loading ? tr('讀取標題…') : host)}</AppText>
-        <AppText variant="caption" muted numberOfLines={1} style={{ fontSize: 11.5 }}>{`${look.label()} · ${host}`}</AppText>
+        <AppText variant="caption" muted numberOfLines={1} style={{ fontSize: 12 }}>{`${look.label()} · ${host}`}</AppText>
       </View>
       {onRemove ? (
         <Pressable accessibilityRole="button" accessibilityLabel={tr('拿掉連結')} hitSlop={10} onPress={onRemove} style={styles.x}>

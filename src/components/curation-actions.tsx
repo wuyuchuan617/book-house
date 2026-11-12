@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert } from 'react-native';
 
+import { CurationShareSheet } from '@/components/curation-share';
 import { ActionSheet, type SheetAction } from '@/components/sheet';
 import {
   friendlyError,
@@ -35,6 +36,7 @@ export function CurationActions({ curation, visible, onClose, inEditor, onDelete
   onDeleted?: () => void;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const duplicate = useDuplicateCuration();
   const unpublish = useUnpublishCuration();
   const del = useDeleteCuration();
@@ -52,6 +54,8 @@ export function CurationActions({ curation, visible, onClose, inEditor, onDelete
 
   const actions: SheetAction[] = [
     ...(!inEditor ? [{ label: tr('編輯策展'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/curation/[id]', params: { id: curation.id } }) }] : []),
+    // v1.9 AL3：已發布的可以分享圖卡
+    ...(curation.status === 'published' ? [{ label: tr('分享策展'), icon: 'share' as const, sub: tr('做成一張圖，貼到限時動態或貼文'), onPress: () => setSharing(true) }] : []),
     { label: tr('以讀者身分預覽'), icon: 'eye' as const, onPress: () => router.push({ pathname: '/curation/preview/[id]', params: { id: curation.id } }) },
     // v1.8 AD2：下個月以後、還沒上架的可以先預告
     ...(curation.period > currentPeriod() && curation.status !== 'published'
@@ -121,6 +125,7 @@ export function CurationActions({ curation, visible, onClose, inEditor, onDelete
           },
         ]}
       />
+      <CurationShareSheet curationId={curation.id} visible={sharing} onClose={() => setSharing(false)} />
     </>
   );
 }

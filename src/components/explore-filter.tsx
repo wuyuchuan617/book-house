@@ -1,6 +1,7 @@
+import { ListSkeleton } from '@/components/skeleton';
 import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { BottomSheet } from '@/components/bottom-sheet';
 import { Chip, chipRow } from '@/components/form';
@@ -69,7 +70,7 @@ export function FilterSheet({ visible, title, groups, onClear, onClose, resultLa
   return (
     <BottomSheet visible={visible} onClose={onClose} style={{ paddingHorizontal: Spacing.xl, gap: Spacing.lg }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <AppText variant="heading" style={{ flex: 1, fontSize: 17 }}>{title}</AppText>
+        <AppText variant="heading" style={{ flex: 1, fontSize: 16 }}>{title}</AppText>
         <Pressable accessibilityRole="button" onPress={onClear} hitSlop={8}>
           <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('全部清除')}</AppText>
         </Pressable>
@@ -112,7 +113,7 @@ export function SearchResults({ query, onSeeCurations, onClear, renderCuration }
   const ps = posts.data ?? [];
   const rs = rx.data ?? [];
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 48 }} />;
+  if (loading) return <ListSkeleton />;
   const none = !cs.length && !ps.length && !rs.length;
 
   return (

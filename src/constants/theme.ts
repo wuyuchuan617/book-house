@@ -23,6 +23,17 @@ export const Colors = {
     successSurface: '#E3EEDD',
     danger: '#B42318',
     dangerSurface: '#FDE7E4',
+    // v1.9 AL8 類型色（文字／圖示色＋淺底）：打卡、活動、書旅、地點、買書
+    checkin: '#5A4B8A',
+    checkinSurface: '#ECE8F4',
+    event: '#9A4A12',
+    eventSurface: '#FBEBDD',
+    trip: '#2E5A87',
+    tripSurface: '#E4ECF5',
+    place: '#2F5D6B',
+    placeSurface: '#E1ECEF',
+    buy: '#8B6A1F',
+    buySurface: '#F9EEDA',
   },
   dark: {
     text: '#F3EFE8',
@@ -39,6 +50,16 @@ export const Colors = {
     successSurface: '#24502C',
     danger: '#F2A39A',
     dangerSurface: '#5C1A14',
+    checkin: '#C3B5F0',
+    checkinSurface: '#3A3158',
+    event: '#F0B08A',
+    eventSurface: '#55301A',
+    trip: '#A9C8EA',
+    tripSurface: '#243C55',
+    place: '#9CCAD6',
+    placeSurface: '#21424B',
+    buy: '#E5C77E',
+    buySurface: '#4A3A14',
   },
 } as const;
 
@@ -61,6 +82,11 @@ export const Fonts = Platform.select({
   default: { sans: 'normal', serif: 'serif' },
   web: { sans: 'var(--font-display)', serif: 'var(--font-serif)' },
 });
+
+/**
+ * v1.9 AL8 字級：小字 10–13（標籤、說明）、內文 14–16、標題 18–24、大數字 28 以上。不用小數和 17、19、26 這類零散值。
+ */
+export const FontSize = { tiny: 10, micro: 11, small: 12, caption: 13, compact: 14, body: 15, label: 16, heading: 18, title: 20, large: 22, display: 24, hero: 28 } as const;
 
 export const Spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24 } as const;
 export const Radius = { sm: 9, md: 12, lg: 14, xl: 16, pill: 999 } as const;

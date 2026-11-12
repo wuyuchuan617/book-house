@@ -105,7 +105,7 @@ export default function PlaceScreen() {
             </View>
             {typeLabel ? <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{typeLabel}</AppText> : null}
           </View>
-          <AppText variant="title" style={{ fontSize: 26, lineHeight: 34 }}>{place.name}</AppText>
+          <AppText variant="title" style={{ fontSize: 24, lineHeight: 34 }}>{place.name}</AppText>
           {place.address ? (
             <Pressable accessibilityRole="link" accessibilityHint={tr('用地圖打開')} onPress={openMaps} hitSlop={6} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Feather name="map-pin" size={13} color={c.textSecondary} />

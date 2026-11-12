@@ -1,5 +1,6 @@
+import { ListSkeleton } from '@/components/skeleton';
 import { router } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { BookCover } from '@/components/book-cover';
 import { AppText, Card, EmptyState, Screen } from '@/components/ui';
@@ -14,7 +15,7 @@ const STATUS = (): Record<PurchaseStatus, string> => ({ unread: tr('積讀'), re
 export default function PurchasesScreen() {
   const c = useTheme();
   const { data, isPending } = useMyPurchases();
-  if (isPending) return <ActivityIndicator style={{ marginTop: 48 }} />;
+  if (isPending) return <ListSkeleton />;
   if (!data?.items.length) return <EmptyState title={tr('還沒有購書紀錄')} body={tr('買了一本書，按右下角的＋ › 買了一本書。')} actionLabel={tr('記一本買的書')} onAction={() => router.push('/purchase')} />;
   const max = Math.max(1, ...data.by_month.map((m) => m.n));
   return (

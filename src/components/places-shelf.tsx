@@ -1,6 +1,7 @@
+import { ListSkeleton } from '@/components/skeleton';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { PlaceRow } from '@/components/diary';
 import { ActionSheet } from '@/components/sheet';
@@ -59,7 +60,7 @@ export function PlacesShelf({ right }: { right?: React.ReactNode } = {}) {
 
       {tab === 'trips' ? (
         trips.isPending ? (
-          <ActivityIndicator style={{ marginTop: 48 }} />
+          <ListSkeleton />
         ) : (
           <FlatList
             data={trips.data?.saved ?? []}
@@ -71,7 +72,7 @@ export function PlacesShelf({ right }: { right?: React.ReactNode } = {}) {
           />
         )
       ) : list.isLoading ? (
-        <ActivityIndicator style={{ marginTop: 48 }} />
+        <ListSkeleton />
       ) : (
         <FlatList
           data={list.data}

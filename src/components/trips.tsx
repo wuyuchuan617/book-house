@@ -1,7 +1,8 @@
+import { ListSkeleton } from '@/components/skeleton';
 import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AboutLink } from '@/components/about';
 import { Chip } from '@/components/form';
@@ -24,9 +25,9 @@ export function TripCard({ t }: { t: Trip }) {
     <Pressable accessibilityRole="link" accessibilityLabel={`${t.title}，${t.city}，${tr('{n} 個地點', { n: t.stop_count })}`} onPress={() => openTrip(t.id)}>
       <Card style={{ gap: Spacing.sm }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <View style={[styles.city, { backgroundColor: TRIP_BG }]}>
-            <Feather name="map" size={11} color={TRIP_FG} />
-            <AppText variant="caption" style={{ color: TRIP_FG, fontWeight: '700', fontSize: 12 }}>{t.city}</AppText>
+          <View style={[styles.city, { backgroundColor: c.tripSurface }]}>
+            <Feather name="map" size={11} color={c.trip} />
+            <AppText variant="caption" style={{ color: c.trip, fontWeight: '700', fontSize: 12 }}>{t.city}</AppText>
           </View>
           <AppText variant="caption" muted style={{ flex: 1 }}>{`${daysLabel(t.days)} · ${tr('{n} 個地點', { n: t.stop_count })}`}</AppText>
           {t.status === 'draft' ? <View style={[styles.city, { backgroundColor: c.surfaceMuted }]}><AppText variant="caption" style={{ fontWeight: '700', fontSize: 12 }}>{tr('草稿')}</AppText></View> : null}
@@ -38,8 +39,8 @@ export function TripCard({ t }: { t: Trip }) {
             {route.map((r, i) => (
               <View key={`${r.name}-${i}`} style={{ flexDirection: 'row', alignItems: 'center' }}>
                 {i ? <View style={[styles.link, { backgroundColor: c.border }]} /> : null}
-                <View style={[styles.stop, { backgroundColor: stopKind(r.category).bg }]}>
-                  <Feather name={stopKind(r.category).icon} size={12} color={stopKind(r.category).fg} />
+                <View style={[styles.stop, { backgroundColor: stopKind(r.category, c).bg }]}>
+                  <Feather name={stopKind(r.category, c).icon} size={12} color={stopKind(r.category, c).fg} />
                 </View>
               </View>
             ))}
@@ -54,8 +55,6 @@ export function TripCard({ t }: { t: Trip }) {
   );
 }
 
-export const TRIP_FG = '#2E5A87';
-export const TRIP_BG = '#E4ECF5';
 
 /** 探索 › 書旅：先選城市（有書旅的城市，依數量），列出大家公開的書旅 */
 export function TripsExplore() {
@@ -73,7 +72,7 @@ export function TripsExplore() {
         <AboutLink feature="trip" />
       </View>
       {list.isPending ? (
-        <ActivityIndicator style={{ marginTop: 48 }} />
+        <ListSkeleton />
       ) : (
         <FlatList
           data={list.data ?? []}

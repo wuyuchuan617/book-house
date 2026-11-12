@@ -30,7 +30,7 @@ const TEXT = {
     ownerIndie: (o: string) => `${o} 的獨立書店 · 書棲`, owner: (o: string, f: number) => `店主 ${o} · ${f} 人追蹤`,
     authorSep: '、', more: (n: number) => `還有 ${n} 本，在 App 裡看完整書架`,
     empty: '這間書店還沒有發布策展。追蹤後，新策展上架時會通知你。', follow: (n: string) => `在 App 追蹤「${n}」`,
-    download: '還沒有 App？前往下載', hint: '沒有 App 會前往 App Store／Google Play；裝好後再點一次連結就會打開這間書店',
+    download: '開一間自己的書店｜下載書棲', hint: '沒有 App 會前往 App Store／Google Play；裝好後再點一次連結就會打開這間書店',
     titleSep: '｜', curTitle: (name: string, m: number, t: string) => `${name}｜${m} 月策展：${t}`,
   },
   en: {
@@ -42,7 +42,7 @@ const TEXT = {
     ownerIndie: (o: string) => `${o}’s indie bookstore · Bookhaus`, owner: (o: string, f: number) => `By ${o} · ${plural(f, 'follower')}`,
     authorSep: ', ', more: (n: number) => `${plural(n, 'more book')} — see the full shelf in the app`,
     empty: 'No curations yet. Follow to get notified when one goes live.', follow: (n: string) => `Follow “${n}” in the app`,
-    download: 'Don’t have the app? Download it', hint: 'Without the app you’ll go to the App Store / Google Play. Once installed, tap the link again to open this bookstore.',
+    download: 'Open your own bookstore — get the app', hint: 'Without the app you’ll go to the App Store / Google Play. Once installed, tap the link again to open this bookstore.',
     titleSep: ' | ', curTitle: (name: string, m: number, t: string) => `${name} | ${MONTHS[m - 1]} curation: ${t}`,
   },
 };

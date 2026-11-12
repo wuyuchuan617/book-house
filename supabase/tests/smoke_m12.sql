@@ -66,7 +66,9 @@ do $$ begin
   assert (select current_streak from public.my_diary_streak()) = 3, 'streak 3';
   assert (select longest_streak from public.my_diary_streak()) = 3;
 end $$;
-select pg_temp.expect_error($q$update public.diary_entries set body = '改過去' where body = '昨天'$q$, 'past is read-only');
+-- v1.9：7 天內可以改（超過 7 天的測試在 smoke_m28）
+update public.diary_entries set body = '昨天' where body = '昨天';
+select pg_temp.expect_error($q$update public.diary_entries set entry_date = public.taipei_today() where body = '昨天'$q$, 'cannot change the date');
 update public.diary_entries set is_public = false where entry_date = public.taipei_today() - 1 and kind = 'checkin';
 delete from public.diary_entries where body = '五天前';
 

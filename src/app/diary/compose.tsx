@@ -10,6 +10,8 @@ import { BookCover } from '@/components/book-cover';
 import { BookPicker } from '@/components/book-picker';
 import { Chip, TextField, Toggle } from '@/components/form';
 import { LinkCard } from '@/components/link-card';
+import { BottomSheet } from '@/components/bottom-sheet';
+import { useDiaryPublicDefault, useSetDiaryPublicDefault } from '@/lib/flow';
 import { normalizeLink, useLinkTitle } from '@/lib/diary-link';
 import { VisibilityBadge } from '@/components/diary';
 import { PlacePicker, type PlaceChoice } from '@/components/place-picker';
@@ -54,6 +56,8 @@ type Params = {
   /** 舊的 note／checkin 都當成日記貼文（checkin 會直接打開選地點） */
   kind?: Kind | 'note' | 'checkin';
   entryId?: string;
+  /** v1.9 AL4：編輯 7 天內的日記時帶那一天 */
+  date?: string;
   placeId?: string;
   placeName?: string;
   googlePlaceId?: string;
@@ -69,13 +73,13 @@ type Params = {
 
 export default function DiaryComposeScreen() {
   const params = useLocalSearchParams<Params>();
-  const day = useDiaryDay();
+  const day = useDiaryDay(params.entryId && params.date ? params.date : undefined);
   const editingWant = params.kind === 'want' && params.saved === '1' && !!params.placeId;
   const wantRow = useMyPlaceSave(editingWant ? params.placeId : undefined);
   if (editingWant && wantRow.isLoading) return <ActivityIndicator style={{ marginTop: 48 }} />;
   const existing = params.entryId ? (day.data?.items.find((i) => (i.type === 'note' || i.type === 'checkin') && i.id === params.entryId) as DiaryEntry | undefined) : undefined;
   if (params.entryId && day.isLoading) return <ActivityIndicator style={{ marginTop: 48 }} />;
-  if (params.entryId && !existing) return <EmptyState title={tr('只能編輯今天的日記')} body={tr('過了當天的日記可以刪除，但不能修改。')} />;
+  if (params.entryId && !existing) return <EmptyState title={tr('找不到這則日記')} body={tr('日記 7 天內可以編輯；超過 7 天可以刪除，但不能修改。')} />;
   return <ComposeForm params={params} existing={existing} wantRow={wantRow.data ?? undefined} />;
 }
 
@@ -108,6 +112,11 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
   const addReading = useAddReading();
   const updateReading = useUpdateReading();
   const [busy, setBusy] = useState(false);
+  // v1.9 AL4：日記預設公開／只有自己（還沒問過就在第一次公開發布時問一次）
+  const pubDefault = useDiaryPublicDefault();
+  const setPubDefault = useSetDiaryPublicDefault();
+  const [askPublic, setAskPublic] = useState(false);
+  const [futureDefault, setFutureDefault] = useState(true);
 
   const kind = initialKind(params, existing);
   const [pickedBook, setBook] = useState<MiniBook | null>(existing?.book ?? null);
@@ -160,9 +169,10 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
 
   // 公開：日記貼文 → 沒有地點或公開場所才可以；正在讀 → 預設跟著那本書；想去 → 公開場所才可以
   const canPublic = kind === 'want' ? !!googlePlace?.public_ok : kind === 'post' ? !place || !!googlePlace?.public_ok : true;
-  const defaultPublic = kind === 'reading' ? (linkedReading ? linkedReading.is_public : newReadingPublic) && !!store?.store.show_post : kind === 'want' ? !!store?.store.show_place : true; // v1.8.3：日記預設公開（私人地點仍然不能公開）
+  const defaultPublic = kind === 'reading' ? (linkedReading ? linkedReading.is_public : newReadingPublic) && !!store?.store.show_post : kind === 'want' ? !!store?.store.show_place : pubDefault.data !== false; // 日記預設看個人設定（沒設定過＝公開；私人地點仍然不能公開）
   // v1.6：想去不再一則一則選公開（公開場所一律可以顯示，要不要出現在書店頁只看公開設定）
   const publicOn = kind === 'want' ? canPublic : canPublic && (isPublic ?? defaultPublic);
+  const publicOnNow = publicOn;
 
   const dirty = existing
     ? body !== (existing.body ?? '') || book?.id !== existing.book?.id || photos.length !== existing.photo_paths.length || photos.some((p) => 'uri' in p) || publicOn !== existing.is_public || placeKey(place) !== (existing.place_id ?? existing.place_label ?? '') || pageRef !== (existing.page_ref ?? '') || (link ?? '') !== (existing.link ?? '')
@@ -202,7 +212,13 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
     setTimeout(() => router.back(), 0);
   };
 
-  const submit = async () => {
+  const submit = async (forcePublic?: boolean) => {
+    const publicOn = forcePublic ?? publicOnNow;
+    // 第一次公開發布：先問一次
+    if (forcePublic === undefined && kind !== 'want' && publicOn && !existing && pubDefault.data === null) {
+      setAskPublic(true);
+      return;
+    }
     setBusy(true);
     try {
       if (kind === 'want') {
@@ -510,6 +526,40 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
           onPress={() => void submit()}
         />
       </SafeAreaView>
+
+      <BottomSheet visible={askPublic} onClose={() => setAskPublic(false)} style={{ paddingHorizontal: Spacing.xl, gap: Spacing.md }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
+          <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: c.successSurface, alignItems: 'center', justifyContent: 'center' }}>
+            <Feather name="globe" size={22} color={c.success} />
+          </View>
+          <AppText variant="heading">{tr('這則日記會公開')}</AppText>
+        </View>
+        <AppText muted style={{ lineHeight: 22 }}>{tr('公開的日記會出現在探索的手記和你的書店頁，任何人都看得到。不想公開可以改成「只有自己」。')}</AppText>
+        <View style={{ backgroundColor: c.surface, borderRadius: Radius.lg, padding: Spacing.md, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+          <View style={{ flex: 1 }}>
+            <AppText variant="label">{tr('以後的日記預設')}</AppText>
+            <AppText variant="caption" muted>{tr('之後在設定可以再改')}</AppText>
+          </View>
+          <Chip label={tr('公開')} selected={futureDefault} onPress={() => setFutureDefault(true)} />
+          <Chip label={tr('只有自己')} selected={!futureDefault} onPress={() => setFutureDefault(false)} />
+        </View>
+        <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+          {[false, true].map((pub) => (
+            <View key={String(pub)} style={{ flex: 1 }}>
+              <Button
+                kind={pub ? 'primary' : 'secondary'}
+                label={pub ? tr('公開發布') : tr('改成只有自己')}
+                onPress={() => {
+                  setAskPublic(false);
+                  setPubDefault.mutate(futureDefault);
+                  setIsPublic(pub);
+                  void submit(pub);
+                }}
+              />
+            </View>
+          ))}
+        </View>
+      </BottomSheet>
 
       <PlacePicker
         visible={placeOpen}

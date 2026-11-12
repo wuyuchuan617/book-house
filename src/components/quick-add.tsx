@@ -59,14 +59,14 @@ export function QuickAddSheet({ visible, onClose }: { visible: boolean; onClose:
 
   const items: Record<string, Item> = Object.fromEntries(
     ([
-      { key: 'post', icon: 'edit-3', title: tr('寫日記'), sub: tr('寫字、放照片；加地點就是打卡'), tint: '#5A4B8A', bg: '#ECE8F4', onPress: () => router.push({ pathname: '/diary/compose', params: { kind: 'post' } }) },
+      { key: 'post', icon: 'edit-3', title: tr('寫日記'), sub: tr('寫字、放照片；加地點就是打卡'), tint: c.checkin, bg: c.checkinSurface, onPress: () => router.push({ pathname: '/diary/compose', params: { kind: 'post' } }) },
       { key: 'reading', icon: 'play', title: tr('正在讀'), sub: tr('記讀到哪'), tint: c.success, bg: c.successSurface, onPress: () => router.push('/reading/compose') },
       { key: 'want_book', icon: 'bookmark', title: tr('想讀'), sub: tr('存一本書'), tint: c.primary, bg: c.surfaceMuted, onPress: () => router.push('/want-book') },
-      { key: 'want_place', icon: 'map-pin', title: tr('想去'), sub: tr('存一個地點'), tint: '#2F5D6B', bg: '#E1ECEF', onPress: () => router.push({ pathname: '/diary/compose', params: { kind: 'want' } }) },
-      { key: 'purchase', icon: 'shopping-bag', title: tr('買了書'), sub: tr('放進積讀'), tint: '#8B6A1F', bg: '#F9EEDA', onPress: () => router.push('/purchase') },
-      { key: 'event', icon: 'calendar', title: tr('分享活動'), sub: tr('市集、簽書會'), tint: '#9A4A12', bg: '#FBEBDD', onPress: () => router.push('/event/share') },
-      { key: 'trip', icon: 'compass', title: tr('整理書旅'), sub: tr('一個城市的路線'), tint: '#2E5A87', bg: '#E4ECF5', onPress: () => router.push('/trip/edit') },
-      { key: 'rx', icon: 'message-circle', title: tr('處方箋'), sub: tr('請大家推薦'), tint: '#5A4B8A', bg: '#ECE8F4', onPress: () => router.push('/rx/new') },
+      { key: 'want_place', icon: 'map-pin', title: tr('想去'), sub: tr('存一個地點'), tint: c.place, bg: c.placeSurface, onPress: () => router.push({ pathname: '/diary/compose', params: { kind: 'want' } }) },
+      { key: 'purchase', icon: 'shopping-bag', title: tr('買了書'), sub: tr('放進積讀'), tint: c.buy, bg: c.buySurface, onPress: () => router.push('/purchase') },
+      { key: 'event', icon: 'calendar', title: tr('分享活動'), sub: tr('市集、簽書會'), tint: c.event, bg: c.eventSurface, onPress: () => router.push('/event/share') },
+      { key: 'trip', icon: 'compass', title: tr('整理書旅'), sub: tr('一個城市的路線'), tint: c.trip, bg: c.tripSurface, onPress: () => router.push('/trip/edit') },
+      { key: 'rx', icon: 'message-circle', title: tr('處方箋'), sub: tr('請大家推薦'), tint: c.checkin, bg: c.checkinSurface, onPress: () => router.push('/rx/new') },
       { key: 'curation', icon: 'grid', title: tr('新增策展'), sub: tr('下個月的書單'), tint: c.text, bg: c.surfaceMuted, onPress: newCuration },
     ] as Item[]).map((it) => [it.key, it]),
   );
@@ -84,7 +84,7 @@ export function QuickAddSheet({ visible, onClose }: { visible: boolean; onClose:
       </View>
       <View style={{ flex: 1 }}>
         <AppText variant="label" numberOfLines={1}>{it.title}</AppText>
-        <AppText variant="caption" muted numberOfLines={1} style={{ fontSize: 11.5 }}>{it.sub}</AppText>
+        <AppText variant="caption" muted numberOfLines={1} style={{ fontSize: 12 }}>{it.sub}</AppText>
       </View>
     </Pressable>
   );

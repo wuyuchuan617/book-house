@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { BottomTabBarProps } from 'expo-router/tabs';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { QuickAddSheet } from '@/components/quick-add';
@@ -21,7 +21,7 @@ const ICONS: Record<string, [React.ComponentProps<typeof Ionicons>['name'], Reac
 
 /**
  * Y1 底部分頁（v1.7）：深色膠囊放 4 個分頁圖示（選中的有淺色底），右邊獨立的黃色＋。
- * 只有圖示；讀螢幕的人會聽到分頁名稱。
+ * v1.9 AL7：圖示下面加文字（只有圖示時新用戶要一個一個點才知道是什麼）。
  */
 export function CapsuleTabBar({ state, descriptors, emitter, navigateToTab }: BottomTabBarProps) {
   const c = useTheme();
@@ -48,7 +48,8 @@ export function CapsuleTabBar({ state, descriptors, emitter, navigateToTab }: Bo
                 if (!focused && !e.defaultPrevented) navigateToTab(route.key);
               }}
               style={[styles.item, focused && { backgroundColor: '#3A3632' }]}>
-              <Ionicons name={focused ? icon[0] : icon[1]} size={24} color={focused ? '#FFFFFF' : '#B9B2A8'} />
+              <Ionicons name={focused ? icon[0] : icon[1]} size={21} color={focused ? '#FFFFFF' : '#B9B2A8'} />
+              <Text numberOfLines={1} allowFontScaling={false} style={[styles.label, { color: focused ? '#FFFFFF' : '#B9B2A8', fontWeight: focused ? '700' : '500' }]}>{label}</Text>
             </Pressable>
           );
         })}
@@ -86,7 +87,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 8,
   },
-  item: { flex: 1, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
+  item: { flex: 1, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', gap: 1 },
+  label: { fontSize: 10.5, lineHeight: 13 },
   fab: {
     width: 62,
     height: 62,

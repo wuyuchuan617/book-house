@@ -37,8 +37,8 @@ export default function DiaryDayScreen() {
         <ActivityIndicator style={{ marginTop: 48 }} />
       ) : day.data?.items.length ? (
         <ScrollView contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.sm, gap: Spacing.md, paddingBottom: 40 }}>
-          {!isToday ? <AppText variant="caption" muted>{tr('過去的日記不能修改；往左滑可以刪除。')}</AppText> : null}
-          <DiaryTimeline items={day.data.items} isToday={isToday} color={mine?.store.color} />
+          {!isToday ? <AppText variant="caption" muted>{tr('日記 7 天內可以編輯；超過 7 天只能改公開設定和刪除。')}</AppText> : null}
+          <DiaryTimeline items={day.data.items} isToday={isToday} date={date} color={mine?.store.color} />
         </ScrollView>
       ) : (
         <View style={{ flex: 1 }}>

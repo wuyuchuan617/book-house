@@ -114,7 +114,7 @@ function TripEditor({ trip }: { trip: Trip | null }) {
                   rowHeight={ROW_H}
                   onReorder={reorder}
                   renderRow={(s, i) => {
-                    const k = stopKind(s.place.category);
+                    const k = stopKind(s.place.category, c);
                     return (
                       <Pressable
                         accessibilityRole="button"

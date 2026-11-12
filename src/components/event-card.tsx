@@ -1,7 +1,8 @@
+import { ListSkeleton } from '@/components/skeleton';
 import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { ActionSheet } from '@/components/sheet';
 
@@ -14,8 +15,6 @@ import { addToCalendar, EVENT_TYPE_LABEL, eventDay, eventError, eventTime, event
 import { tr } from '@/lib/i18n';
 import { timeAgo } from '@/lib/period';
 
-export const EVENT_FG = '#9A4A12';
-export const EVENT_BG = '#FBEBDD';
 
 const openEvent = (id: string) => router.push({ pathname: '/event/[id]', params: { id } });
 
@@ -25,16 +24,17 @@ export function DateBlock({ iso }: { iso: string }) {
   const d = eventDay(iso);
   return (
     <View style={[styles.date, { borderColor: c.border, backgroundColor: c.surface }]}>
-      <View style={{ backgroundColor: EVENT_FG, paddingVertical: 2 }}><AppText variant="caption" style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 11, textAlign: 'center' }}>{d.week}</AppText></View>
+      <View style={{ backgroundColor: c.event, paddingVertical: 2 }}><AppText variant="caption" style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 11, textAlign: 'center' }}>{d.week}</AppText></View>
       <AppText style={{ fontSize: 20, fontWeight: '700', textAlign: 'center', paddingVertical: 3 }}>{d.day}</AppText>
     </View>
   );
 }
 
 export function TypeTag({ type }: { type: BookEvent['event_type'] }) {
+  const c = useTheme();
   return (
-    <View style={[styles.tag, { backgroundColor: EVENT_BG }]}>
-      <AppText variant="caption" style={{ color: EVENT_FG, fontWeight: '700', fontSize: 11 }}>{EVENT_TYPE_LABEL()[type]}</AppText>
+    <View style={[styles.tag, { backgroundColor: c.eventSurface }]}>
+      <AppText variant="caption" style={{ color: c.event, fontWeight: '700', fontSize: 11 }}>{EVENT_TYPE_LABEL()[type]}</AppText>
     </View>
   );
 }
@@ -53,8 +53,8 @@ export function EventInfo({ e, sub, onPress }: { e: BookEvent; sub?: string | nu
         <AppText variant="caption" muted>{eventTime(e)}</AppText>
         {eventWhere(e) ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-            <Feather name={e.online ? 'monitor' : 'map-pin'} size={12} color="#2F5D6B" />
-            <AppText variant="caption" style={{ color: '#2F5D6B', fontWeight: '600', flexShrink: 1 }} numberOfLines={1}>{eventWhere(e)}</AppText>
+            <Feather name={e.online ? 'monitor' : 'map-pin'} size={12} color={c.place} />
+            <AppText variant="caption" style={{ color: c.place, fontWeight: '600', flexShrink: 1 }} numberOfLines={1}>{eventWhere(e)}</AppText>
           </View>
         ) : null}
         {sub ? <AppText variant="caption" muted>{sub}</AppText> : null}
@@ -94,8 +94,8 @@ export function EventCard({ e }: { e: BookEvent }) {
         ) : (
           <View style={{ flex: 1 }} />
         )}
-        <View style={[styles.tag, { backgroundColor: EVENT_BG }]}>
-          <AppText variant="caption" style={{ color: EVENT_FG, fontWeight: '700', fontSize: 11 }}>{tr('活動')}</AppText>
+        <View style={[styles.tag, { backgroundColor: c.eventSurface }]}>
+          <AppText variant="caption" style={{ color: c.event, fontWeight: '700', fontSize: 11 }}>{tr('活動')}</AppText>
         </View>
       </View>
       {e.latest?.body ? <AppText style={{ lineHeight: 23, fontSize: 15 }} numberOfLines={4}>{e.latest.body}</AppText> : null}
@@ -104,7 +104,7 @@ export function EventCard({ e }: { e: BookEvent }) {
         <View style={{ flex: 1, gap: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <AppText variant="label" numberOfLines={1} style={{ flexShrink: 1 }}>{e.title}</AppText>
-            <AppText variant="caption" style={{ color: EVENT_FG, fontWeight: '700' }}>{EVENT_TYPE_LABEL()[e.event_type]}</AppText>
+            <AppText variant="caption" style={{ color: c.event, fontWeight: '700' }}>{EVENT_TYPE_LABEL()[e.event_type]}</AppText>
           </View>
           <AppText variant="caption" muted numberOfLines={1}>{[eventTime(e), eventWhere(e) || null].filter(Boolean).join(' · ')}</AppText>
         </View>
@@ -137,7 +137,7 @@ export function EventCard({ e }: { e: BookEvent }) {
 /** 探索 › 貼文 › 活動 */
 export function EventsExplore({ filter = 'all', near = null }: { filter?: 'all' | 'following' | 'near'; near?: { lat: number; lng: number } | null }) {
   const list = useExploreEvents(filter, near);
-  if (list.isPending) return <ActivityIndicator style={{ marginTop: 48 }} />;
+  if (list.isPending) return <ListSkeleton />;
   return (
     <FlatList
       data={list.data ?? []}

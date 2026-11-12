@@ -7,7 +7,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ActionSheet } from '@/components/sheet';
 import { StoreAvatar } from '@/components/social';
 import { AppText, EmptyState, Screen } from '@/components/ui';
-import { TRIP_BG, TRIP_FG } from '@/components/trips';
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
@@ -57,9 +56,9 @@ export default function TripScreen() {
       <ScrollView contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.sm, gap: Spacing.md, paddingBottom: 40 }} refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}>
         <View style={{ gap: 6 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
-            <View style={[styles.city, { backgroundColor: TRIP_BG }]}>
-              <Feather name="map" size={11} color={TRIP_FG} />
-              <AppText variant="caption" style={{ color: TRIP_FG, fontWeight: '700' }}>{t.city}</AppText>
+            <View style={[styles.city, { backgroundColor: c.tripSurface }]}>
+              <Feather name="map" size={11} color={c.trip} />
+              <AppText variant="caption" style={{ color: c.trip, fontWeight: '700' }}>{t.city}</AppText>
             </View>
             <Pressable accessibilityRole={t.author.slug ? 'link' : undefined} disabled={!t.author.slug} onPress={() => t.author.slug && router.push({ pathname: '/store/[slug]', params: { slug: t.author.slug } })} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, minHeight: 32 }}>
               <StoreAvatar name={t.author.name} color={t.author.color ?? 'moss'} size={20} path={t.author.avatar_path} />
@@ -145,7 +144,7 @@ export default function TripScreen() {
 /** v1.8.1 AJ4：時間軸一站：左邊圖示＋直線，右邊「01 · 早上」、白卡（名稱、類型、推薦）；下面到下一站走路時間 */
 function StopRow({ s, i, next }: { s: TripStop; i: number; next?: TripStop }) {
   const c = useTheme();
-  const k = stopKind(s.place.category);
+  const k = stopKind(s.place.category, c);
   const walk = next ? walkMinutes(s.place, next.place) : null;
   return (
     <View style={{ flexDirection: 'row', gap: Spacing.md, paddingBottom: next ? Spacing.sm : 0 }}>
@@ -156,7 +155,7 @@ function StopRow({ s, i, next }: { s: TripStop; i: number; next?: TripStop }) {
         {next ? <View style={[styles.line, { backgroundColor: c.border }]} /> : null}
       </View>
       <View style={{ flex: 1, gap: 4 }}>
-        <AppText variant="caption" muted style={{ fontSize: 11.5 }}>{[String(i + 1).padStart(2, '0'), s.slot ? SLOT_LABEL()[s.slot] : null].filter(Boolean).join(' · ')}</AppText>
+        <AppText variant="caption" muted style={{ fontSize: 12 }}>{[String(i + 1).padStart(2, '0'), s.slot ? SLOT_LABEL()[s.slot] : null].filter(Boolean).join(' · ')}</AppText>
         <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/place/[id]', params: { id: s.place.id } })} style={[styles.stop, { backgroundColor: c.surface }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <AppText variant="label" style={{ flex: 1, fontSize: 15 }}>{s.place.name}</AppText>
@@ -178,8 +177,8 @@ function StopRow({ s, i, next }: { s: TripStop; i: number; next?: TripStop }) {
 function Stat({ n, label }: { n: string; label: string }) {
   return (
     <View style={{ flex: 1, alignItems: 'center' }}>
-      <AppText style={{ fontSize: 17, fontWeight: '700' }}>{n}</AppText>
-      <AppText variant="caption" muted style={{ fontSize: 11.5 }}>{label}</AppText>
+      <AppText style={{ fontSize: 16, fontWeight: '700' }}>{n}</AppText>
+      <AppText variant="caption" muted style={{ fontSize: 12 }}>{label}</AppText>
     </View>
   );
 }

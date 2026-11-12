@@ -116,7 +116,7 @@ export default function BookScreen() {
               </Pressable>
             ))}
           </Row>
-          <Row icon="message-circle" color="#5A4B8A" title={rx.length ? tr('被開進 {n} 張處方箋', { n: rx.length }) : tr('還沒被開進處方箋')} open={open === 'rx'} onPress={rx.length ? () => toggle('rx') : undefined}>
+          <Row icon="message-circle" color={c.checkin} title={rx.length ? tr('被開進 {n} 張處方箋', { n: rx.length }) : tr('還沒被開進處方箋')} open={open === 'rx'} onPress={rx.length ? () => toggle('rx') : undefined}>
             {rx.map((r) => (
               <Pressable key={r.id} accessibilityRole="link" onPress={() => router.push({ pathname: '/rx/[id]', params: { id: r.id } })} style={styles.item}>
                 <AppText variant="caption" style={{ flex: 1, lineHeight: 19 }}>{`℞ ${r.title}`}</AppText>
@@ -124,7 +124,7 @@ export default function BookScreen() {
               </Pressable>
             ))}
           </Row>
-          <Row icon="edit-3" color="#2F5D6B" title={posts.length ? tr('{n} 則貼文提到', { n: posts.length }) : tr('還沒有貼文提到')} open={open === 'posts'} onPress={posts.length ? () => toggle('posts') : undefined} last>
+          <Row icon="edit-3" color={c.place} title={posts.length ? tr('{n} 則貼文提到', { n: posts.length }) : tr('還沒有貼文提到')} open={open === 'posts'} onPress={posts.length ? () => toggle('posts') : undefined} last>
             {posts.map((p) => (
               <Pressable key={`${p.source}-${p.id}`} accessibilityRole="link" disabled={!p.author_store_slug} onPress={() => p.author_store_slug && router.push({ pathname: '/store/[slug]', params: { slug: p.author_store_slug, tab: p.source === 'note' ? 'reading' : 'journal' } })} style={styles.item}>
                 <View style={{ flex: 1, gap: 2 }}>

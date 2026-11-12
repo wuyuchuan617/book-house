@@ -1,7 +1,8 @@
+import { ListSkeleton } from '@/components/skeleton';
 import Feather from '@expo/vector-icons/Feather';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { NotificationBell, SearchButton } from '@/components/icon-button';
@@ -107,7 +108,7 @@ export default function SavedScreen() {
         ) : tab === 'places' ? (
           <PlacesShelf right={help} />
         ) : books.isLoading ? (
-          <ActivityIndicator style={{ marginTop: 48 }} />
+          <ListSkeleton />
         ) : books.error ? (
           <EmptyState title={tr('想讀清單沒有載入成功')} body={tr('你的想讀都還在，只是這次沒讀到。檢查網路後再試一次。')} actionLabel={tr('重試')} onAction={() => void books.refetch()} />
         ) : (

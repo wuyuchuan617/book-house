@@ -1,13 +1,14 @@
+import { ListSkeleton } from '@/components/skeleton';
 import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { BookCover } from '@/components/book-cover';
 import { LinkCard } from '@/components/link-card';
 import { FollowButton, StoreAvatar } from '@/components/social';
 import { AppText, Card, EmptyState } from '@/components/ui';
-import { Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing, type ThemeColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { useFollowIds } from '@/lib/browse';
@@ -21,30 +22,30 @@ const openStore = (slug: string) => router.push({ pathname: '/store/[slug]', par
 const month = (period?: string) => (period ? Number(period.slice(5, 7)) : 0);
 
 /** 一行動態：圖示＋一句話；點了到那個內容 */
-function line(it: FeedItem, slug: string): { icon: Icon; color: string; text: string; go: () => void } {
+function line(it: FeedItem, slug: string, c: ThemeColors): { icon: Icon; color: string; text: string; go: () => void } {
   const d = it.data;
   switch (it.kind) {
     case 'curation':
-      return { icon: 'grid', color: '#8B4F37', text: tr('上架了 {m} 月策展《{title}》 · {n} 本', { m: month(d.period), title: d.title ?? '', n: d.book_count ?? 0 }), go: () => openStore(slug) };
+      return { icon: 'grid', color: c.primary, text: tr('上架了 {m} 月策展《{title}》 · {n} 本', { m: month(d.period), title: d.title ?? '', n: d.book_count ?? 0 }), go: () => openStore(slug) };
     case 'teaser':
-      return { icon: 'clock', color: '#8B4F37', text: tr('預告 {m} 月策展《{title}》', { m: month(d.period), title: d.title ?? tr('（未命名策展）') }), go: () => openStore(slug) };
+      return { icon: 'clock', color: c.primary, text: tr('預告 {m} 月策展《{title}》', { m: month(d.period), title: d.title ?? tr('（未命名策展）') }), go: () => openStore(slug) };
     case 'post':
       return d.place
-        ? { icon: 'map-pin', color: '#5A4B8A', text: d.body ? tr('在{place}打卡：「{body}」', { place: d.place, body: d.body }) : tr('在{place}打卡', { place: d.place }), go: () => router.push({ pathname: '/store/[slug]', params: { slug, tab: 'journal' } }) }
-        : { icon: 'edit-3', color: '#5A4B8A', text: tr('寫了手記：「{body}」', { body: d.body ?? '' }), go: () => router.push({ pathname: '/store/[slug]', params: { slug, tab: 'journal' } }) };
+        ? { icon: 'map-pin', color: c.checkin, text: d.body ? tr('在{place}打卡：「{body}」', { place: d.place, body: d.body }) : tr('在{place}打卡', { place: d.place }), go: () => router.push({ pathname: '/store/[slug]', params: { slug, tab: 'journal' } }) }
+        : { icon: 'edit-3', color: c.checkin, text: tr('寫了手記：「{body}」', { body: d.body ?? '' }), go: () => router.push({ pathname: '/store/[slug]', params: { slug, tab: 'journal' } }) };
     case 'reading_started':
-      return { icon: 'play', color: '#2F6B3A', text: tr('開始讀《{title}》', { title: d.book?.title ?? '' }), go: () => d.book && router.push({ pathname: '/book/[id]', params: { id: d.book.id } }) };
+      return { icon: 'play', color: c.success, text: tr('開始讀《{title}》', { title: d.book?.title ?? '' }), go: () => d.book && router.push({ pathname: '/book/[id]', params: { id: d.book.id } }) };
     case 'reading_finished':
-      return { icon: 'check-circle', color: '#2F6B3A', text: tr('讀完《{title}》', { title: d.book?.title ?? '' }), go: () => d.book && router.push({ pathname: '/book/[id]', params: { id: d.book.id } }) };
+      return { icon: 'check-circle', color: c.success, text: tr('讀完《{title}》', { title: d.book?.title ?? '' }), go: () => d.book && router.push({ pathname: '/book/[id]', params: { id: d.book.id } }) };
     case 'trip':
-      return { icon: 'compass', color: '#2E5A87', text: tr('整理了書旅「{title}」 · {city}', { title: d.title ?? '', city: d.city ?? '' }), go: () => router.push({ pathname: '/trip/[id]', params: { id: it.ref } }) };
+      return { icon: 'compass', color: c.trip, text: tr('整理了書旅「{title}」 · {city}', { title: d.title ?? '', city: d.city ?? '' }), go: () => router.push({ pathname: '/trip/[id]', params: { id: it.ref } }) };
     case 'rx':
-      return { icon: 'message-circle', color: '#5A4B8A', text: tr('發起處方箋「{title}」', { title: d.title ?? '' }), go: () => router.push({ pathname: '/rx/[id]', params: { id: it.ref } }) };
+      return { icon: 'message-circle', color: c.checkin, text: tr('發起處方箋「{title}」', { title: d.title ?? '' }), go: () => router.push({ pathname: '/rx/[id]', params: { id: it.ref } }) };
     case 'rx_reply':
-      return { icon: 'message-circle', color: '#5A4B8A', text: tr('開了《{book}》給「{title}」', { book: d.book?.title ?? '', title: d.title ?? '' }), go: () => router.push({ pathname: '/rx/[id]', params: { id: it.ref } }) };
+      return { icon: 'message-circle', color: c.checkin, text: tr('開了《{book}》給「{title}」', { book: d.book?.title ?? '', title: d.title ?? '' }), go: () => router.push({ pathname: '/rx/[id]', params: { id: it.ref } }) };
     case 'event_share':
     default:
-      return { icon: 'calendar', color: '#9A4A12', text: tr('分享了活動「{title}」', { title: d.title ?? '' }), go: () => router.push({ pathname: '/event/[id]', params: { id: it.ref } }) };
+      return { icon: 'calendar', color: c.event, text: tr('分享了活動「{title}」', { title: d.title ?? '' }), go: () => router.push({ pathname: '/event/[id]', params: { id: it.ref } }) };
   }
 }
 
@@ -60,7 +61,7 @@ function GroupCard({ g, isNew }: { g: FeedGroup; isNew: boolean }) {
         <AppText variant="caption" muted>{when}</AppText>
       </Pressable>
       {g.items.map((it, i) => {
-        const l = line(it, g.store.slug);
+        const l = line(it, g.store.slug, c);
         return (
           <Pressable key={`${it.kind}-${it.ref}-${i}`} accessibilityRole="link" onPress={l.go} style={[styles.row, { borderTopColor: c.divider }]}>
             <Feather name={l.icon} size={15} color={l.color} style={{ marginTop: 2 }} />
@@ -139,7 +140,7 @@ export function FollowingFeed() {
   }, [loaded, mutate]);
 
   if (!session) return <EmptyState title={tr('登入後看追蹤的書店')} body={tr('追蹤喜歡的店主，他們的新動態會整理在這裡。')} actionLabel={tr('登入')} onAction={() => requireAuth(() => {})} />;
-  if (feed.isPending || follows.isPending) return <ActivityIndicator style={{ marginTop: 48 }} />;
+  if (feed.isPending || follows.isPending) return <ListSkeleton />;
   const groups = feed.data?.groups ?? [];
   const seen = seenSnap ?? null;
   const firstOld = seen ? groups.findIndex((g) => g.latest_at <= seen) : -1;

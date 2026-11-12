@@ -6,7 +6,6 @@ import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleS
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
-import { RX_PURPLE } from '@/components/rx-explore';
 import { ActionSheet } from '@/components/sheet';
 import { AppText, Button, Card, EmptyState, Screen } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
@@ -98,7 +97,7 @@ export default function RxScreen() {
         <View style={[styles.hero, { backgroundColor: data.is_open ? RX_DARK : RX_CLOSED }]}>
           <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
             <View style={styles.rxIcon}><AppText style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '700' }}>℞</AppText></View>
-            <AppText variant="title" style={{ flex: 1, fontSize: 19, lineHeight: 27, color: '#FFFFFF' }}>{data.title}</AppText>
+            <AppText variant="title" style={{ flex: 1, fontSize: 18, lineHeight: 27, color: '#FFFFFF' }}>{data.title}</AppText>
           </View>
           {data.body ? <AppText style={{ lineHeight: 21, color: 'rgba(255,255,255,0.82)', fontSize: 14 }}>{data.body}</AppText> : null}
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
@@ -210,7 +209,7 @@ function BookGroup({ group, rx, onReport }: { group: RxBookGroup; rx: RxDetail; 
             <AppText variant="label" numberOfLines={2}>{bookTitle(group.book.title)}</AppText>
             <AppText variant="caption" muted numberOfLines={1}>
               {group.book.authors.join(tr('、'))}
-              <AppText variant="caption" style={{ color: RX_PURPLE, fontWeight: '700' }}>{`  ${tr('{n} 人開出', { n: group.count })}`}</AppText>
+              <AppText variant="caption" style={{ color: c.checkin, fontWeight: '700' }}>{`  ${tr('{n} 人開出', { n: group.count })}`}</AppText>
             </AppText>
             {group.owner_wants && !rx.is_mine ? <AppText variant="caption" style={{ color: c.success, fontWeight: '700' }}>{tr('✓ 發起人加入想讀了')}</AppText> : null}
           </View>

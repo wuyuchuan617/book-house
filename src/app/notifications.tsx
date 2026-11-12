@@ -1,7 +1,8 @@
+import { ListSkeleton } from '@/components/skeleton';
 import Feather from '@expo/vector-icons/Feather';
 import { router, Stack } from 'expo-router';
 import { useEffect } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { AppText, EmptyState, Screen } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
@@ -46,7 +47,7 @@ export default function NotificationsScreen() {
     <Screen>
       <Stack.Screen options={{ title: tr('通知') }} />
       {inbox.isPending ? (
-        <ActivityIndicator style={{ marginTop: 48 }} />
+        <ListSkeleton />
       ) : inbox.error ? (
         <EmptyState title={tr('沒有載入成功')} body={tr('檢查網路後再試一次。')} actionLabel={tr('重試')} onAction={() => void inbox.refetch()} />
       ) : (

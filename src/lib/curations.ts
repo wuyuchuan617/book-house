@@ -1,3 +1,4 @@
+import { tick } from '@/lib/haptics';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
 import { track } from '@/lib/analytics';
@@ -304,6 +305,7 @@ export function usePublishCuration() {
         await supabase.rpc('publish_curation', { p_curation_id: id, p_publish_on: publishOn ?? null }),
       ),
     onSuccess: (c) => {
+      tick();
       track('curation_published', { month: c.period?.slice(0, 7), scheduled: c.status === 'scheduled' });
       invalidateCuration(qc, c.id);
     },

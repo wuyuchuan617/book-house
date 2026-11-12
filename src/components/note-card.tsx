@@ -23,7 +23,7 @@ export function kindLabel(k: NoteKind) {
 export function useKindColors(k: NoteKind) {
   const c = useTheme();
   const dark = useColorScheme() === 'dark';
-  if (k === 'quote') return { fg: dark ? '#C9BEF0' : '#5A4B8A', bg: dark ? '#3A3352' : '#EEEAF6' };
+  if (k === 'quote') return { fg: dark ? '#C9BEF0' : c.checkin, bg: dark ? '#3A3352' : '#EEEAF6' };
   if (k === 'thought') return { fg: c.primary, bg: dark ? '#4A3328' : '#F6E9E2' };
   return { fg: c.success, bg: c.successSurface };
 }

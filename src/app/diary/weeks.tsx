@@ -1,6 +1,7 @@
+import { ListSkeleton } from '@/components/skeleton';
 import Feather from '@expo/vector-icons/Feather';
 import { router, Stack } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText, EmptyState, Screen } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
@@ -27,7 +28,7 @@ export function WeekList({ header }: { header?: React.ReactElement }) {
   return (
     <>
       {isLoading ? (
-        <ActivityIndicator style={{ marginTop: 48 }} />
+        <ListSkeleton />
       ) : (
         <FlatList
           data={data}
@@ -43,7 +44,7 @@ export function WeekList({ header }: { header?: React.ReactElement }) {
                 style={({ pressed }) => [styles.row, { backgroundColor: c.surface, opacity: pressed ? 0.85 : 1 }]}>
                 <View style={[styles.wk, { backgroundColor: item.week_start === current ? c.surfaceMuted : c.background }]} accessibilityLabel={tr('第 {n} 週', { n: isoWeek(item.week_start) })}>
                   <AppText style={{ fontSize: 10, lineHeight: 12, color: c.textSecondary }}>{tr('週')}</AppText>
-                  <AppText style={{ fontSize: 17, lineHeight: 21, fontWeight: '700', color: item.week_start === current ? c.primary : c.text }}>{String(isoWeek(item.week_start))}</AppText>
+                  <AppText style={{ fontSize: 16, lineHeight: 21, fontWeight: '700', color: item.week_start === current ? c.primary : c.text }}>{String(isoWeek(item.week_start))}</AppText>
                 </View>
                 <View style={{ flex: 1, gap: 2 }}>
                   <AppText variant="label">{item.week_start === current ? tr('本週到目前') : weekRange(item.week_start)}</AppText>

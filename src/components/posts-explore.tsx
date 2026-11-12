@@ -1,7 +1,8 @@
+import { ListSkeleton } from '@/components/skeleton';
 import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { DiaryPhotos } from '@/components/diary';
 import { KindChip, NotePhotos } from '@/components/note-card';
@@ -71,7 +72,7 @@ export function PostsExplore({ filter, near, onReset, view, kind }: { filter: Po
       ) : kind === 'event' ? (
         <EventsExplore filter={filter} near={near} />
       ) : list.isPending ? (
-        <ActivityIndicator style={{ marginTop: 48 }} />
+        <ListSkeleton />
       ) : list.error ? (
         <EmptyState title={tr('沒有載入成功')} body={tr('檢查網路後再試一次。')} actionLabel={tr('重試')} onAction={() => void list.refetch()} />
       ) : (
@@ -142,11 +143,12 @@ export function PostsExplore({ filter, near, onReset, view, kind }: { filter: Po
 
 /** 類型標籤放右上（日記／打卡／心得／摘句／想法） */
 function PostKind({ post }: { post: PublicPost }) {
+  const c = useTheme();
   if (post.source === 'note' && post.note_kind) return <KindChip kind={post.note_kind} />;
   const checkin = post.kind === 'checkin' || !!post.place_id;
-  const fg = checkin ? '#5A4B8A' : '#6B635A';
+  const fg = checkin ? c.checkin : c.textTertiary;
   return (
-    <View style={[styles.kind, { backgroundColor: checkin ? '#ECE8F4' : '#EFE8DE' }]}>
+    <View style={[styles.kind, { backgroundColor: checkin ? c.checkinSurface : c.divider }]}>
       <AppText variant="caption" style={{ fontSize: 11, fontWeight: '700', color: fg }}>{checkin ? tr('打卡') : tr('日記')}</AppText>
     </View>
   );
@@ -204,8 +206,8 @@ export function PostCard({ post, onMore }: { post: PublicPost; onMore?: () => vo
         {post.page_ref ? <AppText variant="caption" muted>{post.page_ref}</AppText> : null}
         {post.place_id && post.place_name ? (
           <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/place/[id]', params: { id: post.place_id! } })} hitSlop={6} style={[styles.action, { flexShrink: 1 }]}>
-            <Feather name="map-pin" size={12} color="#2F5D6B" />
-            <AppText variant="caption" numberOfLines={1} style={{ color: '#2F5D6B', fontWeight: '600', flexShrink: 1 }}>{post.place_name}</AppText>
+            <Feather name="map-pin" size={12} color={c.place} />
+            <AppText variant="caption" numberOfLines={1} style={{ color: c.place, fontWeight: '600', flexShrink: 1 }}>{post.place_name}</AppText>
             {post.distance_m != null ? <AppText variant="caption" muted>{post.distance_m < 1000 ? tr('{n} 公尺', { n: post.distance_m }) : tr('{n} 公里', { n: (post.distance_m / 1000).toFixed(1) })}</AppText> : null}
           </Pressable>
         ) : null}

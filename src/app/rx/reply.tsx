@@ -7,7 +7,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BookCover } from '@/components/book-cover';
 import { BookPicker } from '@/components/book-picker';
 import { TextField } from '@/components/form';
-import { RX_PURPLE } from '@/components/rx-explore';
 import { AppText, Button, Card, EmptyState, Screen } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -58,7 +57,7 @@ function ReplyForm({ rx }: { rx: RxDetail }) {
       <Stack.Screen options={{ title: editing ? tr('修改處方') : tr('開一張處方') }} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={90}>
         <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg }} keyboardShouldPersistTaps="handled">
-          <View style={[styles.quote, { borderLeftColor: RX_PURPLE }]}>
+          <View style={[styles.quote, { borderLeftColor: c.checkin }]}>
             <AppText style={{ lineHeight: 22, color: c.textSecondary }}>{rx.title}</AppText>
           </View>
           <View style={{ gap: 6 }}>

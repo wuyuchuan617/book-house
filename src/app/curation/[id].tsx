@@ -1,3 +1,4 @@
+import { CurationShareSheet } from '@/components/curation-share';
 import Feather from '@expo/vector-icons/Feather';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams, usePreventRemove } from 'expo-router';
@@ -97,6 +98,8 @@ export default function CurationEditorScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [backAfterShare, setBackAfterShare] = useState(false);
   const [noteFor, setNoteFor] = useState<DraftItem | null>(null);
   const [reasonsOpen, setReasonsOpen] = useState(false);
   const [justAdded, setJustAdded] = useState<string | null>(null);
@@ -205,11 +208,17 @@ export default function CurationEditorScreen() {
       if (dirty) await saveAll();
       const res = await publish.mutateAsync({ id: cur.id, publishOn });
       setDateOpen(false);
-      Alert.alert(
-        res.status === 'scheduled' ? tr('已預約 {md} 上架', { md: res.scheduled_for ? taipeiDate(res.scheduled_for).md : '' }) : tr('策展發布了'),
-        res.status === 'scheduled' ? tr('上架前都還能修改。') : tr('讀者現在可以在探索頁看到這檔策展。'),
-      );
-      if (cur.status === 'draft') router.back();
+      const wasDraft = cur.status === 'draft';
+      if (res.status === 'scheduled') {
+        Alert.alert(tr('已預約 {md} 上架', { md: res.scheduled_for ? taipeiDate(res.scheduled_for).md : '' }), tr('上架前都還能修改。'));
+        if (wasDraft) router.back();
+      } else {
+        // v1.9 AL3：發布成功直接問要不要分享
+        Alert.alert(tr('策展發布了'), tr('讀者現在可以在探索頁看到這檔策展。要不要分享給朋友？'), [
+          { text: tr('之後再說'), style: 'cancel', onPress: () => wasDraft && router.back() },
+          { text: tr('分享策展'), onPress: () => { setBackAfterShare(wasDraft); setShareOpen(true); } },
+        ]);
+      }
     } catch (e) {
       Alert.alert(tr('沒有發布成功'), friendlyError((e as Error).message));
     }
@@ -413,6 +422,14 @@ export default function CurationEditorScreen() {
         }}
       />
 
+      <CurationShareSheet
+        curationId={cur.id}
+        visible={shareOpen}
+        onClose={() => {
+          setShareOpen(false);
+          if (backAfterShare) router.back();
+        }}
+      />
       <PublishDateSheet
         key={`${cur.id}-${dateOpen}`}
         visible={dateOpen}
@@ -475,7 +492,7 @@ const ROW_H = 84;
 function StatCell({ label, value }: { label: string; value: number | undefined }) {
   return (
     <View style={{ flex: 1, alignItems: 'center' }}>
-      <AppText style={{ fontSize: 17, fontWeight: '700' }}>{value === undefined ? '–' : String(value)}</AppText>
+      <AppText style={{ fontSize: 16, fontWeight: '700' }}>{value === undefined ? '–' : String(value)}</AppText>
       <AppText variant="caption" muted>{label}</AppText>
     </View>
   );

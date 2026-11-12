@@ -1,4 +1,5 @@
 /** M10 閱讀日記（D1–D7）與書的地方（L1–L3） */
+import { tick } from '@/lib/haptics';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { Linking } from 'react-native';
 
@@ -93,6 +94,8 @@ export type DiaryDay = { date: string; is_today: boolean; items: DiaryItem[] };
 export type Streak = { current_streak: number; longest_streak: number; month_days: number; today_done: boolean };
 
 function invalidateDiary(qc: QueryClient) {
+  void qc.invalidateQueries({ queryKey: ['onboarding'] });
+  void qc.invalidateQueries({ queryKey: ['month-wrap'] });
   qc.invalidateQueries({ queryKey: ['diary-day'] });
   qc.invalidateQueries({ queryKey: ['diary-streak'] });
   qc.invalidateQueries({ queryKey: ['diary-active'] });
@@ -234,6 +237,7 @@ export function useSaveEntry() {
       }
       const removed = previousPaths.filter((p) => !paths.includes(p));
       if (removed.length) await supabase.storage.from(DIARY_BUCKET).remove(removed).then(() => {}, () => {});
+      tick();
       return { id, isNew: !entryId, linkDropped };
     },
     onSuccess: (r, v) => {

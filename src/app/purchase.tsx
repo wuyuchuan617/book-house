@@ -123,7 +123,7 @@ export default function PurchaseScreen() {
               <>
                 <BookCover title={chosen.title} url={chosen.cover_url} color={mine?.store.color ?? 'moss'} size="md" />
                 <View style={{ flex: 1, gap: 2 }}>
-                  <AppText variant="title" style={{ fontSize: 19, lineHeight: 26 }}>{bookTitle(chosen.title)}</AppText>
+                  <AppText variant="title" style={{ fontSize: 18, lineHeight: 26 }}>{bookTitle(chosen.title)}</AppText>
                   <AppText variant="caption" muted>{[chosen.authors.join(tr('、')), from === 'want' ? tr('從想讀移過來') : null].filter(Boolean).join(' · ')}</AppText>
                 </View>
                 {!bookId ? <Feather name="chevron-right" size={18} color={c.textTertiary} /> : null}
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
   rowIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, padding: Spacing.md },
   inputRow: { paddingHorizontal: Spacing.lg, borderTopWidth: StyleSheet.hairlineWidth },
-  amount: { width: 96, flexGrow: 0, flexShrink: 0, height: 38, borderWidth: 1.5, borderRadius: 8, paddingHorizontal: 10, fontSize: 17, fontWeight: '700', textAlign: 'right' },
+  amount: { width: 96, flexGrow: 0, flexShrink: 0, height: 38, borderWidth: 1.5, borderRadius: 8, paddingHorizontal: 10, fontSize: 16, fontWeight: '700', textAlign: 'right' },
   reason: { borderRadius: Radius.lg, padding: Spacing.lg, gap: 4 },
   bar: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: Spacing.lg },
   footer: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, borderTopWidth: StyleSheet.hairlineWidth },

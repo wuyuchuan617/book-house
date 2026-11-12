@@ -116,7 +116,7 @@ export default function DiaryCalendarScreen() {
           {day.isLoading ? (
             <ActivityIndicator style={{ marginTop: Spacing.lg }} />
           ) : day.data?.items.length ? (
-            <DiaryTimeline items={day.data.items} isToday={picked === today} color={mine?.store.color} />
+            <DiaryTimeline items={day.data.items} isToday={picked === today} date={picked} color={mine?.store.color} />
           ) : (
             <AppText muted style={{ textAlign: 'center', paddingVertical: Spacing.lg }}>{tr('這天沒有記錄')}</AppText>
           )}

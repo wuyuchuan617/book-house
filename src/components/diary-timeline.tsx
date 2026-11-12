@@ -13,14 +13,17 @@ import { useTheme } from '@/hooks/use-theme';
 import { diaryError, useDeleteEntry, useUnpublishEntry, type DiaryEntry, type DiaryEventShare, type DiaryItem } from '@/lib/diary';
 import { eventError, useDeleteShare } from '@/lib/events';
 import { tr } from '@/lib/i18n';
+import { addDays } from '@/lib/diary';
+import { taipeiToday } from '@/lib/period';
 
 /**
  * D2 一天的時間軸。v1.8.2 AK4：「我寫的」分成「公開」「只有自己」兩段（卡片不再放公開標籤，上面也不再有篩選）；
  * 日記與打卡是大卡片（往左滑：今天可編輯；隨時可改成私人、刪除），
  * 「自動帶入」的心得、想讀、想去、開始讀、讀完收在下面一個框裡，可以收合。
  */
-export function DiaryTimeline({ items, isToday, color }: { items: DiaryItem[]; isToday: boolean; color?: StoreColor }) {
+export function DiaryTimeline({ items, isToday, color, date }: { items: DiaryItem[]; isToday: boolean; color?: StoreColor; /** v1.9 AL4：這一天的日期；7 天內的日記可以編輯 */ date?: string }) {
   const c = useTheme();
+  const editable = isToday || (!!date && date >= addDays(taipeiToday(), -7));
   const del = useDeleteEntry();
   const unpublish = useUnpublishEntry();
   const [autoOpen, setAutoOpen] = useState(true);
@@ -52,7 +55,7 @@ export function DiaryTimeline({ items, isToday, color }: { items: DiaryItem[]; i
 
   const actionsFor = (e: DiaryEntry | DiaryEventShare): SwipeAction[] => (e.type === 'event_share' ? shareActions(e) : entryActions(e));
   const entryActions = (e: DiaryEntry): SwipeAction[] => [
-    ...(isToday ? [{ label: tr('編輯'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/diary/compose', params: { entryId: e.id } }) }] : []),
+    ...(editable ? [{ label: tr('編輯'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/diary/compose', params: date && !isToday ? { entryId: e.id, date } : { entryId: e.id } }) }] : []),
     ...(e.is_public ? [{ label: tr('改成只有自己'), icon: 'lock' as const, onPress: () => unpublish.mutate(e.id, { onError: fail }) }] : []),
     {
       label: tr('刪除'),
@@ -114,7 +117,7 @@ export function DiaryTimeline({ items, isToday, color }: { items: DiaryItem[]; i
         </View>
       ) : null}
 
-      {own.length ? <AppText variant="caption" style={{ color: c.textTertiary }}>{isToday ? tr('點「⋯」或往左滑：可以編輯、改成只有自己、刪除') : tr('點「⋯」或往左滑：可以改成只有自己、刪除')}</AppText> : null}
+      {own.length ? <AppText variant="caption" style={{ color: c.textTertiary }}>{editable ? tr('點「⋯」或往左滑：可以編輯、改成只有自己、刪除') : tr('點「⋯」或往左滑：可以改成只有自己、刪除')}</AppText> : null}
       <ActionSheet visible={!!menuFor} onClose={() => setMenuFor(null)} title={(menuFor?.type === 'event_share' ? menuFor.event.title : menuFor?.body) ?? undefined} actions={menuFor ? actionsFor(menuFor) : []} />
     </View>
   );
@@ -127,8 +130,8 @@ function EventShareCard({ item, onMore }: { item: DiaryEventShare; onMore: () =>
       <AppText variant="caption" style={{ width: 38, fontSize: 11, paddingTop: 14, color: c.textTertiary }}>{taipeiTime(item.at)}</AppText>
       <View style={[styles.card, { backgroundColor: c.surface }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Feather name="calendar" size={13} color="#9A4A12" />
-          <AppText variant="caption" style={{ fontWeight: '700', color: '#9A4A12', flex: 1 }}>{tr('分享活動')}</AppText>
+          <Feather name="calendar" size={13} color={c.event} />
+          <AppText variant="caption" style={{ fontWeight: '700', color: c.event, flex: 1 }}>{tr('分享活動')}</AppText>
           <MoreButton onPress={onMore} label={tr('分享活動的更多動作')} />
         </View>
         <EventShareBody item={item} />

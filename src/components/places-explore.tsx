@@ -1,6 +1,7 @@
+import { ListSkeleton } from '@/components/skeleton';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { PlaceRow } from '@/components/diary';
 import { Chip } from '@/components/form';
@@ -60,7 +61,7 @@ export function PlacesExplore() {
       {noLocation ? <AppText variant="caption" muted style={{ paddingHorizontal: Spacing.xl, paddingTop: Spacing.sm }}>{tr('拿不到位置，先依最新打卡排序。')}</AppText> : null}
 
       {list.isPending || waiting ? (
-        <ActivityIndicator style={{ marginTop: 48 }} />
+        <ListSkeleton />
       ) : list.error ? (
         <EmptyState title={tr('沒有載入成功')} body={tr('檢查網路後再試一次。')} actionLabel={tr('重試')} onAction={() => void list.refetch()} />
       ) : (

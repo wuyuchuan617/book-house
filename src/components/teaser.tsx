@@ -27,7 +27,7 @@ export function TeaserCard({ teaser, mine }: { teaser: Teaser; mine?: boolean })
         <View style={[styles.badge, { backgroundColor: c.primary }]}><AppText variant="caption" style={{ color: c.onPrimary, fontWeight: '700', fontSize: 11 }}>{tr('預告')}</AppText></View>
         <AppText variant="caption" muted>{tr('{m} 月策展 · {when}', { m: Number(teaser.period.slice(5, 7)), when: teaserWhen(teaser) })}</AppText>
       </View>
-      {teaser.title ? <AppText variant="title" style={{ fontSize: 19, lineHeight: 26 }}>{teaser.title}</AppText> : null}
+      {teaser.title ? <AppText variant="title" style={{ fontSize: 18, lineHeight: 26 }}>{teaser.title}</AppText> : null}
       {teaser.text ? <AppText style={{ lineHeight: 22 }}>{teaser.text}</AppText> : null}
       <View style={{ flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-end', flexWrap: 'wrap' }}>
         {teaser.books.map((b) => (
@@ -79,7 +79,7 @@ export function TeaserStrip() {
         onPress={() => setOpen(true)}
         style={({ pressed }) => [styles.line, { backgroundColor: c.surface, opacity: pressed ? 0.8 : 1 }]}>
         <View style={[styles.lineTag, { backgroundColor: c.surfaceMuted }]}>
-          <AppText variant="caption" style={{ color: c.primary, fontWeight: '700', fontSize: 11.5 }}>{tr('即將上架')}</AppText>
+          <AppText variant="caption" style={{ color: c.primary, fontWeight: '700', fontSize: 12 }}>{tr('即將上架')}</AppText>
         </View>
         <View style={{ flexDirection: 'row' }}>
           {data.slice(0, 3).map((t, i) => (

@@ -53,6 +53,9 @@ export type EventName =
   | 'weekly_review_opened'
   | 'weekly_reflection_saved'
   | 'weekly_review_shared'
+  | 'curation_card_shared'
+  | 'onboarding_dismissed'
+  | 'month_wrap_started'
   | 'weekly_next_books_set';
 
 type Props = Record<string, string | number | boolean | null | undefined>;
