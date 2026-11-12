@@ -1,6 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { BookCover } from '@/components/book-cover';
@@ -13,7 +14,10 @@ import {
   addDays,
   categoryIcon,
   categoryLabel,
+  eventRangeLabel,
+  eventUrlLabel,
   formatDistance,
+  openEventUrl,
   useDiaryImageUrls,
   type DiaryEntry,
   type DiaryItem,
@@ -180,7 +184,14 @@ export function AutoItemRow({ item, first }: { item: Exclude<DiaryItem, DiaryEnt
       : item.type === 'want_place'
         ? item.place_name
         : item.book.title;
-  const sub = item.type === 'saved' ? item.source : item.type === 'want_place' ? item.note : item.type === 'reading_note' ? item.book.title : null;
+  const sub =
+    item.type === 'saved'
+      ? item.source
+      : item.type === 'want_place'
+        ? [eventRangeLabel(item.event_starts_on, item.event_ends_on), item.note].filter(Boolean).join(' · ') || null
+        : item.type === 'reading_note'
+          ? item.book.title
+          : null;
   const open = () => {
     if (item.type === 'reading_note') router.push({ pathname: '/reading/note/[id]', params: { id: item.id, readingId: item.reading_id } });
     else if (item.type === 'started' || item.type === 'finished') router.push({ pathname: '/reading/manage/[id]', params: { id: item.reading_id } });
@@ -246,27 +257,29 @@ export function StreakCard({ streak, today, activeDays, onPress }: { streak: Str
   );
 }
 
-/** 書的地方列表的一列（L2 探索、L3 書櫃） */
+/** 書的地方列表的一列（L2 探索、L3 書櫃）；footer 放在卡片內、主連結外（例如想去的活動日期與連結） */
 export function PlaceRow({
   place,
   meta,
   onPress,
   isIndie,
+  footer,
 }: {
   place: { id: string; name: string; address: string | null; category: string | null; photo_paths: string[]; distance_m?: number | null; saved?: boolean; is_indie?: boolean };
   meta: string;
   onPress?: () => void;
   isIndie?: boolean;
+  footer?: ReactNode;
 }) {
   const c = useTheme();
   const { data: urls } = useDiaryImageUrls(place.photo_paths.slice(0, 1));
   const distance = formatDistance(place.distance_m ?? null);
   return (
-    <Pressable
-      accessibilityRole="link"
-      onPress={onPress ?? (() => router.push({ pathname: '/place/[id]', params: { id: place.id } }))}
-      style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
-      <Card style={{ flexDirection: 'row', gap: Spacing.md, alignItems: 'center' }}>
+    <Card style={{ gap: Spacing.sm }}>
+      <Pressable
+        accessibilityRole="link"
+        onPress={onPress ?? (() => router.push({ pathname: '/place/[id]', params: { id: place.id } }))}
+        style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1, flexDirection: 'row', gap: Spacing.md, alignItems: 'center' })}>
         <View style={[styles.thumb, { backgroundColor: c.surfaceMuted }]}>
           {urls?.[0] ? <Image source={{ uri: urls[0] }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <Feather name={categoryIcon(place.category)} size={22} color={c.textSecondary} />}
         </View>
@@ -279,8 +292,33 @@ export function PlaceRow({
           <AppText variant="caption" style={{ color: c.textTertiary }}>{meta}</AppText>
         </View>
         <Feather name="chevron-right" size={18} color={c.textTertiary} />
-      </Card>
-    </Pressable>
+      </Pressable>
+      {footer}
+    </Card>
+  );
+}
+
+/** 想去卡片上的活動資訊：日期 range＋可點的活動連結（只有自己看得到） */
+export function WantEventFooter({ startsOn, endsOn, url }: { startsOn?: string | null; endsOn?: string | null; url?: string | null }) {
+  const c = useTheme();
+  const range = eventRangeLabel(startsOn, endsOn);
+  if (!range && !url) return null;
+  return (
+    <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.divider, paddingTop: Spacing.sm, gap: 6 }}>
+      {range ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Feather name="calendar" size={13} color={c.textSecondary} />
+          <AppText variant="caption" style={{ fontWeight: '700' }}>{range}</AppText>
+        </View>
+      ) : null}
+      {url ? (
+        <Pressable accessibilityRole="link" accessibilityLabel={tr('活動連結：{url}', { url: eventUrlLabel(url) ?? url })} onPress={() => openEventUrl(url)} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 6, opacity: pressed ? 0.7 : 1, minHeight: 28 })}>
+          <Feather name="external-link" size={13} color={c.primary} />
+          <AppText variant="caption" numberOfLines={1} style={{ flex: 1, color: c.primary, fontWeight: '700' }}>{tr('活動連結')}</AppText>
+          <AppText variant="caption" numberOfLines={1} style={{ flexShrink: 1, color: c.primary }}>{eventUrlLabel(url)}</AppText>
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 

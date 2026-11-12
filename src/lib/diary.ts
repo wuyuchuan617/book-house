@@ -75,7 +75,7 @@ export type DiaryItem =
     }
   | { type: 'reading_note'; id: string; at: string; reading_id: string; kind: NoteKind; is_public: boolean; title: string | null; body: string; book: DiaryBook }
   | { type: 'saved'; id: string; at: string; source: string | null; book: DiaryBook }
-  | { type: 'want_place'; id: string; at: string; note: string | null; place_name: string; place_category: PlaceCategory | null }
+  | { type: 'want_place'; id: string; at: string; note: string | null; event_starts_on: string | null; event_ends_on: string | null; event_url: string | null; place_name: string; place_category: PlaceCategory | null }
   | { type: 'started' | 'finished'; id: string; at: null; reading_id: string; is_public: boolean; book: DiaryBook };
 
 export type DiaryEntry = Extract<DiaryItem, { type: 'note' | 'checkin' }>;
@@ -335,6 +335,9 @@ export type PlaceDetail = {
   type_votes: Partial<Record<PlaceCategory, number>>;
   my_type: PlaceCategory | null;
   my_note: string | null;
+  my_event_starts_on: string | null;
+  my_event_ends_on: string | null;
+  my_event_url: string | null;
   checkin_count: number;
   save_count: number;
   saved: boolean;
@@ -394,6 +397,9 @@ export type MyPlace = {
   is_indie: boolean;
   saved: boolean;
   note: string | null;
+  event_starts_on: string | null;
+  event_ends_on: string | null;
+  event_url: string | null;
   saved_at: string | null;
   my_checkins: number;
   last_visit: string | null;
@@ -416,20 +422,45 @@ function invalidatePlace(qc: QueryClient, placeId: string) {
   qc.invalidateQueries({ queryKey: ['saved-places'] });
 }
 
-/** 存成想去（可以寫一句為什麼想去）／移除；type = 順便選這個地點的類型 */
+export type WantEvent = { startsOn: string; endsOn: string } | null;
+
+/** 存成想去（可以寫一句為什麼想去）／移除；type = 順便選這個地點的類型；event = 多日活動的起訖與連結 */
 export function useSavePlace() {
   const qc = useQueryClient();
   const { session } = useAuth();
   return useMutation({
-    mutationFn: async ({ placeId, save, note, type }: { placeId: string; save: boolean; note?: string | null; type?: PlaceCategory | null; from?: string }) => {
+    mutationFn: async ({
+      placeId,
+      save,
+      note,
+      type,
+      event,
+      eventUrl,
+    }: {
+      placeId: string;
+      save: boolean;
+      note?: string | null;
+      type?: PlaceCategory | null;
+      event?: WantEvent;
+      eventUrl?: string | null;
+      from?: string;
+    }) => {
       if (!save) {
         const res = await supabase.from('place_saves').delete().eq('place_id', placeId);
         if (res.error) throw new Error(res.error.message);
         return;
       }
-      const res = await supabase
-        .from('place_saves')
-        .upsert({ user_id: session!.user.id, place_id: placeId, note: note?.trim().slice(0, PLACE_NOTE_MAX) || null }, { onConflict: 'user_id,place_id' });
+      const res = await supabase.from('place_saves').upsert(
+        {
+          user_id: session!.user.id,
+          place_id: placeId,
+          note: note?.trim().slice(0, PLACE_NOTE_MAX) || null,
+          event_starts_on: event?.startsOn ?? null,
+          event_ends_on: event?.endsOn ?? event?.startsOn ?? null,
+          event_url: normalizeEventUrl(eventUrl),
+        },
+        { onConflict: 'user_id,place_id' },
+      );
       if (res.error) throw new Error(res.error.message);
       if (type) await supabase.rpc('set_place_type', { p_place_id: placeId, p_category: type });
     },
@@ -472,6 +503,35 @@ export function useReportCheckin() {
   });
 }
 
+/** 活動連結正規化：沒寫 http(s) 就補 https；空白回傳 null（合法性由資料庫再擋一次） */
+export function normalizeEventUrl(raw?: string | null) {
+  const v = raw?.trim();
+  if (!v) return null;
+  return /^https?:\/\//i.test(v) ? v : `https://${v}`;
+}
+
+export const isEventUrl = (raw?: string | null) => {
+  const v = normalizeEventUrl(raw);
+  return !!v && /^https?:\/\/[^\s.]+\.[^\s]+$/i.test(v);
+};
+
+/** 活動日期 range 顯示：同天只顯示一天，多日顯示起訖 */
+export function eventRangeLabel(startsOn?: string | null, endsOn?: string | null) {
+  if (!startsOn) return null;
+  const end = endsOn && endsOn >= startsOn ? endsOn : startsOn;
+  return end === startsOn ? dayLabel(startsOn) : tr('{start} – {end}', { start: dayLabel(startsOn), end: dayLabel(end) });
+}
+
+/** 卡片上顯示的連結文字（去掉 https:// 與尾斜線） */
+export const eventUrlLabel = (url?: string | null) => (url ? url.replace(/^https?:\/\//i, '').replace(/\/$/, '') : null);
+
+export function openEventUrl(url?: string | null) {
+  const v = normalizeEventUrl(url);
+  if (!v) return;
+  track('place_event_opened', {});
+  void Linking.openURL(v);
+}
+
 /** 在 Google 地圖開啟（Maps URLs，不需要金鑰、不計費） */
 export function openInGoogleMaps(name: string, googlePlaceId?: string | null) {
   const q = encodeURIComponent(name);
@@ -505,5 +565,7 @@ export function diaryError(message: string) {
   if (message.includes('already reported')) return tr('你已經檢舉過這則打卡了。');
   if (message.includes('place_type_votes_category_check')) return tr('沒有這個類型。');
   if (message.includes('place_saves_note_check')) return tr('想去的原因最多 {n} 字。', { n: PLACE_NOTE_MAX });
+  if (message.includes('place_saves_event_range_check')) return tr('活動結束日期不能早於開始日期。');
+  if (message.includes('place_saves_event_url_check')) return tr('活動連結要用 http 或 https 開頭。');
   return userMessage(message);
 }

@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
-import { PlaceRow } from '@/components/diary';
+import { PlaceRow, WantEventFooter } from '@/components/diary';
 import { SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
 import { AppText, EmptyState } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
@@ -21,7 +21,21 @@ export function PlacesShelf() {
   // 「＋ 加地方」與編輯都開寫日記頁的「想去」
   const add = () => router.push({ pathname: '/diary/compose', params: { kind: 'want' } });
   const edit = (p: MyPlace) =>
-    router.push({ pathname: '/diary/compose', params: { kind: 'want', placeId: p.id, placeName: p.name, googlePlaceId: 'saved', publicOk: '0', saved: '1', note: p.note ?? '' } });
+    router.push({
+      pathname: '/diary/compose',
+      params: {
+        kind: 'want',
+        placeId: p.id,
+        placeName: p.name,
+        googlePlaceId: 'saved',
+        publicOk: '0',
+        saved: '1',
+        note: p.note ?? '',
+        ...(p.event_starts_on ? { eventStart: p.event_starts_on } : {}),
+        ...(p.event_ends_on ? { eventEnd: p.event_ends_on } : {}),
+        ...(p.event_url ? { eventUrl: p.event_url } : {}),
+      },
+    });
   const remove = useSavePlace();
 
   const meta = (p: MyPlace) =>
@@ -74,7 +88,7 @@ export function PlacesShelf() {
             return (
               <View style={{ borderRadius: Radius.xl, overflow: 'hidden' }} {...swipeA11y(actions)}>
                 <SwipeRow actions={actions}>
-                  <PlaceRow place={item} isIndie={item.is_indie} meta={meta(item)} />
+                  <PlaceRow place={item} isIndie={item.is_indie} meta={meta(item)} footer={<WantEventFooter startsOn={item.event_starts_on} endsOn={item.event_ends_on} url={item.event_url} />} />
                 </SwipeRow>
               </View>
             );

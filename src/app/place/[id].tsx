@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { BookCover } from '@/components/book-cover';
-import { CheckinCard } from '@/components/diary';
+import { CheckinCard, WantEventFooter } from '@/components/diary';
 import { Chip } from '@/components/form';
 import { ActionSheet } from '@/components/sheet';
 import { AppText, Button, Card, EmptyState, Screen } from '@/components/ui';
@@ -55,6 +55,9 @@ export default function PlaceScreen() {
           publicOk: place.public_ok ? '1' : '0',
           ...(data.my_type ? { type: data.my_type } : {}),
           ...(data.saved ? { saved: '1', note: data.my_note ?? '' } : {}),
+          ...(data.my_event_starts_on ? { eventStart: data.my_event_starts_on } : {}),
+          ...(data.my_event_ends_on ? { eventEnd: data.my_event_ends_on } : {}),
+          ...(data.my_event_url ? { eventUrl: data.my_event_url } : {}),
         },
       }),
     );
@@ -101,12 +104,22 @@ export default function PlaceScreen() {
         </View>
         <Button label={tr('在這裡打卡')} onPress={checkinHere} />
 
-        {data.saved && data.my_note ? (
-          <Pressable accessibilityRole="button" onPress={openSave} style={[styles.note, { backgroundColor: c.surface }]}>
-            <Feather name="bookmark" size={14} color={c.primary} />
-            <AppText style={{ flex: 1, lineHeight: 21 }}>{data.my_note}</AppText>
-            <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('編輯')}</AppText>
-          </Pressable>
+        {data.saved && (data.my_note || data.my_event_starts_on || data.my_event_url) ? (
+          <View style={[styles.noteBox, { backgroundColor: c.surface }]}>
+            {data.my_note ? (
+              <Pressable accessibilityRole="button" onPress={openSave} style={styles.note}>
+                <Feather name="bookmark" size={14} color={c.primary} />
+                <AppText style={{ flex: 1, lineHeight: 21 }}>{data.my_note}</AppText>
+                <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('編輯')}</AppText>
+              </Pressable>
+            ) : null}
+            <WantEventFooter startsOn={data.my_event_starts_on} endsOn={data.my_event_ends_on} url={data.my_event_url} />
+            {!data.my_note ? (
+              <Pressable accessibilityRole="button" onPress={openSave} style={{ alignSelf: 'flex-end' }}>
+                <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('編輯')}</AppText>
+              </Pressable>
+            ) : null}
+          </View>
         ) : null}
 
         {session ? (
@@ -211,7 +224,8 @@ export default function PlaceScreen() {
 
 const styles = StyleSheet.create({
   icon: { width: 60, height: 60, borderRadius: Radius.lg, alignItems: 'center', justifyContent: 'center' },
-  note: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: Radius.lg, padding: Spacing.lg },
+  noteBox: { borderRadius: Radius.lg, padding: Spacing.lg, gap: Spacing.sm },
+  note: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   typeBox: { gap: Spacing.sm, borderRadius: Radius.lg, padding: Spacing.lg },
   action: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, borderWidth: 1, borderRadius: Radius.md, minHeight: MinTouch + 4 },
 });

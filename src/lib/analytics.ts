@@ -29,6 +29,7 @@ export type EventName =
   | 'place_saved'
   | 'place_opened'
   | 'place_maps_opened'
+  | 'place_event_opened'
   | 'weekly_review_opened'
   | 'weekly_reflection_saved'
   | 'weekly_review_shared'

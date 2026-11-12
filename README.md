@@ -195,6 +195,12 @@ eas submit --platform ios
 - 審核備註：提供一組可登入的測試帳號（Google），說明檢舉／封鎖在書店頁 ⋯、刪除帳號在設定
 - 內容分級：使用者產生內容 → 需有檢舉、封鎖、條款（都已完成）
 
+## v1.5（想去可以記活動：多日日期 range、活動連結、卡片顯示連結）
+
+- 存「想去」時可以選填活動日期（月曆先選第一天、再選最後一天，多日活動就是一段 range；只有一天選同一天）和活動連結（書展／講座／市集的活動頁，沒寫 http 會自動補 https，資料庫只收 http(s)）。
+- 書櫃 › 地方・想去的卡片會顯示活動日期與可點的活動連結；地點頁自己存的那一欄、日記時間軸的「存了想去的地方」也會帶日期。活動資訊只有自己看得到（`place_saves.event_starts_on/event_ends_on/event_url`，地點頁只多「N 人想去」）。
+- `my_places` 想去改成有活動的依開始日排前面；migration `20261122000001_want_place_event.sql`，測試 `smoke_m15.sql`。
+
 ## v1.4（地點類型由使用者選、想去整合進寫日記、日記時間軸改版）
 
 - 地點類型不再自動分類：打卡、存想去、地點頁都可以選填（書店／獨立書店／圖書館／咖啡店／公園／美術館・博物館／其他），地點顯示最多人選的那個，沒人選就不顯示；管理員可以覆寫。`place_type_votes`、`places.category_override`、`place_category()`、`set_place_type()`、`admin_set_place_category()`；舊的獨立書店標記已搬過來（`set_indie_vote` 仍可用）。

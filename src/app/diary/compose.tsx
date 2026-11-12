@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
 import { BookPicker } from '@/components/book-picker';
+import { DateRangeSheet } from '@/components/date-range-sheet';
 import { Chip, TextField, Toggle } from '@/components/form';
 import { VisibilityBadge } from '@/components/diary';
 import { PlacePicker, type PlaceChoice } from '@/components/place-picker';
@@ -23,6 +24,8 @@ import {
   DIARY_BODY_MAX,
   DIARY_PHOTO_MAX,
   diaryError,
+  eventRangeLabel,
+  isEventUrl,
   useDiaryDay,
   useDiaryImageUrls,
   PLACE_CATEGORIES,
@@ -59,6 +62,10 @@ type Params = {
   note?: string;
   type?: PlaceCategory;
   saved?: string;
+  /** 想去的活動（多日 range 與連結，編輯時帶回來） */
+  eventStart?: string;
+  eventEnd?: string;
+  eventUrl?: string;
 };
 
 export default function DiaryComposeScreen() {
@@ -107,6 +114,11 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
   const addReading = useAddReading();
   const [placeType, setPlaceTypeState] = useState<PlaceCategory | null>(params.type ?? null);
   const [wantNote, setWantNote] = useState(params.note ?? '');
+  const [eventRange, setEventRange] = useState<{ startsOn: string; endsOn: string } | null>(
+    params.eventStart ? { startsOn: params.eventStart, endsOn: params.eventEnd && params.eventEnd >= params.eventStart ? params.eventEnd : params.eventStart } : null,
+  );
+  const [eventUrl, setEventUrl] = useState(params.eventUrl ?? '');
+  const [rangeOpen, setRangeOpen] = useState(false);
   const editingWant = params.kind === 'want' && params.saved === '1';
   const autoOpened = useRef(false);
 
@@ -143,7 +155,12 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
   const dirty = existing
     ? body !== (existing.body ?? '') || book?.id !== existing.book?.id || kind !== existing.type || photos.length !== existing.photo_paths.length || photos.some((p) => 'uri' in p) || publicOn !== existing.is_public || placeKey(place) !== (existing.place_id ?? existing.place_label ?? '')
     : kind === 'want'
-      ? !editingWant && !!(place || wantNote.trim())
+      ? editingWant
+        ? wantNote.trim() !== (params.note ?? '').trim() ||
+          (eventRange?.startsOn ?? null) !== (params.eventStart ?? null) ||
+          (eventRange?.endsOn ?? null) !== (params.eventEnd ?? params.eventStart ?? null) ||
+          eventUrl.trim() !== (params.eventUrl ?? '').trim()
+        : !!(place || wantNote.trim() || eventRange || eventUrl.trim())
       : !!(body.trim() || photos.length || book || place);
 
   usePreventRemove(dirty && !done, ({ repeat }) => {
@@ -182,7 +199,11 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
     try {
       if (kind === 'want') {
         if (!googlePlace) return;
-        await savePlace.mutateAsync({ placeId: googlePlace.id, save: true, note: wantNote, type: placeType, from: editingWant ? 'edit' : 'compose' });
+        if (eventUrl.trim() && !isEventUrl(eventUrl)) {
+          Alert.alert(tr('活動連結怪怪的'), tr('貼上完整的網址，例如 https://example.com/event'));
+          return;
+        }
+        await savePlace.mutateAsync({ placeId: googlePlace.id, save: true, note: wantNote, type: placeType, event: eventRange, eventUrl, from: editingWant ? 'edit' : 'compose' });
         finish();
         return;
       }
@@ -298,6 +319,31 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
             <>
               {placeField}
               <TextField label={tr('為什麼想去？')} optional max={PLACE_NOTE_MAX} value={wantNote} onChangeText={setWantNote} placeholder={tr('朋友推薦、想找某本書、二樓很安靜…')} />
+              <View style={{ gap: Spacing.sm }}>
+                <AppText variant="label">
+                  {tr('活動日期')}
+                  <AppText variant="caption" muted>{tr('  選填')}</AppText>
+                </AppText>
+                <Pressable accessibilityRole="button" accessibilityLabel={tr('選擇活動日期')} onPress={() => setRangeOpen(true)} style={[styles.field, { backgroundColor: c.surface, borderColor: eventRange ? c.border : c.primary }]}>
+                  <Feather name="calendar" size={18} color={eventRange ? c.text : c.primary} />
+                  <AppText variant="label" style={{ flex: 1, color: eventRange ? c.text : c.primary }}>
+                    {eventRange ? eventRangeLabel(eventRange.startsOn, eventRange.endsOn) : tr('選日期（活動多天可以選一段）')}
+                  </AppText>
+                  <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{eventRange ? tr('更改') : ''}</AppText>
+                </Pressable>
+                <TextField
+                  label={tr('活動連結')}
+                  optional
+                  value={eventUrl}
+                  onChangeText={setEventUrl}
+                  placeholder="https://…"
+                  hint={tr('書展、講座、市集的活動頁；存好後卡片上會顯示日期和這個連結。')}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  inputMode="url"
+                />
+              </View>
               {googlePlace ? typeChips : null}
               <AppText variant="caption" muted>{tr('想去的地方只有自己看得到；地點頁只會多一個「N 人想去」。')}</AppText>
               {editingWant ? <Button kind="link" label={tr('從想去移除')} onPress={removeWant} /> : null}
@@ -417,6 +463,17 @@ function ComposeForm({ params, existing }: { params: Params; existing?: DiaryEnt
         <Button label={kind === 'want' ? (editingWant ? tr('儲存') : tr('存成想去')) : publicOn ? tr('儲存並公開') : tr('儲存')} disabled={!ready} loading={busy} onPress={() => void submit()} />
       </SafeAreaView>
 
+      <DateRangeSheet
+        key={`${rangeOpen ? 'open' : 'closed'}-${eventRange?.startsOn ?? ''}-${eventRange?.endsOn ?? ''}`}
+        visible={rangeOpen}
+        initialStart={eventRange?.startsOn ?? null}
+        initialEnd={eventRange?.endsOn ?? null}
+        onConfirm={(range) => {
+          setEventRange(range);
+          setRangeOpen(false);
+        }}
+        onClose={() => setRangeOpen(false)}
+      />
       <PlacePicker
         visible={placeOpen}
         googleOnly={kind === 'want'}
