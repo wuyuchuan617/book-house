@@ -25,4 +25,4 @@ do $$ begin
   assert (public.explore_counts()->>'rx')::int = jsonb_array_length(public.rx_list('latest', null, 100)), 'anon rx count matches';
 end $$;
 reset role;
-select 'PASSED smoke_m29';
+select 'PASSED smoke_m30';
