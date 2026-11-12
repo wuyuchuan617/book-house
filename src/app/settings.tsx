@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { StoreVisibilityCard } from '@/app/store-visibility';
 import { AppText, Button, Card, Screen } from '@/components/ui';
 import { MinTouch, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -69,10 +70,6 @@ export default function SettingsScreen() {
                 <AppText style={{ flex: 1 }}>{tr('書店資料')}</AppText>
                 <AppText muted>{store.name}</AppText>
               </Pressable>
-              <Pressable accessibilityRole="button" onPress={() => router.push('/store-visibility')} style={[styles.row, { borderBottomColor: c.divider }]}>
-                <AppText style={{ flex: 1 }}>{tr('公開設定')}</AppText>
-                <AppText muted>{tr('書店頁顯示什麼')}</AppText>
-              </Pressable>
               <View style={[styles.row, { borderBottomColor: c.divider }]}>
                 <View style={{ flex: 1 }}>
                   <AppText>{tr('店主閱讀預設公開')}</AppText>
@@ -92,6 +89,12 @@ export default function SettingsScreen() {
                 <AppText muted>{storeLinkLabel(store.slug)}</AppText>
               </Pressable>
             </Card>
+            {/* v1.8.2 AK12：公開設定攤平在設定頁 */}
+            <View style={{ gap: 2, marginTop: Spacing.sm }}>
+              <AppText variant="label">{tr('書店頁顯示')}</AppText>
+              <AppText variant="caption" muted>{tr('讀者看得到哪幾類；打開後，每一則還是看它自己有沒有設成公開。')}</AppText>
+            </View>
+            <StoreVisibilityCard />
           </>
         ) : null}
         {prefs ? (

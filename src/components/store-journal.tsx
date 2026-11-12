@@ -13,7 +13,8 @@ import { AppText, Card } from '@/components/ui';
 import { Radius, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { track } from '@/lib/analytics';
-import { useToggleSave } from '@/lib/browse';
+import { useAuth } from '@/lib/auth';
+import { useSaveIds, useToggleSave } from '@/lib/browse';
 import { categoryLabel, diaryError, useDeleteEntry, useDiaryImageUrls, useSavePlace, useSetJournalPublic, useStoreJournal, type JournalItem, type SharedEvent } from '@/lib/diary';
 import { rxError, useRxAction, useRxWithdraw } from '@/lib/rx';
 import { taipeiDate, taipeiToday } from '@/lib/period';
@@ -226,7 +227,9 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts', right 
         items.map((item, index) => {
           // v1.8.1 AJ5：想去用書櫃那張地點卡（縮圖、名稱、類型、原因）；我的書店多公開標籤與「⋯」
           const card =
-            item.type === 'place' ? (
+            item.type === 'want' ? (
+              <WantBookRow item={item} color={color} mine={mine} onToggle={() => toggle(item)} onMore={mine ? () => setMenuFor(item) : undefined} />
+            ) : item.type === 'place' ? (
               <PlaceRow
                 place={{ id: item.place.id, name: item.place.name, address: null, category: item.place.category, photo_paths: [] }}
                 meta={item.note ? tr('「{note}」', { note: item.note }) : ''}
@@ -348,6 +351,46 @@ function JournalCard({ item, color, mine, onToggle, onMore }: { item: JournalIte
       ) : (
         <PostBody item={item} color={color} />
       )}
+    </View>
+  );
+}
+
+/** v1.8.2 AK13：想讀用書櫃那張卡——書封、《書名》、作者 · 日期、在哪看到、原因；讀者右邊是「加入我的想讀」，我的書店是公開標籤＋「⋯」 */
+function WantBookRow({ item, color, mine, onToggle, onMore }: { item: Extract<JournalItem, { type: 'want' }>; color: StoreColor; mine?: boolean; onToggle: () => void; onMore?: () => void }) {
+  const c = useTheme();
+  const { requireAuth } = useAuth();
+  const { data: saveIds } = useSaveIds();
+  const save = useToggleSave();
+  const saved = !!saveIds?.has(item.book.id);
+  return (
+    <View style={[styles.card, { backgroundColor: c.surface, flexDirection: 'row', alignItems: 'center', gap: Spacing.md }]}>
+      <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/book/[id]', params: { id: item.book.id } })} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
+        <BookCover title={item.book.title} url={item.book.cover_url} color={color} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <AppText variant="label">{bookTitle(item.book.title)}</AppText>
+          <AppText variant="caption" muted numberOfLines={1}>{[item.book.authors.join(tr('、')), tr('{d} 想讀', { d: taipeiDate(item.at).md })].filter(Boolean).join(' · ')}</AppText>
+          {item.source_text ? <AppText variant="caption" style={{ color: c.textTertiary }} numberOfLines={1}>{tr('在哪看到：{from}', { from: item.source_text })}</AppText> : null}
+          {item.note ? <AppText variant="caption" numberOfLines={2}>{tr('「{note}」', { note: item.note })}</AppText> : null}
+          {mine ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={item.shown ? tr('讀者看得到') : tr('只有你看得到')} hitSlop={8} onPress={onToggle} style={{ alignSelf: 'flex-start', marginTop: 4 }}>
+              {item.shown ? <VisibilityBadge v={{ public: true, where: 'store' }} /> : <VisibilityBadge v={{ public: false }} />}
+            </Pressable>
+          ) : null}
+        </View>
+      </Pressable>
+      {onMore ? (
+        <MoreButton onPress={onMore} label={tr('{title}的更多動作', { title: item.book.title })} />
+      ) : !mine ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={saved ? tr('已在我的想讀') : tr('加入我的想讀')}
+          accessibilityState={{ selected: saved }}
+          hitSlop={8}
+          onPress={() => requireAuth(() => save.mutate({ bookId: item.book.id, save: !saved, sourceText: saved ? null : tr('書店頁的想讀') }))}
+          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+          <Feather name="bookmark" size={19} color={saved ? c.primary : c.textSecondary} />
+        </Pressable>
+      ) : null}
     </View>
   );
 }

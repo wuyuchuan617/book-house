@@ -107,7 +107,7 @@ export default function ExploreScreen() {
 
   const segment = (
     <View style={[styles.tabs, { borderBottomColor: c.border }]} accessibilityRole="tablist">
-      {([['curations', tr('策展')], ['posts', tr('貼文')], ['trips', tr('書旅')], ['rx', tr('處方箋')]] as const).map(([t, label]) => (
+      {([['curations', tr('策展')], ['posts', tr('手記')], ['trips', tr('書旅')], ['rx', tr('處方箋')]] as const).map(([t, label]) => (
         <Pressable key={t} accessibilityRole="tab" accessibilityState={{ selected: tab === t }} onPress={() => setTab(t)} style={[styles.tab, tab === t && { borderBottomColor: c.text }]}>
           <AppText style={{ fontSize: 15, fontWeight: tab === t ? '700' : '500', color: tab === t ? c.text : c.textSecondary }}>{label}</AppText>
         </Pressable>
@@ -152,7 +152,7 @@ export default function ExploreScreen() {
               ...(locationAvailable() ? [{ key: 'near', label: tr('附近'), selected: postF.filter === 'near', onPress: () => postF.pick('near') }] : []),
             ] },
             { title: tr('顯示'), options: [
-              { key: 'posts', label: tr('貼文'), selected: postView === 'posts', onPress: () => setPostView('posts') },
+              { key: 'posts', label: tr('手記'), selected: postView === 'posts', onPress: () => setPostView('posts') },
               { key: 'places', label: tr('地點'), selected: postView === 'places', onPress: () => setPostView('places') },
             ] },
           ]
@@ -173,7 +173,7 @@ export default function ExploreScreen() {
       setRxTag(undefined);
     }
   };
-  const resultLabel = tab === 'curations' ? tr('看 {n} 檔策展', { n: count }) : tab === 'posts' ? tr('看貼文') : tr('看處方箋');
+  const resultLabel = tab === 'curations' ? tr('看 {n} 檔策展', { n: count }) : tab === 'posts' ? tr('看手記') : tr('看處方箋');
 
   return (
     <Screen>
@@ -256,7 +256,7 @@ export default function ExploreScreen() {
       <MonthSheet visible={monthOpen} value={period} months={months} onPick={setPeriod} onClose={() => setMonthOpen(false)} />
       <FilterSheet
         visible={filterOpen}
-        title={tab === 'curations' ? tr('篩選 · 策展') : tab === 'posts' ? tr('篩選 · 貼文') : tr('篩選 · 處方箋')}
+        title={tab === 'curations' ? tr('篩選 · 策展') : tab === 'posts' ? tr('篩選 · 手記') : tr('篩選 · 處方箋')}
         groups={groups}
         onClear={clearAll}
         onClose={() => setFilterOpen(false)}

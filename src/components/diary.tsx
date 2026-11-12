@@ -103,7 +103,7 @@ export function VisibilityBadge({ v, compact }: { v: Visibility; compact?: boole
 }
 
 /** 自己寫的（日記、打卡）：白底卡片，左邊時間 */
-export function OwnEntryCard({ item, color = 'moss', onMore }: { item: DiaryEntry; color?: StoreColor; onMore?: () => void }) {
+export function OwnEntryCard({ item, color = 'moss', onMore, hideBadge }: { item: DiaryEntry; color?: StoreColor; onMore?: () => void; /** v1.8.2 AK4：日記頁已經分成公開／只有自己兩段，卡片不再放標籤 */ hideBadge?: boolean }) {
   const c = useTheme();
   const v = visibilityOf(item);
   const placeName = item.place_name ?? item.place_label;
@@ -117,7 +117,7 @@ export function OwnEntryCard({ item, color = 'moss', onMore }: { item: DiaryEntr
           <AppText variant="caption" style={{ fontWeight: '700', color: c.textSecondary }}>{item.type === 'checkin' ? tr('打卡') : item.book ? tr('正在讀') : tr('日記')}</AppText>
           {item.page_ref ? <AppText variant="caption" muted>{`· ${item.page_ref}`}</AppText> : null}
           <View style={{ flex: 1 }} />
-          <VisibilityBadge v={v} />
+          {hideBadge ? null : <VisibilityBadge v={v} />}
           {onMore ? <MoreButton onPress={onMore} /> : null}
         </View>
         {item.type === 'checkin' ? (

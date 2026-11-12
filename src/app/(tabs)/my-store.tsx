@@ -135,11 +135,10 @@ export default function MyStoreScreen() {
 
         <View style={{ paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, gap: Spacing.md }}>
           {off ? <HiddenBar what={off} /> : null}
-          {tab === 'curation' || tab === 'reading' || tab === 'rx' ? <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: -Spacing.sm }}>{help}</View> : null}
           {tab === 'curation' ? (
-            <CurationSection />
+            <CurationSection right={help} />
           ) : tab === 'reading' ? (
-            <ReadingSection readings={readings.data} loading={readings.isLoading} color={store.color} removal={removal} />
+            <ReadingSection readings={readings.data} loading={readings.isLoading} color={store.color} removal={removal} right={help} />
           ) : tab === 'journal' ? (
             <StoreJournal bookstoreId={store.id} color={store.color} mine scope="posts" right={help} />
           ) : tab === 'want' ? (
@@ -175,7 +174,7 @@ export default function MyStoreScreen() {
               )}
             </>
           ) : (
-            <OwnerRx />
+            <OwnerRx right={help} />
           )}
         </View>
       </ScrollView>

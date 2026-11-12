@@ -335,8 +335,8 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
           ? tr('這裡看起來是私人地點，只會留在自己的日記裡。')
           : publicOn
             ? googlePlace
-              ? tr('會出現在探索的貼文、「{name}」的地點頁和你的書店頁。', { name: googlePlace.name })
-              : tr('會出現在探索的貼文和你的書店頁。')
+              ? tr('會出現在探索的手記、「{name}」的地點頁和你的書店頁。', { name: googlePlace.name })
+              : tr('會出現在探索的手記和你的書店頁。')
             : tr('只有自己看得到。');
 
   const visibility = (

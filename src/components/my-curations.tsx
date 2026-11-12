@@ -12,7 +12,8 @@ import { currentPeriod, lastOpenPeriod, monthOf, taipeiDate, timeAgo } from '@/l
 import { tr } from '@/lib/i18n';
 
 /** M1 我的書店・策展列表；沒有策展時是 S5 空狀態 */
-export function CurationSection() {
+/** v1.8.2 AK10：right＝第一行右邊（「？」） */
+export function CurationSection({ right }: { right?: React.ReactNode } = {}) {
   const c = useTheme();
   const { data, isLoading } = useMyCurations();
   const { data: suggested } = useSuggestedPeriod();
@@ -42,19 +43,23 @@ export function CurationSection() {
 
   if (data.length === 0) {
     return (
+      <View style={{ gap: Spacing.sm }}>
+      {right ? <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>{right}</View> : null}
       <Card style={{ alignItems: 'center', paddingVertical: 28, gap: Spacing.sm }}>
         <AppText variant="heading">{tr('{p0} 月還沒有策展', { p0: monthOf(cur) })}</AppText>
         <AppText muted style={{ textAlign: 'center' }}>{tr('讀者在你發布前看不到你的書店。\n挑一個主題，放上一本書就能發布。')}</AppText>
         <Button label={tr('新增 {p0} 月策展', { p0: monthOf(cur) })} loading={create.isPending} onPress={startNew} style={{ alignSelf: 'stretch', marginTop: Spacing.md }} />
         <Button kind="link" label={tr('看看別人怎麼策展')} onPress={() => router.navigate('/')} />
       </Card>
+      </View>
     );
   }
 
   return (
     <View style={{ gap: Spacing.md }}>
       <View style={styles.head}>
-        <AppText variant="label" style={{ fontSize: 15 }}>{tr('策展 · {length}', { length: data.length })}</AppText>
+        <AppText variant="label" style={{ fontSize: 15, flex: 1 }}>{tr('策展 · {length}', { length: data.length })}</AppText>
+        {right}
       </View>
       {target ? (
         <Pressable

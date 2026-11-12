@@ -46,7 +46,6 @@ export default function DiaryScreen() {
       <AppText variant="title">{tr('日記')}</AppText>
       {session ? (
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <IconButton icon="bar-chart-2" label={tr('每週回顧')} onPress={() => router.push('/diary/weeks')} />
           <IconButton icon="calendar" label={tr('日記月曆')} onPress={() => router.push('/diary/calendar')} />
         </View>
       ) : null}

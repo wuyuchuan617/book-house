@@ -63,7 +63,9 @@ export function ReadingRemovalToast({ removal }: { removal: ReturnType<typeof us
 }
 
 /** R1 店主閱讀（v1.6）：只留正在讀、讀完了（想讀移到書櫃）＋S6 空狀態 */
-export function ReadingSection({ readings, color, loading, removal }: {
+export function ReadingSection({ readings, color, loading, removal, right }: {
+  /** v1.8.2 AK10：小膠囊那一行右邊（「？」） */
+  right?: React.ReactNode;
   readings: MyReading[] | undefined;
   color: StoreColor;
   loading: boolean;
@@ -89,11 +91,14 @@ export function ReadingSection({ readings, color, loading, removal }: {
 
   if (visible.length === 0) {
     return (
+      <View style={{ gap: Spacing.sm }}>
+      {right ? <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>{right}</View> : null}
       <Card style={{ alignItems: 'center', paddingVertical: 28, gap: Spacing.sm }}>
           <AppText variant="heading">{tr('記下你正在讀的書')}</AppText>
           <AppText muted style={{ textAlign: 'center' }}>{tr('讀到一半或剛讀完都可以，\n心得能一則一則慢慢累積。')}</AppText>
           <Button label={tr('記錄一本書')} onPress={add} style={{ alignSelf: 'stretch', marginTop: Spacing.md }} />
       </Card>
+      </View>
     );
   }
 
@@ -104,6 +109,7 @@ export function ReadingSection({ readings, color, loading, removal }: {
           <Chip label={tr('在讀 {reading}', { reading: counts.reading })} selected={filter === 'reading'} onPress={() => setFilter('reading')} />
           <Chip label={tr('讀完 {finished}', { finished: counts.finished })} selected={filter === 'finished'} onPress={() => setFilter('finished')} />
         </View>
+        {right}
       </View>
 
       {shown.map((r, index) => {

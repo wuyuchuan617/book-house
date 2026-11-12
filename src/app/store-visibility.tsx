@@ -15,12 +15,25 @@ type Key = keyof StoreShow;
 
 /** G3 公開設定：書店頁顯示哪幾類。一類關掉，書店頁整類看不到；打開後每一則還是看它自己公不公開 */
 export default function StoreVisibilityScreen() {
+  return (
+    <Screen>
+      <Stack.Screen options={{ title: tr('公開設定') }} />
+      <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.md }}>
+        <AppText muted style={{ lineHeight: 22 }}>{tr('決定讀者在你的書店頁能看到什麼。關掉一類，那一類馬上從書店頁消失；打開後，每一則還是看它自己有沒有設成公開。')}</AppText>
+        <StoreVisibilityCard />
+      </ScrollView>
+    </Screen>
+  );
+}
+
+/** v1.8.2 AK12：開關列表（設定頁直接攤開這一塊） */
+export function StoreVisibilityCard() {
   const c = useTheme();
   const { data } = useMyStore();
   const update = useUpdateStore();
   const [local, setLocal] = useState<Partial<StoreShow>>({});
 
-  if (!data) return <ActivityIndicator style={{ marginTop: 48 }} />;
+  if (!data) return <ActivityIndicator style={{ marginTop: 24 }} />;
   const store = data.store;
 
   const rows: [Key, string, string][] = [
@@ -48,10 +61,6 @@ export default function StoreVisibilityScreen() {
   };
 
   return (
-    <Screen>
-      <Stack.Screen options={{ title: tr('公開設定') }} />
-      <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.md }}>
-        <AppText muted style={{ lineHeight: 22 }}>{tr('決定讀者在你的書店頁能看到什麼。關掉一類，那一類馬上從書店頁消失；打開後，每一則還是看它自己有沒有設成公開。')}</AppText>
         <Card style={{ paddingVertical: 0 }}>
           {rows.map(([key, label, sub], i) => (
             <View key={key} style={[styles.row, { borderBottomColor: c.divider, borderBottomWidth: i < rows.length - 1 ? StyleSheet.hairlineWidth : 0 }]}>
@@ -63,9 +72,6 @@ export default function StoreVisibilityScreen() {
             </View>
           ))}
         </Card>
-        <AppText variant="caption" muted style={{ lineHeight: 19 }}>{tr('自己在「我的書店」永遠看得到全部。日記貼文在書店頁的「手記」；想讀、想去、積讀在「想讀想去」。')}</AppText>
-      </ScrollView>
-    </Screen>
   );
 }
 

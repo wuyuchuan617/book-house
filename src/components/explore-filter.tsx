@@ -18,7 +18,7 @@ import type { ExploreItem } from '@/lib/queries';
 
 export type ActiveFilter = { key: string; label: string; clear: () => void };
 
-/** W6 ／ v1.8.1 AJ6：左邊是分頁自己的小膠囊（類型、月份、狀態）＋生效中的條件（點 ✕ 清掉），「篩選」固定在最右邊 */
+/** W6 ／ v1.8.1 AJ6 ／ v1.8.2 AK1：左邊是分頁自己的小膠囊＋生效中的條件（點 ✕ 清掉），最右邊是只有圖示的「篩選」（有條件時右上小圓點寫數字） */
 export function FilterBar({ active, onOpen, lead }: { active: ActiveFilter[]; onOpen: () => void; lead?: React.ReactNode }) {
   const c = useTheme();
   return (
@@ -40,10 +40,15 @@ export function FilterBar({ active, onOpen, lead }: { active: ActiveFilter[]; on
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={active.length ? tr('篩選，{n} 個條件', { n: active.length }) : tr('篩選')}
+        hitSlop={4}
         onPress={onOpen}
         style={[styles.filterBtn, { backgroundColor: c.surface, borderColor: active.length ? c.text : c.border }]}>
-        <Feather name="sliders" size={14} color={c.text} />
-        <AppText variant="caption" style={{ fontWeight: '700' }}>{active.length ? tr('篩選 · {n}', { n: active.length }) : tr('篩選')}</AppText>
+        <Feather name="sliders" size={17} color={c.text} />
+        {active.length ? (
+          <View style={[styles.dot, { backgroundColor: c.primary }]}>
+            <AppText style={{ color: c.onPrimary, fontSize: 10, lineHeight: 13, fontWeight: '700' }}>{String(active.length)}</AppText>
+          </View>
+        ) : null}
       </Pressable>
     </View>
   );
@@ -120,7 +125,7 @@ export function SearchResults({ query, onSeeCurations, onClear, renderCuration }
       ) : null}
       {ps.length ? (
         <>
-          <Section title={tr('貼文 · {n}', { n: ps.length })} />
+          <Section title={tr('手記 · {n}', { n: ps.length })} />
           {ps.slice(0, 3).map((p) => <PostCard key={p.id} post={p} />)}
         </>
       ) : null}
@@ -160,7 +165,8 @@ function Section({ title, more }: { title: string; more?: () => void }) {
 const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingRight: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.xs },
   bar: { paddingLeft: Spacing.xl, paddingRight: Spacing.xs, gap: Spacing.sm, alignItems: 'center' },
-  filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 34, paddingHorizontal: 12, borderRadius: Radius.pill, borderWidth: 1 },
+  filterBtn: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  dot: { position: 'absolute', top: -3, right: -3, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3, alignItems: 'center', justifyContent: 'center' },
   active: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32, paddingHorizontal: 10, borderRadius: Radius.pill },
   none: { borderWidth: 1.5, borderStyle: 'dashed', backgroundColor: 'transparent', gap: Spacing.sm, alignItems: 'center', marginTop: Spacing.sm, minHeight: MinTouch },
 });

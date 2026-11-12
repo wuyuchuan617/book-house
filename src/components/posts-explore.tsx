@@ -81,11 +81,11 @@ export function PostsExplore({ filter, near, onReset, view, kind }: { filter: Po
           refreshControl={<RefreshControl refreshing={list.isRefetching} onRefresh={() => void list.refetch()} />}
           ListEmptyComponent={
             filter === 'following' ? (
-              <EmptyState title={tr('追蹤的書店還沒有公開貼文')} body={tr('追蹤更多書店，或看看全部的貼文。')} actionLabel={tr('看全部')} onAction={onReset} />
+              <EmptyState title={tr('追蹤的書店還沒有公開的手記')} body={tr('追蹤更多書店，或看看全部的手記。')} actionLabel={tr('看全部')} onAction={onReset} />
             ) : filter === 'near' ? (
-              <EmptyState title={tr('附近還沒有公開貼文')} body={tr('在有書的地方打卡、設成公開，就會出現在這裡。')} actionLabel={tr('看全部')} onAction={onReset} />
+              <EmptyState title={tr('附近還沒有公開的手記')} body={tr('在有書的地方打卡、設成公開，就會出現在這裡。')} actionLabel={tr('看全部')} onAction={onReset} />
             ) : (
-              <EmptyState title={tr('還沒有公開貼文')} body={tr('寫日記時選「公開」，就會出現在這裡。')} />
+              <EmptyState title={tr('還沒有公開的手記')} body={tr('寫日記時選「公開」，就會出現在這裡。')} />
             )
           }
           renderItem={({ item }) =>

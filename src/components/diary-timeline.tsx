@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
-import { AutoItemRow, OwnEntryCard, taipeiTime, VisibilityBadge, visibilityOf } from '@/components/diary';
+import { AutoItemRow, OwnEntryCard, taipeiTime, visibilityOf } from '@/components/diary';
 import { EventShareBody } from '@/components/store-journal';
 import { ActionSheet } from '@/components/sheet';
 import { MoreButton, SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
@@ -14,28 +14,25 @@ import { diaryError, useDeleteEntry, useUnpublishEntry, type DiaryEntry, type Di
 import { eventError, useDeleteShare } from '@/lib/events';
 import { tr } from '@/lib/i18n';
 
-type Filter = 'all' | 'private' | 'public';
-
 /**
- * D2 一天的時間軸：上方篩選（全部／只有自己／公開）；
- * 「我寫的」日記與打卡是大卡片（往左滑：今天可編輯；隨時可改成私人、刪除），
+ * D2 一天的時間軸。v1.8.2 AK4：「我寫的」分成「公開」「只有自己」兩段（卡片不再放公開標籤，上面也不再有篩選）；
+ * 日記與打卡是大卡片（往左滑：今天可編輯；隨時可改成私人、刪除），
  * 「自動帶入」的心得、想讀、想去、開始讀、讀完收在下面一個框裡，可以收合。
  */
 export function DiaryTimeline({ items, isToday, color }: { items: DiaryItem[]; isToday: boolean; color?: StoreColor }) {
   const c = useTheme();
   const del = useDeleteEntry();
   const unpublish = useUnpublishEntry();
-  const [filter, setFilter] = useState<Filter>('all');
   const [autoOpen, setAutoOpen] = useState(true);
   const delShare = useDeleteShare();
   const [menuFor, setMenuFor] = useState<DiaryEntry | DiaryEventShare | null>(null);
   const fail = (e: Error) => Alert.alert(tr('沒有成功'), diaryError(e.message));
 
-  const pubCount = items.filter((i) => visibilityOf(i).public).length;
-  const shown = items.filter((i) => filter === 'all' || (filter === 'public') === visibilityOf(i).public);
   const isOwn = (i: DiaryItem): i is DiaryEntry | DiaryEventShare => i.type === 'note' || i.type === 'checkin' || i.type === 'event_share';
-  const own = shown.filter(isOwn);
-  const auto = shown.filter((i): i is Exclude<DiaryItem, DiaryEntry | DiaryEventShare> => !isOwn(i));
+  const own = items.filter(isOwn);
+  const pub = own.filter((i) => visibilityOf(i).public);
+  const priv = own.filter((i) => !visibilityOf(i).public);
+  const auto = items.filter((i): i is Exclude<DiaryItem, DiaryEntry | DiaryEventShare> => !isOwn(i));
 
   // v1.8.1：分享的活動也記進日記（修改分享／看活動／刪除分享）
   const shareActions = (e: DiaryEventShare): SwipeAction[] => [
@@ -75,46 +72,32 @@ export function DiaryTimeline({ items, isToday, color }: { items: DiaryItem[]; i
     },
   ];
 
-  const FILTERS: [Filter, string, number][] = [
-    ['all', tr('全部 {n}', { n: items.length }), items.length],
-    ['private', tr('只有自己 {n}', { n: items.length - pubCount }), items.length - pubCount],
-    ['public', tr('公開 {n}', { n: pubCount }), pubCount],
-  ];
-
-  return (
-    <View style={{ gap: Spacing.md }}>
-      <View style={{ flexDirection: 'row', gap: Spacing.sm }} accessibilityRole="tablist">
-        {FILTERS.map(([f, label]) => {
-          const on = filter === f;
+  const section = (list: (DiaryEntry | DiaryEventShare)[], isPub: boolean) =>
+    list.length ? (
+      <View style={{ gap: Spacing.sm }}>
+        <View style={styles.secHead} accessibilityRole="header">
+          <Feather name={isPub ? 'globe' : 'lock'} size={13} color={isPub ? c.success : c.textSecondary} />
+          <AppText variant="caption" style={styles.section}>{isPub ? tr('公開 · {n}', { n: list.length }) : tr('只有自己 · {n}', { n: list.length })}</AppText>
+          {isPub ? <AppText variant="caption" muted>{tr('書店頁、探索看得到')}</AppText> : null}
+        </View>
+        {list.map((e, index) => {
+          const actions = actionsFor(e);
+          const hint = index === 0 && (isPub || !pub.length);
           return (
-            <Pressable
-              key={f}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: on }}
-              onPress={() => setFilter(f)}
-              style={[styles.filter, { backgroundColor: on ? c.text : c.surface, borderColor: on ? c.text : c.border }]}>
-              {f !== 'all' ? <Feather name={f === 'public' ? 'globe' : 'lock'} size={12} color={on ? c.background : f === 'public' ? c.success : c.textSecondary} /> : null}
-              <AppText variant="caption" style={{ fontWeight: '700', color: on ? c.background : c.text }}>{label}</AppText>
-            </Pressable>
+            <View key={e.id} {...swipeA11y(actions)}>
+              <SwipeRow actions={actions} background={c.background} hint={hint}>
+                {e.type === 'event_share' ? <EventShareCard item={e} onMore={() => setMenuFor(e)} /> : <OwnEntryCard item={e} color={color} hideBadge onMore={() => setMenuFor(e)} />}
+              </SwipeRow>
+            </View>
           );
         })}
       </View>
+    ) : null;
 
-      {own.length ? (
-        <View style={{ gap: Spacing.sm }}>
-          <AppText variant="caption" style={styles.section}>{tr('我寫的')}</AppText>
-          {own.map((e, index) => {
-            const actions = actionsFor(e);
-            return (
-              <View key={e.id} {...swipeA11y(actions)}>
-                <SwipeRow actions={actions} background={c.background} hint={index === 0}>
-                  {e.type === 'event_share' ? <EventShareCard item={e} onMore={() => setMenuFor(e)} /> : <OwnEntryCard item={e} color={color} onMore={() => setMenuFor(e)} />}
-                </SwipeRow>
-              </View>
-            );
-          })}
-        </View>
-      ) : null}
+  return (
+    <View style={{ gap: Spacing.md }}>
+      {section(pub, true)}
+      {section(priv, false)}
 
       {auto.length ? (
         <View style={{ gap: Spacing.sm }}>
@@ -131,7 +114,6 @@ export function DiaryTimeline({ items, isToday, color }: { items: DiaryItem[]; i
         </View>
       ) : null}
 
-      {!own.length && !auto.length ? <AppText variant="caption" muted style={{ textAlign: 'center', paddingVertical: Spacing.lg }}>{tr('這個篩選沒有項目。')}</AppText> : null}
       {own.length ? <AppText variant="caption" style={{ color: c.textTertiary }}>{isToday ? tr('點「⋯」或往左滑：可以編輯、改成只有自己、刪除') : tr('點「⋯」或往左滑：可以改成只有自己、刪除')}</AppText> : null}
       <ActionSheet visible={!!menuFor} onClose={() => setMenuFor(null)} title={(menuFor?.type === 'event_share' ? menuFor.event.title : menuFor?.body) ?? undefined} actions={menuFor ? actionsFor(menuFor) : []} />
     </View>
@@ -147,7 +129,6 @@ function EventShareCard({ item, onMore }: { item: DiaryEventShare; onMore: () =>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Feather name="calendar" size={13} color="#9A4A12" />
           <AppText variant="caption" style={{ fontWeight: '700', color: '#9A4A12', flex: 1 }}>{tr('分享活動')}</AppText>
-          <VisibilityBadge v={{ public: true, where: 'post' }} />
           <MoreButton onPress={onMore} label={tr('分享活動的更多動作')} />
         </View>
         <EventShareBody item={item} />
@@ -158,7 +139,7 @@ function EventShareCard({ item, onMore }: { item: DiaryEventShare; onMore: () =>
 
 const styles = StyleSheet.create({
   card: { flex: 1, borderRadius: Radius.xl, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: Spacing.sm },
-  filter: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 34, paddingHorizontal: 12, borderRadius: Radius.pill, borderWidth: 1 },
+  secHead: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 2 },
   section: { fontWeight: '700', paddingHorizontal: 2 },
   autoHead: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32 },
   autoBox: { borderWidth: 1, borderStyle: 'dashed', borderRadius: Radius.xl, paddingHorizontal: Spacing.lg },

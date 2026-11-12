@@ -8,22 +8,31 @@ import { useTheme } from '@/hooks/use-theme';
 import { tr } from '@/lib/i18n';
 import { thisWeekStart, useWeekList, weekLabel } from '@/lib/weekly';
 
-/** W5 過去的回顧：每一週的天數、心得數；點進去看那週 */
+/** W5 過去的回顧（v1.8.2 AK14：也放在日記月曆的「每週回顧」分頁） */
 export default function WeekListScreen() {
+  return (
+    <Screen>
+      <Stack.Screen options={{ title: tr('每週回顧') }} />
+      <WeekList />
+    </Screen>
+  );
+}
+
+/** 每一週的天數、心得數；點進去看那週 */
+export function WeekList({ header }: { header?: React.ReactElement }) {
   const c = useTheme();
   const { data, isLoading } = useWeekList(26);
   const current = thisWeekStart();
 
   return (
-    <Screen>
-      <Stack.Screen options={{ title: tr('每週回顧') }} />
+    <>
       {isLoading ? (
         <ActivityIndicator style={{ marginTop: 48 }} />
       ) : (
         <FlatList
           data={data}
           keyExtractor={(w) => w.week_start}
-          contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.sm }}
+          contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.sm, paddingBottom: 48 }}
           ListEmptyComponent={<EmptyState title={tr('還沒有回顧')} body={tr('開始記日記後，每週一會整理好上一週。')} />}
           renderItem={({ item }) => {
             const empty = !item.active_days;
@@ -50,10 +59,15 @@ export default function WeekListScreen() {
               </Pressable>
             );
           }}
-          ListHeaderComponent={data?.length ? <AppText variant="caption" muted style={{ marginBottom: Spacing.xs }}>{tr('週一到週日，台北時間。')}</AppText> : undefined}
+          ListHeaderComponent={
+            <View style={{ gap: Spacing.md }}>
+              {header}
+              {data?.length ? <AppText variant="caption" muted style={{ marginBottom: Spacing.xs }}>{tr('週一到週日，台北時間。')}</AppText> : null}
+            </View>
+          }
         />
       )}
-    </Screen>
+    </>
   );
 }
 

@@ -188,7 +188,7 @@ export default function PlaceScreen() {
         ) : null}
 
         <View style={{ gap: Spacing.sm }}>
-          <AppText variant="heading">{tr('大家的貼文')}</AppText>
+          <AppText variant="heading">{tr('大家的手記')}</AppText>
           {data.checkins.length ? (
             data.checkins.map((ch) => <CheckinCard key={ch.id} checkin={ch} onMore={session ? () => setMenuFor(ch) : undefined} />)
           ) : (

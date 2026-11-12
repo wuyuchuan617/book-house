@@ -78,15 +78,11 @@ export function QuickAddSheet({ visible, onClose }: { visible: boolean; onClose:
       accessibilityRole="button"
       accessibilityLabel={`${it.title}，${it.sub}`}
       onPress={() => go(it.key, it.onPress)}
-      style={({ pressed }) => [styles.bar, { backgroundColor: c.surface, borderColor: c.divider, opacity: pressed ? 0.85 : 1 }]}>
-      <View style={[styles.barIcon, { backgroundColor: it.bg }]}>
-        <Feather name={it.icon} size={18} color={it.tint} />
+      style={({ pressed }) => [styles.bar, { backgroundColor: it.key === 'post' ? c.primary : c.surface, borderColor: it.key === 'post' ? c.primary : c.divider, opacity: pressed ? 0.85 : 1 }]}>
+      <View style={[styles.barIcon, { backgroundColor: it.key === 'post' ? 'rgba(255,255,255,0.2)' : it.bg }]}>
+        <Feather name={it.icon} size={18} color={it.key === 'post' ? c.onPrimary : it.tint} />
       </View>
-      <View style={{ flex: 1 }}>
-        <AppText variant="label">{it.title}</AppText>
-        <AppText variant="caption" muted numberOfLines={1}>{it.sub}</AppText>
-      </View>
-      <Feather name="chevron-right" size={16} color={c.textTertiary} />
+      <AppText variant="label" style={{ color: it.key === 'post' ? c.onPrimary : c.text, flexShrink: 1 }} numberOfLines={1}>{it.title}</AppText>
     </Pressable>
   );
   const icon = (it: Item) => (
@@ -112,9 +108,10 @@ export function QuickAddSheet({ visible, onClose }: { visible: boolean; onClose:
             <Feather name="x" size={18} color={c.textSecondary} />
           </Pressable>
         </View>
-        <View style={{ gap: Spacing.sm }}>{['post', 'reading'].map((k) => bar(items[k]))}</View>
-        {group(tr('收藏'), ['want_book', 'want_place', 'purchase'])}
+        {/* v1.8.2 AK9：最常用的離拇指最近——分享最上面、收藏中間、寫日記｜正在讀最下面同一行 */}
         {group(tr('分享給大家'), ['event', 'trip', 'rx', 'curation'])}
+        {group(tr('收藏'), ['want_book', 'want_place', 'purchase'])}
+        <View style={{ flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.xs }}>{['post', 'reading'].map((k) => bar(items[k]))}</View>
     </BottomSheet>
   );
 }
@@ -137,7 +134,7 @@ const styles = StyleSheet.create({
   sheet: { paddingHorizontal: Spacing.xl, gap: Spacing.md },
   head: { flexDirection: 'row', alignItems: 'center' },
   close: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  bar: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.xl, borderWidth: 1, paddingHorizontal: 14, minHeight: 62 },
+  bar: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: Radius.xl, borderWidth: 1, paddingHorizontal: 12, minHeight: 58 },
   barIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   icons: { flexDirection: 'row' },
   iconTile: { width: '25%', alignItems: 'center', gap: 6, minHeight: 76 },

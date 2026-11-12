@@ -66,7 +66,7 @@ export default function SearchScreen() {
     ['all', tr('全部')],
     ['books', tr('書')],
     ['curations', tr('策展')],
-    ['posts', tr('貼文')],
+    ['posts', tr('手記')],
     ['rx', tr('處方箋')],
     ['stores', tr('書店')],
   ];
@@ -144,7 +144,7 @@ export default function SearchScreen() {
               ) : null}
               {show('posts') ? (
                 <>
-                  <Section title={tr('貼文 · {n}', { n: has.posts })} more={cat === 'all' && has.posts > 3 ? () => setCat('posts') : undefined} />
+                  <Section title={tr('手記 · {n}', { n: has.posts })} more={cat === 'all' && has.posts > 3 ? () => setCat('posts') : undefined} />
                   {posts.data!.slice(0, limit).map((p) => <PostCard key={p.id} post={p} />)}
                 </>
               ) : null}

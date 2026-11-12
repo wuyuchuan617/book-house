@@ -10,15 +10,19 @@ import { AppText, EmptyState } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useMyPlaces, useSavePlace, type MyPlace, type MyPlaceKind } from '@/lib/diary';
+import { useMyTrips } from '@/lib/trips';
+import { TripCard } from '@/components/trips';
 import { tr } from '@/lib/i18n';
 
 const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
 
-/** L3 書櫃 › 地方：想去（存了還沒去）／去過（打過卡）；「＋ 加地方」直接搜尋存成想去 */
+/** L3 書櫃 › 地方：想去（存了還沒去）／去過（打過卡）／書旅（v1.8.2 AK15：收藏的書旅）；「＋ 加地方」直接搜尋存成想去 */
 export function PlacesShelf() {
   const c = useTheme();
-  const [kind, setKind] = useState<MyPlaceKind>('want');
+  const [tab, setKind] = useState<MyPlaceKind | 'trips'>('want');
+  const kind: MyPlaceKind = tab === 'trips' ? 'want' : tab;
   const list = useMyPlaces(kind);
+  const trips = useMyTrips();
   // 「＋ 加地方」與編輯都開寫日記頁的「想去」
   const add = () => router.push({ pathname: '/diary/compose', params: { kind: 'want' } });
   const edit = (p: MyPlace) =>
@@ -39,24 +43,39 @@ export function PlacesShelf() {
     <View style={{ flex: 1 }}>
       <View style={styles.bar}>
         <View style={{ flexDirection: 'row', gap: Spacing.sm }} accessibilityRole="tablist">
-          {(['want', 'visited'] as const).map((k) => (
+          {(['want', 'visited', 'trips'] as const).map((k) => (
             <Pressable
               key={k}
               accessibilityRole="tab"
-              accessibilityState={{ selected: kind === k }}
+              accessibilityState={{ selected: tab === k }}
               onPress={() => setKind(k)}
-              style={[styles.pill, { backgroundColor: kind === k ? c.text : c.surface, borderColor: kind === k ? c.text : c.border }]}>
-              <AppText variant="caption" style={{ fontWeight: '700', color: kind === k ? c.background : c.text }}>{k === 'want' ? tr('想去') : tr('去過')}</AppText>
+              style={[styles.pill, { backgroundColor: tab === k ? c.text : c.surface, borderColor: tab === k ? c.text : c.border }]}>
+              <AppText variant="caption" style={{ fontWeight: '700', color: tab === k ? c.background : c.text }}>{k === 'want' ? tr('想去') : k === 'visited' ? tr('去過') : tr('書旅')}</AppText>
             </Pressable>
           ))}
         </View>
-        <Pressable accessibilityRole="button" onPress={() => add()} hitSlop={8} style={styles.add}>
-          <Feather name="plus" size={16} color={c.primary} />
-          <AppText variant="label" style={{ color: c.primary }}>{tr('加地方')}</AppText>
-        </Pressable>
+        {tab !== 'trips' ? (
+          <Pressable accessibilityRole="button" onPress={() => add()} hitSlop={8} style={styles.add}>
+            <Feather name="plus" size={16} color={c.primary} />
+            <AppText variant="label" style={{ color: c.primary }}>{tr('加地方')}</AppText>
+          </Pressable>
+        ) : null}
       </View>
 
-      {list.isLoading ? (
+      {tab === 'trips' ? (
+        trips.isPending ? (
+          <ActivityIndicator style={{ marginTop: 48 }} />
+        ) : (
+          <FlatList
+            data={trips.data?.saved ?? []}
+            keyExtractor={(t) => t.id}
+            contentContainerStyle={styles.list}
+            refreshControl={<RefreshControl refreshing={trips.isRefetching} onRefresh={() => void trips.refetch()} />}
+            ListEmptyComponent={<EmptyState title={tr('還沒有收藏的書旅')} body={tr('在書旅頁按書籤收藏，要出發時從這裡打開。')} actionLabel={tr('看看大家的書旅')} onAction={() => router.navigate({ pathname: '/', params: { tab: 'trips' } })} />}
+            renderItem={({ item }) => <TripCard t={item} />}
+          />
+        )
+      ) : list.isLoading ? (
         <ActivityIndicator style={{ marginTop: 48 }} />
       ) : (
         <FlatList

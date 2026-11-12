@@ -20,7 +20,8 @@ type Item = RxMineStarted | RxMineReplied;
  * W4 我的書店 › 處方箋（v1.6，從手記和書櫃獨立出來）：我發起的／我開的。
  * 新增走右下＋；只有還沒發起過時，空狀態放一顆「發起第一張處方箋」。
  */
-export function OwnerRx() {
+/** v1.8.2 AK10：right＝小膠囊那一行右邊（「？」） */
+export function OwnerRx({ right }: { right?: React.ReactNode } = {}) {
   const [kind, setKind] = useState<'started' | 'replied'>('started');
   const started = useRxMine('started');
   const replied = useRxMine('replied');
@@ -70,9 +71,12 @@ export function OwnerRx() {
   const items = (list.data ?? []) as Item[];
   return (
     <View style={{ gap: Spacing.md }}>
-      <View style={chipRow}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+      <View style={[chipRow, { flex: 1 }]}>
         <Chip label={tr('我發起的 · {n}', { n: started.data?.length ?? 0 })} selected={kind === 'started'} onPress={() => setKind('started')} />
         <Chip label={tr('我開的 · {n}', { n: replied.data?.length ?? 0 })} selected={kind === 'replied'} onPress={() => setKind('replied')} />
+      </View>
+      {right}
       </View>
       {list.isPending ? (
         <ActivityIndicator style={{ marginTop: 24 }} />
