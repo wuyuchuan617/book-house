@@ -118,8 +118,8 @@ export function EventCard({ e }: { e: BookEvent }) {
 }
 
 /** 探索 › 貼文 › 活動 */
-export function EventsExplore() {
-  const list = useExploreEvents();
+export function EventsExplore({ filter = 'all', near = null }: { filter?: 'all' | 'following' | 'near'; near?: { lat: number; lng: number } | null }) {
+  const list = useExploreEvents(filter, near);
   if (list.isPending) return <ActivityIndicator style={{ marginTop: 48 }} />;
   return (
     <FlatList

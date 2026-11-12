@@ -53,6 +53,12 @@ begin
   assert jsonb_array_length(d->'shares') = 2 and (d->>'i_shared')::boolean;
   assert jsonb_array_length(public.place_events((select id from public.places where google_place_id = 'gp-ev'))) = 1;
 end $$;
+-- 手記看得到分享；探索「追蹤中」只放追蹤的書店分享過的
+do $$ begin
+  assert exists (select 1 from jsonb_array_elements(public.store_journal((select id from public.bookstores where owner_id = '00000000-0000-0000-0000-0000000002b1'))) x where x->>'type' = 'event_share'), 'journal has share';
+  assert jsonb_array_length(public.explore_events(30, true)) = 0, 'not following anyone';
+  assert (public.explore_events()->0->>'latest_at') is not null;
+end $$;
 -- 同一個人只分享一次（再分享是更新）
 select public.share_event((select id::uuid from t_ev), '改一下', null);
 do $$ begin assert (select count(*) from public.book_event_shares where event_id = (select id::uuid from t_ev)) = 2; end $$;

@@ -483,7 +483,14 @@ export type JournalItem =
       book: DiaryBook | null;
     })
   | (JournalBase & { type: 'rx_reply'; reason: string; prescription: { id: string; title: string }; book: DiaryBook })
-  | (JournalBase & { type: 'rx'; title: string; reply_count: number; is_open: boolean });
+  | (JournalBase & { type: 'rx'; title: string; reply_count: number; is_open: boolean })
+  // v1.8 AI3：分享的活動（自己的話＋活動小卡）
+  | (JournalBase & {
+      type: 'event_share';
+      body: string | null;
+      photo_paths: string[];
+      event: { id: string; title: string; event_type: string; starts_at: string; ends_at: string | null; online: boolean; place: { id: string; name: string } | null; going_count: number; over: boolean };
+    });
 
 export function useStoreJournal(bookstoreId: string | undefined) {
   return useQuery({

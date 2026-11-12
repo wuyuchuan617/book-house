@@ -37,6 +37,8 @@ export type BookEvent = {
   i_going: boolean;
   i_shared: boolean;
   mine: boolean;
+  /** 最新一則分享的時間（探索「全部」用來跟貼文一起排） */
+  latest_at?: string | null;
 };
 
 export type EventShare = { id: string; body: string | null; photo_paths: string[]; created_at: string; is_mine: boolean; author: Person };
@@ -48,12 +50,14 @@ const invalidate = (qc: ReturnType<typeof useQueryClient>) => {
   void qc.invalidateQueries({ queryKey: ['place-events'] });
 };
 
-export function useExploreEvents(enabled = true) {
+/** 探索 › 貼文：filter＝全部／追蹤中／附近（附近要座標） */
+export function useExploreEvents(filter: 'all' | 'following' | 'near' = 'all', near: { lat: number; lng: number } | null = null, enabled = true) {
   const { session } = useAuth();
   return useQuery({
-    queryKey: ['events', 'explore', session?.user.id ?? 'anon'],
-    enabled,
-    queryFn: () => rpcOr<BookEvent[]>('explore_events', { p_limit: 30 }, []),
+    queryKey: ['events', 'explore', filter, near?.lat, near?.lng, session?.user.id ?? 'anon'],
+    enabled: enabled && (filter !== 'near' || !!near),
+    queryFn: () =>
+      rpcOr<BookEvent[]>('explore_events', { p_limit: 30, p_following: filter === 'following', p_lat: filter === 'near' ? near?.lat ?? null : null, p_lng: filter === 'near' ? near?.lng ?? null : null }, []),
   });
 }
 

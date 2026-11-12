@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AboutLink } from '@/components/about';
 import { DaySheet } from '@/components/day-sheet';
+import { TimeSheet, timeLabel } from '@/components/time-sheet';
 import { EventInfo, sharersLine } from '@/components/event-card';
 import { Chip, chipRow, TextField, Toggle } from '@/components/form';
 import { PlacePicker } from '@/components/place-picker';
@@ -41,11 +42,12 @@ export default function ShareEventScreen() {
   const [type, setType] = useState<EventType>('market');
   const [date, setDate] = useState(taipeiToday());
   const [start, setStart] = useState('13:00');
-  const [end, setEnd] = useState('');
+  const [end, setEnd] = useState('18:00');
   const [place, setPlace] = useState<{ id: string; name: string } | null>(null);
   const [online, setOnline] = useState(false);
   const [url, setUrl] = useState('');
   const [dateOpen, setDateOpen] = useState(false);
+  const [timeOpen, setTimeOpen] = useState(false);
   const [placeOpen, setPlaceOpen] = useState(false);
   const create = useCreateEvent();
 
@@ -183,13 +185,12 @@ export default function ShareEventScreen() {
                   <AppText>{dayLabel(date)}</AppText>
                   <Feather name="chevron-right" size={16} color={c.textTertiary} />
                 </Pressable>
-                <View style={[styles.row, { borderBottomColor: c.divider }]}>
+                <Pressable accessibilityRole="button" onPress={() => setTimeOpen(true)} style={[styles.row, { borderBottomColor: c.divider }]}>
                   <Feather name="clock" size={16} color={c.text} />
                   <AppText style={{ flex: 1 }}>{tr('時間')}</AppText>
-                  <TextInput value={start} onChangeText={setStart} placeholder="13:00" maxLength={5} keyboardType="numbers-and-punctuation" accessibilityLabel={tr('開始時間')} placeholderTextColor={c.textTertiary} style={[styles.time, { color: c.text, borderColor: TIME.test(start) ? c.border : c.danger }]} />
-                  <AppText muted>–</AppText>
-                  <TextInput value={end} onChangeText={setEnd} placeholder={tr('結束')} maxLength={5} keyboardType="numbers-and-punctuation" accessibilityLabel={tr('結束時間（選填）')} placeholderTextColor={c.textTertiary} style={[styles.time, { color: c.text, borderColor: !end || TIME.test(end) ? c.border : c.danger }]} />
-                </View>
+                  <AppText>{end ? `${timeLabel(start)}–${timeLabel(end)}` : timeLabel(start)}</AppText>
+                  <Feather name="chevron-right" size={16} color={c.textTertiary} />
+                </Pressable>
                 <Pressable accessibilityRole="button" disabled={online} onPress={() => setPlaceOpen(true)} style={[styles.row, { borderBottomColor: c.divider, opacity: online ? 0.5 : 1 }]}>
                   <Feather name="map-pin" size={16} color={c.text} />
                   <AppText style={{ flex: 1 }}>{tr('地點')}</AppText>
@@ -245,6 +246,7 @@ export default function ShareEventScreen() {
         </SafeAreaView>
       ) : null}
 
+      <TimeSheet visible={timeOpen} start={start} end={end} onChange={(s1, e1) => { setStart(s1); setEnd(e1); }} onClose={() => setTimeOpen(false)} />
       <DaySheet key={String(dateOpen)} visible={dateOpen} future title={tr('哪一天？')} value={date} onChange={setDate} onClose={() => setDateOpen(false)} />
       <PlacePicker
         visible={placeOpen}
@@ -266,7 +268,6 @@ const styles = StyleSheet.create({
   search: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: 12 },
   dashed: { borderWidth: 1.5, borderStyle: 'dashed', borderRadius: Radius.lg, alignItems: 'center', justifyContent: 'center', minHeight: 52 },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, minHeight: 52, borderBottomWidth: StyleSheet.hairlineWidth },
-  time: { width: 64, height: 36, borderWidth: 1, borderRadius: 8, textAlign: 'center', fontSize: 15 },
   photo: { width: 84, height: 84, borderRadius: 10 },
   addPhoto: { borderWidth: 1.5, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
   footer: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, borderTopWidth: StyleSheet.hairlineWidth },

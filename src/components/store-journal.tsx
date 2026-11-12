@@ -17,6 +17,8 @@ import { categoryLabel, diaryError, useDeleteEntry, useDiaryImageUrls, useSavePl
 import { rxError, useRxAction, useRxWithdraw } from '@/lib/rx';
 import { taipeiDate, taipeiToday } from '@/lib/period';
 import { bookTitle, tr } from '@/lib/i18n';
+import { DateBlock } from '@/components/event-card';
+import { eventTime, useDeleteShare } from '@/lib/events';
 
 type Filter = 'all' | 'want' | 'place' | 'post';
 
@@ -35,6 +37,7 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bo
   const delEntry = useDeleteEntry();
   const rxAction = useRxAction();
   const withdraw = useRxWithdraw();
+  const delShare = useDeleteShare();
   const [undo, setUndo] = useState<Extract<JournalItem, { type: 'want' | 'place' }> | null>(null);
   const [menuFor, setMenuFor] = useState<JournalItem | null>(null);
   // 移除後 6 秒內可以復原（列表在捲動區裡，所以用列表上方的提示，不用浮動的 toast）
@@ -55,10 +58,16 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bo
     );
   if (isLoading || !data) return <ActivityIndicator style={{ marginTop: 32 }} />;
   // v1.7：手記只放日記貼文；v1.7.2：想讀、想去各一個分頁
-  const items = data.filter((i) => i.type === filter);
+  const items = data.filter((i) => i.type === filter || (filter === 'post' && i.type === 'event_share'));
 
   const toggle = (item: JournalItem) => {
-    // v1.6：想讀、想去不再一則一則選，只看公開設定
+    // v1.6：想讀、想去不再一則一則選，只看公開設定；分享的活動一定公開，看「手記」設定
+    if (item.type === 'event_share') {
+      return Alert.alert(item.shown ? tr('讀者看得到') : tr('只有你看得到'), tr('分享的活動一定公開；要不要出現在書店頁，看「公開設定 › 手記」。'), [
+        { text: tr('好'), style: 'cancel' },
+        { text: tr('公開設定'), onPress: () => router.push('/store-visibility') },
+      ]);
+    }
     if (item.type !== 'post') {
       if (item.type === 'place' && !item.public_ok) return Alert.alert(tr('私人地點不會公開'), tr('住家等私人地點只會留在自己的書櫃裡。'));
       return Alert.alert(
@@ -131,6 +140,17 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bo
           },
         ];
       }
+      case 'event_share':
+        return [
+          ...(item.event.over ? [] : [{ label: tr('修改分享'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/event/share', params: { eventId: item.event.id } }) }]),
+          { label: tr('看活動'), icon: 'calendar' as const, onPress: () => router.push({ pathname: '/event/[id]', params: { id: item.event.id } }) },
+          {
+            label: tr('刪除分享'),
+            icon: 'trash-2' as const,
+            destructive: true,
+            onPress: () => confirm(tr('刪除你的分享？'), tr('活動還會在，只是拿掉你的這則分享。'), tr('刪除'), () => delShare.mutate(item.id, { onError: fail })),
+          },
+        ];
       case 'rx_reply':
         return [
           { label: tr('修改'), icon: 'edit-2', onPress: () => router.push({ pathname: '/rx/reply', params: { id: item.prescription.id } }) },
@@ -221,11 +241,12 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bo
 const item_error = (m: string) => (/prescription|處方/.test(m) ? rxError(m) : diaryError(m));
 
 function kindOf(item: JournalItem, c: ReturnType<typeof useTheme>) {
+  if (item.type === 'event_share') return { label: tr('分享活動'), fg: '#9A4A12', icon: 'calendar' as const };
   return item.type === 'rx' || item.type === 'rx_reply' ? { label: item.type === 'rx' ? tr('發起處方箋') : tr('開了處方'), fg: '#5A4B8A', icon: 'message-circle' as const } : item.type === 'want' ? { label: tr('想讀'), fg: c.primary, icon: 'bookmark' as const } : item.type === 'place' ? { label: tr('想去'), fg: '#2F5D6B', icon: 'map-pin' as const } : item.book ? { label: tr('正在讀'), fg: c.success, icon: 'play' as const } : item.kind === 'checkin' ? { label: tr('打卡'), fg: '#5A4B8A', icon: 'map-pin' as const } : { label: tr('日記'), fg: '#5A4B8A', icon: 'edit-3' as const };
 }
 
 const journalTitle = (item: JournalItem) =>
-  item.type === 'want' ? bookTitle(item.book.title) : item.type === 'place' ? item.place.name : item.type === 'rx' ? item.title : item.type === 'rx_reply' ? bookTitle(item.book.title) : (item.body ?? item.place?.name ?? item.place_label ?? (item.book ? bookTitle(item.book.title) : ''));
+  item.type === 'want' ? bookTitle(item.book.title) : item.type === 'place' ? item.place.name : item.type === 'rx' ? item.title : item.type === 'rx_reply' ? bookTitle(item.book.title) : item.type === 'event_share' ? item.event.title : (item.body ?? item.place?.name ?? item.place_label ?? (item.book ? bookTitle(item.book.title) : ''));
 
 function KindTag({ item }: { item: JournalItem }) {
   const c = useTheme();
@@ -271,6 +292,8 @@ function JournalCard({ item, color, mine, onToggle, onMore }: { item: JournalIte
           {item.place.category ? <AppText variant="caption" muted>{categoryLabel(item.place.category)}</AppText> : null}
           {item.note ? <AppText style={{ lineHeight: 21, marginTop: 2 }}>{item.note}</AppText> : null}
         </Pressable>
+      ) : item.type === 'event_share' ? (
+        <EventShareBody item={item} />
       ) : item.type === 'rx' ? (
         <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/rx/[id]', params: { id: item.id } })} style={{ gap: 2 }}>
           <AppText style={{ fontSize: 16, fontWeight: '700', lineHeight: 23 }}>{`℞ ${item.title}`}</AppText>
@@ -290,6 +313,32 @@ function JournalCard({ item, color, mine, onToggle, onMore }: { item: JournalIte
       ) : (
         <PostBody item={item} color={color} />
       )}
+    </View>
+  );
+}
+
+function EventShareBody({ item }: { item: Extract<JournalItem, { type: 'event_share' }> }) {
+  const c = useTheme();
+  const photos = useDiaryImageUrls(item.photo_paths);
+  const e = item.event;
+  return (
+    <View style={{ gap: Spacing.sm }}>
+      {item.body ? <AppText style={{ fontSize: 15, lineHeight: 23 }}>{item.body}</AppText> : null}
+      {item.photo_paths.length ? (
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          {item.photo_paths.map((p, i) => <Image key={p} source={photos.data?.[i] ? { uri: photos.data[i]! } : undefined} style={[styles.photo, { backgroundColor: c.surfaceMuted }]} contentFit="cover" />)}
+        </View>
+      ) : null}
+      <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/event/[id]', params: { id: e.id } })} style={[styles.mini, { backgroundColor: c.background, opacity: e.over ? 0.6 : 1 }]}>
+        <DateBlock iso={e.starts_at} />
+        <View style={{ flex: 1 }}>
+          <AppText variant="label" numberOfLines={1}>{e.title}</AppText>
+          <AppText variant="caption" muted numberOfLines={1}>
+            {[eventTime(e), e.place?.name ?? (e.online ? tr('線上') : null), e.over ? tr('已結束') : e.going_count ? tr('{n} 人會去', { n: e.going_count }) : null].filter(Boolean).join(' · ')}
+          </AppText>
+        </View>
+        <Feather name="chevron-right" size={16} color={c.textTertiary} />
+      </Pressable>
     </View>
   );
 }
@@ -329,5 +378,6 @@ const styles = StyleSheet.create({
   card: { borderRadius: Radius.xl, padding: Spacing.lg, gap: Spacing.sm },
   undo: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, minHeight: 44 },
   photo: { width: 96, height: 72, borderRadius: 10 },
+  mini: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.lg, padding: Spacing.sm },
   tag: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
 });

@@ -18,7 +18,8 @@ import { tr } from '@/lib/i18n';
 import { approximateLocation, type Coords } from '@/lib/location';
 import { timeAgo } from '@/lib/period';
 import { REPORT_REASONS } from '@/lib/safety';
-import { EventsExplore } from '@/components/event-card';
+import { EventCard, EventsExplore } from '@/components/event-card';
+import { useExploreEvents, type BookEvent } from '@/lib/events';
 
 /** 探索 › 貼文的「看誰的」：全部／追蹤中／附近（附近要先拿到大概位置） */
 export function usePostFilter() {
@@ -50,25 +51,32 @@ export function PostsExplore({ filter, near, onReset, view, kind }: { filter: Po
   const [menuFor, setMenuFor] = useState<PublicPost | null>(null);
   const [reportFor, setReportFor] = useState<PublicPost | null>(null);
   const list = useExplorePosts(filter, near);
+  // v1.8 AI2：「全部」裡也有活動，一個活動一張卡，用最新一則分享的時間跟貼文一起排
+  const events = useExploreEvents(filter, near, kind === 'all' && view === 'posts');
   const report = useReportCheckin();
   const data = (list.data ?? []).filter((p) =>
     kind === 'all' ? true : kind === 'note' ? p.source === 'note' : kind === 'checkin' ? p.source !== 'note' && (p.kind === 'checkin' || !!p.place_id) : p.source !== 'note' && p.kind !== 'checkin' && !p.place_id,
   );
+
+  const rows: Row[] = [
+    ...data.map((p) => ({ type: 'post' as const, p, at: p.created_at })),
+    ...(kind === 'all' ? (events.data ?? []).map((e) => ({ type: 'event' as const, e, at: e.latest_at ?? e.starts_at })) : []),
+  ].sort((a, b) => b.at.localeCompare(a.at));
 
   return (
     <View style={{ flex: 1 }}>
       {view === 'places' ? (
         <PlacesExplore />
       ) : kind === 'event' ? (
-        <EventsExplore />
+        <EventsExplore filter={filter} near={near} />
       ) : list.isPending ? (
         <ActivityIndicator style={{ marginTop: 48 }} />
       ) : list.error ? (
         <EmptyState title={tr('沒有載入成功')} body={tr('檢查網路後再試一次。')} actionLabel={tr('重試')} onAction={() => void list.refetch()} />
       ) : (
-        <FlatList
-          data={data}
-          keyExtractor={(p) => p.id}
+        <FlatList<Row>
+          data={rows}
+          keyExtractor={(r) => (r.type === 'event' ? `e-${r.e.id}` : r.p.id)}
           contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.sm, gap: Spacing.md, flexGrow: 1, paddingBottom: 96 }}
           refreshControl={<RefreshControl refreshing={list.isRefetching} onRefresh={() => void list.refetch()} />}
           ListEmptyComponent={
@@ -80,7 +88,13 @@ export function PostsExplore({ filter, near, onReset, view, kind }: { filter: Po
               <EmptyState title={tr('還沒有公開貼文')} body={tr('寫日記時選「公開」，就會出現在這裡。')} />
             )
           }
-          renderItem={({ item }) => <PostCard post={item} onMore={item.is_mine || item.source === 'note' ? undefined : () => requireAuth(() => setMenuFor(item))} />}
+          renderItem={({ item }) =>
+            item.type === 'event' ? (
+              <EventCard e={item.e} />
+            ) : (
+              <PostCard post={item.p} onMore={item.p.is_mine || item.p.source === 'note' ? undefined : () => requireAuth(() => setMenuFor(item.p))} />
+            )
+          }
         />
       )}
 
@@ -136,6 +150,8 @@ function PostKind({ post }: { post: PublicPost }) {
     </View>
   );
 }
+
+type Row = { type: 'post'; p: PublicPost; at: string } | { type: 'event'; e: BookEvent; at: string };
 
 export type PostKindFilter = 'all' | 'diary' | 'checkin' | 'note' | 'event';
 
