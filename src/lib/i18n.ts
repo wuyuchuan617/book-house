@@ -104,3 +104,6 @@ const TAG_EN: Record<string, string> = {
 };
 /** 固定主題標籤的顯示名稱（資料庫存中文，英文介面依 slug 換） */
 export const tagLabel = (t: { slug: string; name: string }) => (lang === 'en' ? TAG_EN[t.slug] ?? t.name : t.name);
+
+/** 書名一律加《》（英文介面不加） */
+export const bookTitle = (title: string) => tr('《{title}》', { title });

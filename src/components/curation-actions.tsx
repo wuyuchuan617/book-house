@@ -1,11 +1,8 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, View } from 'react-native';
+import { Alert } from 'react-native';
 
-import { ActionSheet, Dialog, type SheetAction } from '@/components/sheet';
-import { AppText, Button, Card } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { ActionSheet, type SheetAction } from '@/components/sheet';
 import {
   friendlyError,
   useDeleteCuration,
@@ -28,7 +25,7 @@ export type CurationSummary = {
 
 const STATUS_LABEL = (): Record<CurationStatus, string> => ({ draft: tr('草稿'), scheduled: tr('已預約'), published: tr('已發布') });
 
-/** C7 更多操作＋C8 刪除確認 */
+/** C7 更多操作＋C8 刪除確認（都是底部選單） */
 export function CurationActions({ curation, visible, onClose, inEditor, onDeleted }: {
   curation: CurationSummary;
   visible: boolean;
@@ -37,7 +34,6 @@ export function CurationActions({ curation, visible, onClose, inEditor, onDelete
   inEditor?: boolean;
   onDeleted?: () => void;
 }) {
-  const c = useTheme();
   const [confirming, setConfirming] = useState(false);
   const duplicate = useDuplicateCuration();
   const unpublish = useUnpublishCuration();
@@ -99,39 +95,28 @@ export function CurationActions({ curation, visible, onClose, inEditor, onDelete
         actions={actions}
         onClose={onClose}
       />
-      <Dialog visible={confirming} onClose={() => setConfirming(false)}>
-        <AppText variant="heading">{tr('刪除「{name}」？', { name })}</AppText>
-        {impact.isLoading ? (
-          <ActivityIndicator />
-        ) : (
-          <View style={{ gap: 4 }}>
-            <AppText muted>{tr('刪除後無法復原：')}</AppText>
-            {lines.map((l) => <AppText key={l} variant="caption">{`• ${l}`}</AppText>)}
-          </View>
-        )}
-        {live ? (
-          <Card style={{ gap: 4, backgroundColor: 'transparent', borderWidth: 1, borderColor: c.border }}>
-            <AppText variant="label">{tr('只是想先收起來？')}</AppText>
-            <AppText variant="caption" muted>{tr('取消發布會改回草稿，之後還能再發布。')}</AppText>
-            <Button kind="secondary" label={tr('改為取消發布')} style={{ marginTop: Spacing.sm }} onPress={() => { setConfirming(false); doUnpublish(); }} />
-          </Card>
-        ) : null}
-        <Button
-          kind="danger"
-          label={tr('刪除策展')}
-          loading={del.isPending}
-          onPress={() =>
-            del.mutate(curation.id, {
-              onSuccess: () => {
-                setConfirming(false);
-                onDeleted?.();
-              },
-              onError: (e) => Alert.alert(tr('沒有刪除成功'), friendlyError(e.message)),
-            })
-          }
-        />
-        <Button kind="link" label={tr('返回')} onPress={() => setConfirming(false)} />
-      </Dialog>
+      {/* C8 刪除確認：跟其他選單同一種底部選單（v1.7.3 統一） */}
+      <ActionSheet
+        visible={confirming}
+        title={tr('刪除「{name}」？', { name })}
+        subtitle={impact.isLoading ? tr('正在確認會影響哪些內容…') : [tr('刪除後無法復原。'), ...lines].join('\n')}
+        onClose={() => setConfirming(false)}
+        actions={[
+          ...(live
+            ? [{ label: curation.status === 'scheduled' ? tr('改為取消預約') : tr('改為取消發布'), sub: tr('只是想先收起來：改回草稿，之後還能再發布'), icon: 'rotate-ccw' as const, onPress: doUnpublish }]
+            : []),
+          {
+            label: tr('刪除策展'),
+            sub: tr('書架與推薦理由一起刪除'),
+            destructive: true,
+            onPress: () =>
+              del.mutate(curation.id, {
+                onSuccess: () => onDeleted?.(),
+                onError: (e) => Alert.alert(tr('沒有刪除成功'), friendlyError(e.message)),
+              }),
+          },
+        ]}
+      />
     </>
   );
 }

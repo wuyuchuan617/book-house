@@ -86,7 +86,7 @@ export function ActionSheet({ visible, title, subtitle, badge, actions, onClose 
           {badge}
           <View style={{ flex: 1 }}>
             {title ? <AppText variant="label" numberOfLines={1} style={{ fontSize: 15 }}>{title}</AppText> : null}
-            {subtitle ? <AppText variant="caption" muted numberOfLines={1}>{subtitle}</AppText> : null}
+            {subtitle ? <AppText variant="caption" muted numberOfLines={6} style={{ lineHeight: 19 }}>{subtitle}</AppText> : null}
           </View>
         </View>
       ) : null}

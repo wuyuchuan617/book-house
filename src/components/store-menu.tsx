@@ -1,11 +1,9 @@
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Alert } from 'react-native';
 
-import { ActionSheet, Dialog } from '@/components/sheet';
-import { AppText, Button } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
+import { ActionSheet } from '@/components/sheet';
 import { useAuth } from '@/lib/auth';
 import { track } from '@/lib/analytics';
 import { shareStore, storeUrl } from '@/lib/links';
@@ -26,7 +24,6 @@ export function StoreMenu({ store, visible, onClose, isMine }: { store: Store; v
   const doBlock = (thenReport: boolean) =>
     block.mutate(store.id, {
       onSuccess: () => {
-        setConfirmBlock(false);
         if (thenReport) {
           router.replace({ pathname: '/report/[id]', params: { id: store.id, name: store.name, blocked: '1' } });
         } else {
@@ -63,17 +60,17 @@ export function StoreMenu({ store, visible, onClose, isMine }: { store: Store; v
               ]),
         ]}
       />
-      <Dialog visible={confirmBlock} onClose={() => setConfirmBlock(false)}>
-        <AppText variant="heading">{tr('封鎖{owner_name}？', { owner_name: store.owner_name })}</AppText>
-        <View style={{ gap: 4 }}>
-          <AppText>{tr('• 你不會再看到「{name}」的書店、策展與心得', { name: store.name })}</AppText>
-          <AppText>{tr('• 會自動取消追蹤，對方不會收到通知')}</AppText>
-          <AppText>{tr('• 之後可以在「設定 › 已封鎖的帳號」解除')}</AppText>
-        </View>
-        <Button kind="danger" label={tr('封鎖')} loading={block.isPending} onPress={() => doBlock(false)} style={{ marginTop: Spacing.sm }} />
-        <Button kind="secondary" label={tr('封鎖並檢舉')} disabled={block.isPending} onPress={() => doBlock(true)} />
-        <Button kind="link" label={tr('取消')} onPress={() => setConfirmBlock(false)} />
-      </Dialog>
+      {/* A8 封鎖確認：跟其他選單同一種底部選單 */}
+      <ActionSheet
+        visible={confirmBlock}
+        title={tr('封鎖{owner_name}？', { owner_name: store.owner_name })}
+        subtitle={[tr('• 你不會再看到「{name}」的書店、策展與心得', { name: store.name }), tr('• 會自動取消追蹤，對方不會收到通知'), tr('• 之後可以在「設定 › 已封鎖的帳號」解除')].join('\n')}
+        onClose={() => setConfirmBlock(false)}
+        actions={[
+          { label: tr('封鎖並檢舉'), icon: 'flag' as const, onPress: () => doBlock(true) },
+          { label: tr('封鎖'), icon: 'slash' as const, destructive: true, onPress: () => doBlock(false) },
+        ]}
+      />
     </>
   );
 }

@@ -20,7 +20,7 @@ import {
   type PublicCheckin,
   type Streak,
 } from '@/lib/diary';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -56,7 +56,7 @@ export function BookLine({ book, color }: { book: { id: string; title: string; c
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
       <BookCover title={book.title} url={book.cover_url} color={color} size="sm" />
-      <AppText variant="caption" muted numberOfLines={1} style={{ flex: 1 }}>{book.title}</AppText>
+      <AppText variant="caption" muted numberOfLines={1} style={{ flex: 1 }}>{bookTitle(book.title)}</AppText>
     </View>
   );
 }
@@ -181,8 +181,8 @@ export function AutoItemRow({ item, first }: { item: Exclude<DiaryItem, DiaryEnt
       ? item.title || (item.kind === 'quote' ? tr('「{body}」', { body: item.body }) : item.body)
       : item.type === 'want_place'
         ? item.place_name
-        : item.book.title;
-  const sub = item.type === 'saved' ? item.source : item.type === 'want_place' ? item.note : item.type === 'reading_note' ? item.book.title : null;
+        : bookTitle(item.book.title);
+  const sub = item.type === 'saved' ? item.source : item.type === 'want_place' ? item.note : item.type === 'reading_note' ? bookTitle(item.book.title) : null;
   const open = () => {
     if (item.type === 'reading_note') router.push({ pathname: '/reading/note/[id]', params: { id: item.id, readingId: item.reading_id } });
     else if (item.type === 'started' || item.type === 'finished') router.push({ pathname: '/reading/manage/[id]', params: { id: item.reading_id } });

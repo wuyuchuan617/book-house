@@ -5,7 +5,7 @@ import { BookCover } from '@/components/book-cover';
 import { AppText, Card, EmptyState, Screen } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 import { FORMAT_LABEL, useMyPurchases, type PurchaseStatus } from '@/lib/purchases';
 
 const STATUS = (): Record<PurchaseStatus, string> => ({ unread: tr('積讀'), reading: tr('正在讀'), done: tr('讀完了'), gone: tr('送人了／不讀了') });
@@ -56,7 +56,7 @@ export default function PurchasesScreen() {
             <Card style={styles.row}>
               <BookCover title={p.book.title} url={p.book.cover_url} color="ochre" size="sm" />
               <View style={{ flex: 1, gap: 2 }}>
-                <AppText variant="label" numberOfLines={1}>{p.book.title}</AppText>
+                <AppText variant="label" numberOfLines={1}>{bookTitle(p.book.title)}</AppText>
                 <AppText variant="caption" muted numberOfLines={1}>
                   {[p.bought_on, p.place_name ?? p.store_label, FORMAT_LABEL()[p.format], p.price != null ? `$${p.price}` : null].filter(Boolean).join(' · ')}
                 </AppText>

@@ -7,7 +7,7 @@ import { AppText, Card } from '@/components/ui';
 import { MinTouch, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { CurationItem } from '@/lib/curations';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 
 /** 讀者看到的一檔策展（A3 書店頁、C7 以讀者身分預覽共用）。interactive：可點書看書籍視角、可收藏 */
 export function CurationView({ title, description, items, color, interactive }: {
@@ -33,7 +33,7 @@ export function CurationView({ title, description, items, color, interactive }: 
             <>
               <BookCover title={it.books.title} url={it.books.cover_url} color={color} />
               <View style={{ flex: 1 }}>
-                <AppText variant="label">{it.books.title}</AppText>
+                <AppText variant="label">{bookTitle(it.books.title)}</AppText>
                 <AppText variant="caption" muted>{it.books.authors.join(tr('、'))}</AppText>
                 {it.note ? <AppText variant="caption" style={{ marginTop: 6, lineHeight: 19 }}>{it.note}</AppText> : null}
               </View>

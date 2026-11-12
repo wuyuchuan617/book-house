@@ -13,7 +13,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { useSaveIds, useToggleSave } from '@/lib/browse';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 import { shareRx } from '@/lib/links';
 import { taipeiDate, timeAgo } from '@/lib/period';
 import { authorName, daysLeft, rxError, rxTagLabel, useRx, useRxAction, useRxReport, type RxBookGroup, type RxDetail } from '@/lib/rx';
@@ -207,7 +207,7 @@ function BookGroup({ group, rx, onReport }: { group: RxBookGroup; rx: RxDetail; 
         <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/book/[id]', params: { id: group.book.id } })} style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md, flex: 1 }}>
           <BookCover title={group.book.title} url={group.book.cover_url} color="wisteria" size="md" />
           <View style={{ flex: 1, gap: 2 }}>
-            <AppText variant="label" numberOfLines={2}>{group.book.title}</AppText>
+            <AppText variant="label" numberOfLines={2}>{bookTitle(group.book.title)}</AppText>
             <AppText variant="caption" muted numberOfLines={1}>
               {group.book.authors.join(tr('、'))}
               <AppText variant="caption" style={{ color: RX_PURPLE, fontWeight: '700' }}>{`  ${tr('{n} 人開出', { n: group.count })}`}</AppText>

@@ -9,7 +9,7 @@ import { AppText, Card, EmptyState } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { userMessage } from '@/lib/errors';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 import { FORMAT_LABEL, useDeletePurchase, useMyPurchases, useSetPurchaseStatus, waitedDays, type Purchase } from '@/lib/purchases';
 import { useMyStore } from '@/lib/queries';
 import { useAddReading } from '@/lib/readings';
@@ -45,7 +45,7 @@ export function TbrShelf() {
       label: tr('刪除購書紀錄'),
       destructive: true,
       onPress: () =>
-        Alert.alert(tr('刪除這筆購書紀錄？'), p.book.title, [
+        Alert.alert(tr('刪除這筆購書紀錄？'), bookTitle(p.book.title), [
           { text: tr('取消'), style: 'cancel' },
           { text: tr('刪除'), style: 'destructive', onPress: () => del.mutate(p.id, { onError: fail }) },
         ]),
@@ -88,7 +88,7 @@ export function TbrShelf() {
                   <Pressable accessibilityRole="link" {...swipeA11y(actions)} onPress={() => router.push({ pathname: '/book/[id]', params: { id: item.book_id } })} style={[styles.row, { flex: 1 }]}>
                     <BookCover title={item.book.title} url={item.book.cover_url} color={mine?.store.color ?? 'moss'} />
                     <View style={{ flex: 1, gap: 2 }}>
-                      <AppText variant="label" numberOfLines={2}>{item.book.title}</AppText>
+                      <AppText variant="label" numberOfLines={2}>{bookTitle(item.book.title)}</AppText>
                       <AppText variant="caption" muted numberOfLines={1}>
                         {[tr('{date} 買', { date: md(item.bought_on) }), where, item.format !== 'paper' ? FORMAT_LABEL()[item.format] : null].filter(Boolean).join(' · ')}
                       </AppText>
@@ -102,7 +102,7 @@ export function TbrShelf() {
           );
         }}
       />
-      <ActionSheet visible={!!menuFor} onClose={() => setMenuFor(null)} title={menuFor?.book.title} actions={menuFor ? actionsFor(menuFor) : []} />
+      <ActionSheet visible={!!menuFor} onClose={() => setMenuFor(null)} title={menuFor ? bookTitle(menuFor.book.title) : undefined} actions={menuFor ? actionsFor(menuFor) : []} />
     </>
   );
 }

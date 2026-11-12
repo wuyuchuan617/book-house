@@ -17,7 +17,7 @@ import type { Book } from '@/lib/curations';
 import { userMessage } from '@/lib/errors';
 import { useMyStore } from '@/lib/queries';
 import { readingError } from '@/lib/readings';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 
 /**
  * F3 想讀的書（v1.6 統一版型）：新增與編輯同一頁（帶 bookId = 編輯）。
@@ -92,7 +92,7 @@ function WantBookForm({ existing, initialQuery }: { existing?: SavedBook; initia
   };
 
   const removeWant = () =>
-    Alert.alert(tr('從想讀移除？'), existing?.books.title, [
+    Alert.alert(tr('從想讀移除？'), existing ? bookTitle(existing.books.title) : undefined, [
       { text: tr('先留著'), style: 'cancel' },
       {
         text: tr('移除'),
@@ -117,7 +117,7 @@ function WantBookForm({ existing, initialQuery }: { existing?: SavedBook; initia
                 <>
                   <BookCover title={book.title} url={book.cover_url} color={mine?.store.color ?? 'moss'} size="sm" />
                   <View style={{ flex: 1 }}>
-                    <AppText variant="label" style={{ fontSize: 16 }}>{book.title}</AppText>
+                    <AppText variant="label" style={{ fontSize: 16 }}>{bookTitle(book.title)}</AppText>
                     <AppText variant="caption" muted>{book.authors.join(tr('、'))}</AppText>
                   </View>
                   {!existing ? <Feather name="chevron-right" size={18} color={c.textTertiary} /> : null}

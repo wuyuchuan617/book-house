@@ -51,9 +51,8 @@ Deno.serve(async (req) => {
   }
   if ([...q].length < 2) return json({ books: [] }); // S1：輸入 2 個字後才查詢
   q = q.slice(0, 60);
-  // 掃條碼或貼上的 ISBN（可含 -）：用 ISBN 精準查
-  const digits = q.replace(/[^0-9Xx]/g, '');
-  const isbn = /^97[89][0-9]{10}$/.test(digits) ? digits : null;
+  // 掃條碼或輸入的 ISBN（可含 - 或空格；ISBN-10 先換成 ISBN-13）：用 ISBN 精準查
+  const isbn = toIsbn13(q);
 
   const url = Deno.env.get('SUPABASE_URL')!;
   // 以使用者身分查本機書庫（手動新增的書只看得到自己的）
@@ -64,12 +63,12 @@ Deno.serve(async (req) => {
   if (!me.user) return json({ error: 'sign in required' }, 401);
 
   const [local, google] = await Promise.all([
-    userClient.rpc('search_local_books', { p_query: q, p_limit: LIMIT }),
-    searchGoogle(isbn ? `isbn:${isbn}` : q),
+    userClient.rpc('search_local_books', { p_query: isbn ?? q, p_limit: LIMIT }),
+    isbn ? searchGoogleIsbn(isbn) : searchGoogle(q),
   ]);
   if (local.error) console.error('search_local_books', local.error.message);
   // Google 失敗（沒金鑰時常見 429 配額用完）或查無結果 → 改查 Open Library
-  const remote = google.length > 0 ? google : await searchOpenLibrary(isbn ? `isbn:${isbn}` : q);
+  const remote = google.length > 0 ? google : await searchOpenLibrary(isbn ? `isbn:${isbn}` : q, isbn);
   // 用 ISBN 查到的那一筆常常沒有書封（Google 同一本書有好幾個版本）：用書名＋作者再查一次，借有書封的那一版
   if (isbn && remote.length > 0 && !remote[0].cover_url) await borrowCover(remote[0], isbn);
 
@@ -99,6 +98,25 @@ Deno.serve(async (req) => {
   }
   return json({ books, source: google.length > 0 ? 'google_books' : remote.length > 0 ? 'open_library' : 'local' });
 });
+
+/** 只有 ISBN（10 或 13 碼，可含 - 和空格）才回傳 ISBN-13，其他回 null */
+function toIsbn13(q: string): string | null {
+  if (!/^[0-9Xx\s-]+$/.test(q)) return null;
+  const d = q.replace(/[\s-]/g, '').toUpperCase();
+  if (/^97[89][0-9]{10}$/.test(d)) return d;
+  if (!/^[0-9]{9}[0-9X]$/.test(d)) return null;
+  const body = `978${d.slice(0, 9)}`;
+  const sum = [...body].reduce((s, ch, i) => s + Number(ch) * (i % 2 ? 3 : 1), 0);
+  return `${body}${(10 - (sum % 10)) % 10}`;
+}
+
+/** ISBN：先用 isbn: 精準查；台灣的書常常查不到，再用 ISBN 數字當關鍵字查一次 */
+async function searchGoogleIsbn(isbn: string) {
+  const exact = await searchGoogle(`isbn:${isbn}`);
+  if (exact.length) return exact;
+  const loose = await searchGoogle(isbn);
+  return loose.filter((b) => b.isbn13 === isbn).concat(loose.filter((b) => b.isbn13 !== isbn)).slice(0, 5);
+}
 
 type RemoteBook = { title: string; authors: string[]; isbn13: string | null; cover_url: string | null; publisher: string | null; published_year: string | null };
 
@@ -175,7 +193,7 @@ type OpenLibraryDoc = {
   publisher?: string[];
 };
 
-async function searchOpenLibrary(q: string) {
+async function searchOpenLibrary(q: string, isbn: string | null = null) {
   const params = new URLSearchParams({
     q,
     limit: String(LIMIT),
@@ -196,7 +214,8 @@ async function searchOpenLibrary(q: string) {
       .map((d) => ({
         source: 'open_library',
         external_id: d.key,
-        isbn13: d.isbn?.find((i) => /^[0-9]{13}$/.test(i)) ?? null,
+        // 用 ISBN 查到的那一筆就記那個 ISBN（同一本書有很多版本的 ISBN）
+        isbn13: isbn && d.isbn?.includes(isbn) ? isbn : (d.isbn?.find((i) => /^[0-9]{13}$/.test(i)) ?? null),
         title: d.title!,
         authors: d.author_name?.length ? d.author_name.slice(0, 5) : ['佚名'],
         cover_url: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : null,

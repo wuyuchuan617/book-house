@@ -13,7 +13,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { timeAgo } from '@/lib/period';
 import { useDeleteReading, type MyReading } from '@/lib/readings';
 import { SwipeRow, swipeA11y } from '@/components/swipe-row';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 
 type Filter = 'reading' | 'finished';
 const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
@@ -55,7 +55,7 @@ export function useReadingRemoval() {
 export function ReadingRemovalToast({ removal }: { removal: ReturnType<typeof useReadingRemoval> }) {
   return (
     <UndoToast
-      message={removal.pending ? tr('已從店主閱讀移除「{title}」', { title: removal.pending.books.title }) : null}
+      message={removal.pending ? tr('已從店主閱讀移除《{title}》', { title: removal.pending.books.title }) : null}
       onUndo={removal.undo}
       onHide={removal.commit}
     />
@@ -138,7 +138,7 @@ export function ReadingSection({ readings, color, loading, removal }: {
                     ) : null}
                     <AppText variant="caption" muted>{timeAgo(r.updated_at)}</AppText>
                   </View>
-                  <AppText variant="label" style={{ fontSize: 16 }}>{r.books.title}</AppText>
+                  <AppText variant="label" style={{ fontSize: 16 }}>{bookTitle(r.books.title)}</AppText>
                   <AppText variant="caption" muted numberOfLines={2}>{latest ? tr('「{body}」', { body: latest.body }) : tr('還沒有心得')}</AppText>
                 </View>
               </Pressable>

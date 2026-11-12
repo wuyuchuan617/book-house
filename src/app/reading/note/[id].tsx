@@ -7,7 +7,7 @@ import { AppText, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { noteTime } from '@/lib/period';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 import { useMyStore } from '@/lib/queries';
 import { confirmDeleteNote, readingError, useDeleteNote, useMyReading } from '@/lib/readings';
 
@@ -51,7 +51,7 @@ export default function NoteDetailScreen() {
         <NotePhotos paths={note.photo_paths} full />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: c.surface, borderRadius: Radius.md, padding: Spacing.md }}>
           <BookCover title={r.books.title} url={r.books.cover_url} color={store.store.color} size="sm" />
-          <AppText variant="label" style={{ flex: 1 }}>{r.books.title}</AppText>
+          <AppText variant="label" style={{ flex: 1 }}>{bookTitle(r.books.title)}</AppText>
         </View>
         <Pressable accessibilityRole="button" onPress={remove} style={{ minHeight: MinTouch, alignItems: 'center', justifyContent: 'center' }}>
           <AppText style={{ color: c.danger, fontWeight: '600' }}>{tr('刪除這則心得')}</AppText>

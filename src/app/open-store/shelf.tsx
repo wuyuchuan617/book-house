@@ -10,7 +10,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { friendlyError, sortedItems, useAddItem, useCuration, usePublishCuration, type Book } from '@/lib/curations';
 import { track } from '@/lib/analytics';
 import { useMyStore } from '@/lib/queries';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 
 /** O4 開店步驟 3：放上書架。1 本就能發布，推薦理由之後再補（O7） */
 export default function OpenStoreShelfScreen() {
@@ -80,7 +80,7 @@ export default function OpenStoreShelfScreen() {
                 {items.map((it) => (
                   <View key={it.id} style={{ width: 64, gap: 4 }} accessible accessibilityLabel={it.books.title}>
                     <BookCover title={it.books.title} url={it.books.cover_url} color={color} size="md" />
-                    <AppText variant="caption" numberOfLines={2}>{it.books.title}</AppText>
+                    <AppText variant="caption" numberOfLines={2}>{bookTitle(it.books.title)}</AppText>
                   </View>
                 ))}
               </ScrollView>

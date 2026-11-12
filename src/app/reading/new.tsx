@@ -14,7 +14,7 @@ import { useMyStore } from '@/lib/queries';
 import { useUpsertWant } from '@/lib/browse';
 import { SourcePicker } from '@/components/source-picker';
 import { NOTE_BODY_MAX, readingError, useAddReading, useMyCurationBooks, useMyReadings, type ReadingStatus } from '@/lib/readings';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 
 /** R2／R4 記錄一本書（想讀／正在讀／讀完了）；O8 從開張完成頁進來時固定為「正在讀」 */
 type Status = ReadingStatus | 'want';
@@ -66,7 +66,7 @@ export default function NewReadingScreen() {
                 <>
                   <BookCover title={book.title} url={book.cover_url} color={store.store.color} size="sm" />
                   <View style={{ flex: 1 }}>
-                    <AppText variant="label">{book.title}</AppText>
+                    <AppText variant="label">{bookTitle(book.title)}</AppText>
                     <AppText variant="caption" muted>{book.authors.join(tr('、'))}</AppText>
                   </View>
                   <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('換一本')}</AppText>

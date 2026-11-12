@@ -10,7 +10,7 @@ import { AppText, Button, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { friendlyError, NOTE_MAX, useBookSearch, useCreateManualBook, type Book } from '@/lib/curations';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 
 /** 輸入停一下才查詢，避免每打一個字就打一次 API */
 function useDebounced<T>(value: T, ms = 350) {
@@ -57,7 +57,7 @@ export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, 
       <View key={b.id} style={[styles.row, { borderBottomColor: c.divider }]}>
         <BookCover title={b.title} url={b.cover_url} color={storeColor} size="sm" />
         <View style={{ flex: 1 }}>
-          <AppText variant="label" numberOfLines={2}>{b.title}</AppText>
+          <AppText variant="label" numberOfLines={2}>{bookTitle(b.title)}</AppText>
           <AppText variant="caption" muted numberOfLines={1}>{bookMeta(b)}</AppText>
         </View>
         <Pressable
@@ -87,7 +87,7 @@ export function BookSearchPanel({ storeColor, mode, isPicked, onPick, onManual, 
         <Feather name="search" size={18} color={c.textSecondary} />
         <TextInput
           accessibilityLabel={tr('搜尋書名或作者')}
-          placeholder={tr('搜尋書名或作者')}
+          placeholder={tr('搜尋書名、作者或 ISBN')}
           placeholderTextColor={c.textTertiary}
           value={query}
           onChangeText={setQuery}
@@ -209,7 +209,7 @@ export function NoteForm({ book, storeColor, caption, prompts = NOTE_PROMPTS(), 
       <View style={{ flexDirection: 'row', gap: Spacing.md }}>
         <BookCover title={book.title} url={book.cover_url} color={storeColor} size="md" />
         <View style={{ flex: 1, justifyContent: 'center' }}>
-          <AppText variant="label" style={{ fontSize: 16 }}>{book.title}</AppText>
+          <AppText variant="label" style={{ fontSize: 16 }}>{bookTitle(book.title)}</AppText>
           <AppText variant="caption" muted>{bookMeta(book)}</AppText>
           {caption ? <AppText variant="caption" muted style={{ marginTop: 4 }}>{caption}</AppText> : null}
         </View>

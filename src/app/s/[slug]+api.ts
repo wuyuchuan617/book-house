@@ -178,7 +178,7 @@ ${cur.description ? `<p style="color:var(--muted);margin:0">${esc(cur.descriptio
 <div class="card">
 ${shown
   .map(
-    (i) => `<div class="book">${cover(i.books)}<div><b>${esc(i.books.title)}</b><small>${esc(i.books.authors.join(L.authorSep))}</small>${
+    (i) => `<div class="book">${cover(i.books)}<div><b>${L.html === 'en' ? esc(i.books.title) : `《${esc(i.books.title)}》`}</b><small>${esc(i.books.authors.join(L.authorSep))}</small>${
       i.note ? `<p>${esc(i.note)}</p>` : ''
     }</div></div>`,
   )

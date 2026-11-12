@@ -16,7 +16,7 @@ import { useTheme } from '@/hooks/use-theme';
 import type { Book } from '@/lib/curations';
 import { dayLabel } from '@/lib/diary';
 import { userMessage } from '@/lib/errors';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 import { taipeiToday } from '@/lib/period';
 import { FORMAT_LABEL, useMyPurchases, useRecordPurchase, type PurchaseFormat } from '@/lib/purchases';
 import { unwrap, useMyStore } from '@/lib/queries';
@@ -123,7 +123,7 @@ export default function PurchaseScreen() {
               <>
                 <BookCover title={chosen.title} url={chosen.cover_url} color={mine?.store.color ?? 'moss'} size="md" />
                 <View style={{ flex: 1, gap: 2 }}>
-                  <AppText variant="title" style={{ fontSize: 19, lineHeight: 26 }}>{chosen.title}</AppText>
+                  <AppText variant="title" style={{ fontSize: 19, lineHeight: 26 }}>{bookTitle(chosen.title)}</AppText>
                   <AppText variant="caption" muted>{[chosen.authors.join(tr('、')), from === 'want' ? tr('從想讀移過來') : null].filter(Boolean).join(' · ')}</AppText>
                 </View>
                 {!bookId ? <Feather name="chevron-right" size={18} color={c.textTertiary} /> : null}

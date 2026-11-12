@@ -34,7 +34,7 @@ import {
   type DiaryPhoto,
   type PlaceCategory,
 } from '@/lib/diary';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 import { taipeiToday } from '@/lib/period';
 import { useMyStore } from '@/lib/queries';
 import { useAddReading, useMyReadings, useSaveNote, useUpdateReading, type ReadingStatus } from '@/lib/readings';
@@ -391,7 +391,7 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
                   book ? (
                     <View style={[styles.field, { backgroundColor: c.surface, borderColor: c.border }]}>
                       <BookCover title={book.title} url={book.cover_url} color={store?.store.color ?? 'moss'} size="sm" />
-                      <AppText variant="label" style={{ flex: 1 }} numberOfLines={2}>{book.title}</AppText>
+                      <AppText variant="label" style={{ flex: 1 }} numberOfLines={2}>{bookTitle(book.title)}</AppText>
                     </View>
                   ) : null
                 ) : (
@@ -407,7 +407,7 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
                           onPress={() => setBook({ id: b.id, title: b.title, cover_url: b.cover_url })}
                           style={[styles.readingCard, { backgroundColor: c.surface, borderColor: on ? c.primary : c.border, borderWidth: on ? 2 : 1 }]}>
                           <BookCover title={b.title} url={b.cover_url} color={store?.store.color ?? 'moss'} size="md" />
-                          <AppText variant="caption" style={{ fontWeight: '700' }} numberOfLines={2}>{b.title}</AppText>
+                          <AppText variant="caption" style={{ fontWeight: '700' }} numberOfLines={2}>{bookTitle(b.title)}</AppText>
                           {on ? (
                             <View style={[styles.check, { backgroundColor: c.primary }]}>
                               <Feather name="check" size={12} color={c.onPrimary} />

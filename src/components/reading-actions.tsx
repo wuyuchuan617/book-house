@@ -5,7 +5,7 @@ import { ActionSheet, type SheetAction } from '@/components/sheet';
 import { friendlyError, useAddItem, useCreateCuration } from '@/lib/curations';
 import { monthOf, nextPeriod } from '@/lib/period';
 import { useUpdateReading, type MyReading } from '@/lib/readings';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 
 /** R6 店主閱讀・更多操作 */
 export function ReadingActions({ reading, visible, onClose, onRemove, inDetail }: {
@@ -47,7 +47,7 @@ export function ReadingActions({ reading, visible, onClose, onRemove, inDetail }
   return (
     <ActionSheet
       visible={visible}
-      title={reading.books.title}
+      title={bookTitle(reading.books.title)}
       subtitle={tr('{p0} · {n} 則心得 · {p2}', { p0: reading.status === 'reading' ? tr('在讀') : tr('讀完'), n, p2: reading.is_public ? tr('公開在書店頁') : tr('只有自己看得到') })}
       actions={actions}
       onClose={onClose}

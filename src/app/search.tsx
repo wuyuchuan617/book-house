@@ -17,7 +17,7 @@ import { useAuth } from '@/lib/auth';
 import { useExploreFeed } from '@/lib/browse';
 import { useBookSearch } from '@/lib/curations';
 import { useExplorePosts } from '@/lib/diary';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 import { monthOf } from '@/lib/period';
 import { unwrap, type PublicStore } from '@/lib/queries';
 import { useRxSearch } from '@/lib/store-v16';
@@ -84,7 +84,7 @@ export default function SearchScreen() {
               onChangeText={setInput}
               returnKeyType="search"
               onSubmitEditing={() => setQ(input.trim())}
-              placeholder={tr('搜尋書、策展、貼文、處方簽、書店')}
+              placeholder={tr('搜尋書名、作者、ISBN、策展、書店')}
               placeholderTextColor={c.textTertiary}
               accessibilityLabel={tr('搜尋')}
               style={{ flex: 1, fontSize: 16, color: c.text, minHeight: 44 }}
@@ -105,7 +105,7 @@ export default function SearchScreen() {
 
         <ScrollView contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.sm, gap: Spacing.md, paddingBottom: 48 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
           {!q ? (
-            <AppText variant="caption" muted>{tr('輸入書名、作者、書店名稱或想找的主題。')}</AppText>
+            <AppText variant="caption" muted>{tr('輸入書名、作者、ISBN、書店名稱或想找的主題。')}</AppText>
           ) : loading ? (
             <ActivityIndicator style={{ marginTop: 32 }} />
           ) : (
@@ -118,7 +118,7 @@ export default function SearchScreen() {
                       <Card style={styles.row}>
                         <BookCover title={b.title} url={b.cover_url} color="moss" size="sm" />
                         <View style={{ flex: 1 }}>
-                          <AppText variant="label" numberOfLines={2}>{b.title}</AppText>
+                          <AppText variant="label" numberOfLines={2}>{bookTitle(b.title)}</AppText>
                           <AppText variant="caption" muted numberOfLines={1}>{[b.authors.join(tr('、')), b.publisher, b.published_year].filter(Boolean).join(' · ')}</AppText>
                         </View>
                       </Card>

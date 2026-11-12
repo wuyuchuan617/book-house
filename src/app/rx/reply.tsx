@@ -11,7 +11,7 @@ import { RX_PURPLE } from '@/components/rx-explore';
 import { AppText, Button, Card, EmptyState, Screen } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 import { useMyStore } from '@/lib/queries';
 import { RX_REASON_MAX, RX_REASON_MIN, rxError, useRx, useRxReply, useRxWithdraw, type RxDetail } from '@/lib/rx';
 
@@ -68,7 +68,7 @@ function ReplyForm({ rx }: { rx: RxDetail }) {
                 <>
                   <BookCover title={book.title} url={book.cover_url} color={mine?.store.color ?? 'moss'} size="sm" />
                   <View style={{ flex: 1 }}>
-                    <AppText variant="label">{book.title}</AppText>
+                    <AppText variant="label">{bookTitle(book.title)}</AppText>
                     <AppText variant="caption" muted>{book.authors.join(tr('、'))}</AppText>
                   </View>
                   <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('換一本')}</AppText>

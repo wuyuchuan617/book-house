@@ -7,7 +7,7 @@ import { SaveButton, StoreAvatar } from '@/components/social';
 import { AppText, EmptyState, Screen } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useReading } from '@/lib/browse';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 
 const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
 
@@ -29,7 +29,7 @@ export default function ReadingNotesScreen() {
         <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/book/[id]', params: { id: r.books.id } })} style={{ flexDirection: 'row', gap: Spacing.lg }}>
           <BookCover title={r.books.title} url={r.books.cover_url} color={store.color} size="lg" />
           <View style={{ flex: 1, justifyContent: 'center', gap: 4 }}>
-            <AppText variant="heading">{r.books.title}</AppText>
+            <AppText variant="heading">{bookTitle(r.books.title)}</AppText>
             <AppText muted>{r.books.authors.join(tr('、'))}</AppText>
           </View>
         </Pressable>

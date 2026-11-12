@@ -22,7 +22,7 @@ import { ReadingRemovalToast, ReadingSection, useReadingRemoval } from '@/compon
 import { useMyReadings } from '@/lib/readings';
 import { useMyStore, type StoreShow } from '@/lib/queries';
 import { shareStore } from '@/lib/links';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 import { useMyPurchases } from '@/lib/purchases';
 import { useStoreInsights } from '@/lib/store-v16';
 
@@ -198,7 +198,7 @@ function OwnerTbr({ color, hiddenFromReaders }: { color: StoreColor; hiddenFromR
         <Pressable key={p.id} accessibilityRole="link" onPress={() => router.push({ pathname: '/book/[id]', params: { id: p.book_id } })} style={[styles.tbr, { backgroundColor: c.surface }]}>
           <BookCover title={p.book.title} url={p.book.cover_url} color={color} size="sm" />
           <View style={{ flex: 1 }}>
-            <AppText variant="label">{p.book.title}</AppText>
+            <AppText variant="label">{bookTitle(p.book.title)}</AppText>
             <AppText variant="caption" muted numberOfLines={1}>{[p.bought_on.slice(5).replace('-', '/'), p.place_name ?? p.store_label].filter(Boolean).join(' · ')}</AppText>
           </View>
           <Feather name="chevron-right" size={16} color={c.textTertiary} />

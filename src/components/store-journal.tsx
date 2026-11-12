@@ -16,7 +16,7 @@ import { useToggleSave } from '@/lib/browse';
 import { categoryLabel, diaryError, useDeleteEntry, useDiaryImageUrls, useSavePlace, useSetJournalPublic, useStoreJournal, type JournalItem } from '@/lib/diary';
 import { rxError, useRxAction, useRxWithdraw } from '@/lib/rx';
 import { taipeiDate, taipeiToday } from '@/lib/period';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 
 type Filter = 'all' | 'want' | 'place' | 'post';
 
@@ -171,7 +171,7 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bo
       {undo ? (
         <View style={[styles.undo, { backgroundColor: c.text }]} accessibilityLiveRegion="polite">
           <AppText variant="caption" style={{ color: c.background, flex: 1 }} numberOfLines={1}>
-            {undo.type === 'want' ? tr('已從想讀移除「{title}」', { title: undo.book.title }) : tr('已從想去移除「{name}」', { name: undo.place.name })}
+            {undo.type === 'want' ? tr('已從想讀移除《{title}》', { title: undo.book.title }) : tr('已從想去移除「{name}」', { name: undo.place.name })}
           </AppText>
           <Pressable accessibilityRole="button" onPress={restore} hitSlop={8}>
             <AppText variant="caption" style={{ color: c.background, fontWeight: '700' }}>{tr('復原')}</AppText>
@@ -225,7 +225,7 @@ function kindOf(item: JournalItem, c: ReturnType<typeof useTheme>) {
 }
 
 const journalTitle = (item: JournalItem) =>
-  item.type === 'want' ? item.book.title : item.type === 'place' ? item.place.name : item.type === 'rx' ? item.title : item.type === 'rx_reply' ? item.book.title : (item.body ?? item.place?.name ?? item.place_label ?? item.book?.title ?? '');
+  item.type === 'want' ? bookTitle(item.book.title) : item.type === 'place' ? item.place.name : item.type === 'rx' ? item.title : item.type === 'rx_reply' ? bookTitle(item.book.title) : (item.body ?? item.place?.name ?? item.place_label ?? (item.book ? bookTitle(item.book.title) : ''));
 
 function KindTag({ item }: { item: JournalItem }) {
   const c = useTheme();
@@ -260,7 +260,7 @@ function JournalCard({ item, color, mine, onToggle, onMore }: { item: JournalIte
         <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/book/[id]', params: { id: item.book.id } })} style={{ flexDirection: 'row', gap: Spacing.md }}>
           <BookCover title={item.book.title} url={item.book.cover_url} color={color} size="sm" />
           <View style={{ flex: 1, gap: 2 }}>
-            <AppText variant="label">{item.book.title}</AppText>
+            <AppText variant="label">{bookTitle(item.book.title)}</AppText>
             {item.note ? <AppText style={{ lineHeight: 21 }}>{item.note}</AppText> : null}
             {item.source_text ? <AppText variant="caption" muted>{tr('在哪看到：{s}', { s: item.source_text })}</AppText> : null}
           </View>
@@ -282,7 +282,7 @@ function JournalCard({ item, color, mine, onToggle, onMore }: { item: JournalIte
           <View style={{ flexDirection: 'row', gap: Spacing.md }}>
             <BookCover title={item.book.title} url={item.book.cover_url} color={color} size="sm" />
             <View style={{ flex: 1, gap: 2 }}>
-              <AppText variant="label">{item.book.title}</AppText>
+              <AppText variant="label">{bookTitle(item.book.title)}</AppText>
               <AppText style={{ lineHeight: 21 }}>{item.reason}</AppText>
             </View>
           </View>

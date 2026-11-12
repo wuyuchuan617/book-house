@@ -15,7 +15,7 @@ import { AppText, Button, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { NoteKind } from '@/lib/browse';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 import { useMyStore } from '@/lib/queries';
 import {
   NOTE_BODY_MAX,
@@ -67,7 +67,7 @@ function PickReading({ onPick }: { onPick: (id: string) => void }) {
           <Pressable key={r.id} accessibilityRole="button" onPress={() => onPick(r.id)} style={({ pressed }) => [styles.pick, { backgroundColor: c.surface, opacity: pressed ? 0.8 : 1 }]}>
             <BookCover title={r.books.title} url={r.books.cover_url} color={store.store.color} size="sm" />
             <View style={{ flex: 1 }}>
-              <AppText variant="label">{r.books.title}</AppText>
+              <AppText variant="label">{bookTitle(r.books.title)}</AppText>
               <AppText variant="caption" muted>{r.reading_notes.length ? tr('{n} 則心得', { n: r.reading_notes.length }) : tr('還沒有心得')}</AppText>
             </View>
             <Feather name="chevron-right" size={18} color={c.textTertiary} />
@@ -195,7 +195,7 @@ function ComposeNote({ readingId, noteId, progress }: { readingId: string; noteI
         <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
             <BookCover title={r.books.title} url={r.books.cover_url} color={store.store.color} size="sm" />
-            <AppText variant="label" style={{ flex: 1 }} numberOfLines={1}>{r.books.title}</AppText>
+            <AppText variant="label" style={{ flex: 1 }} numberOfLines={1}>{bookTitle(r.books.title)}</AppText>
           </View>
 
           <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="radiogroup">

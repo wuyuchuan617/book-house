@@ -13,7 +13,7 @@ import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
 import { categoryIcon, categoryLabel, diaryError, useAdminCategory, PLACE_CATEGORIES, usePlaceDetail, useReportCheckin, type PublicCheckin } from '@/lib/diary';
 import { useIsAdmin } from '@/lib/admin';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 import { openMap, openMapByPref, setMapsPref } from '@/lib/maps';
 import { usePlacePurchaseCount } from '@/lib/store-v16';
 import { REPORT_REASONS } from '@/lib/safety';
@@ -164,7 +164,7 @@ export default function PlaceScreen() {
               {data.books.map((b) => (
                 <Pressable key={b.id} accessibilityRole="link" accessibilityLabel={b.title} onPress={() => router.push({ pathname: '/book/[id]', params: { id: b.id } })} style={{ width: 76, gap: 4 }}>
                   <BookCover title={b.title} url={b.cover_url} color="moss" size="md" />
-                  <AppText variant="caption" numberOfLines={2}>{b.title}</AppText>
+                  <AppText variant="caption" numberOfLines={2}>{bookTitle(b.title)}</AppText>
                 </Pressable>
               ))}
             </ScrollView>

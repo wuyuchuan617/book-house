@@ -11,7 +11,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { useBook, useStartReading } from '@/lib/browse';
 import { userMessage } from '@/lib/errors';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 import { monthOf, timeAgo } from '@/lib/period';
 import { useMyStore } from '@/lib/queries';
 import { useAddReading } from '@/lib/readings';
@@ -62,7 +62,7 @@ export default function BookScreen() {
         <View style={{ flexDirection: 'row', gap: Spacing.lg }}>
           <BookCover title={book.title} url={book.cover_url} color={first?.color ?? 'moss'} size="lg" />
           <View style={{ flex: 1, justifyContent: 'center', gap: 4 }}>
-            <AppText variant="heading">{book.title}</AppText>
+            <AppText variant="heading">{bookTitle(book.title)}</AppText>
             <AppText muted>{book.authors.join(tr('、'))}</AppText>
             <AppText variant="caption" muted>{[book.publisher, book.published_year, book.isbn13 ? `ISBN ${book.isbn13}` : null].filter(Boolean).join(' · ')}</AppText>
             {status ? (

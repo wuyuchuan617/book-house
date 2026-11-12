@@ -38,7 +38,7 @@ import {
 } from '@/lib/curations';
 import { currentPeriod, monthOf, periodLabel, periodRelative, taipeiDate, timeAgo } from '@/lib/period';
 import { useMyStore } from '@/lib/queries';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 
 /** 這一頁上的書架（還沒送出）：id 是伺服器上的 item id，新加的書是 null */
 type DraftItem = { id: string | null; book: Book; note: string };
@@ -335,7 +335,7 @@ export default function CurationEditorScreen() {
                           style={[styles.item, { height: ROW_H }, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.divider }]}>
                           <BookCover title={it.book.title} url={it.book.cover_url} color={color} size="sm" />
                           <View style={{ flex: 1 }}>
-                            <AppText variant="label" numberOfLines={1}>{it.book.title}</AppText>
+                            <AppText variant="label" numberOfLines={1}>{bookTitle(it.book.title)}</AppText>
                             {it.note.trim() ? (
                               <AppText variant="caption" muted numberOfLines={2}>{tr('理由：{note}', { note: it.note })}</AppText>
                             ) : (
@@ -428,7 +428,7 @@ export default function CurationEditorScreen() {
         onClose={() => setReasonsOpen(false)}
         title={tr('還有 {n} 本沒寫推薦理由', { n: noteless.length })}
         subtitle={tr('每本書都寫好理由才能發布')}
-        actions={noteless.map((it) => ({ label: it.book.title, sub: tr('寫推薦理由'), icon: 'edit-2' as const, onPress: () => setNoteFor(it) }))}
+        actions={noteless.map((it) => ({ label: bookTitle(it.book.title), sub: tr('寫推薦理由'), icon: 'edit-2' as const, onPress: () => setNoteFor(it) }))}
       />
       <Modal visible={!!noteFor} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setNoteFor(null)}>
         <Screen>

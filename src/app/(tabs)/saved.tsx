@@ -19,7 +19,7 @@ import { useMyPlaces } from '@/lib/diary';
 import { ActionSheet } from '@/components/sheet';
 import { MoreButton, SwipeRow, swipeA11y } from '@/components/swipe-row';
 import { LinkLine } from '@/components/link-line';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 
 type Tab = 'books' | 'tbr' | 'places';
 
@@ -112,7 +112,7 @@ export default function SavedScreen() {
             renderItem={({ item, index }) => <BookRow item={item} hint={index === 0} onUnsave={() => unsave(item)} />}
           />
         )}
-        <UndoToast message={undo ? tr('已從想讀移除「{title}」', { title: undo.books.title }) : null} onUndo={restore} onHide={hideToast} />
+        <UndoToast message={undo ? tr('已從想讀移除《{title}》', { title: undo.books.title }) : null} onUndo={restore} onHide={hideToast} />
       </SafeAreaView>
     </Screen>
   );
@@ -145,7 +145,7 @@ function BookRow({ item, hint, onUnsave }: { item: SavedBook; hint?: boolean; on
       <Pressable accessibilityRole="link" {...swipeA11y(actions)} onPress={() => router.push({ pathname: '/book/[id]', params: { id: item.book_id } })} style={[styles.row, { flex: 1 }]}>
         <BookCover title={item.books.title} url={item.books.cover_url} color={item.bookstores?.color ?? 'moss'} />
         <View style={{ flex: 1, gap: 2 }}>
-          <AppText variant="label">{item.books.title}</AppText>
+          <AppText variant="label">{bookTitle(item.books.title)}</AppText>
           <AppText variant="caption" muted>{item.books.authors.join(tr('、'))}</AppText>
           {from ? <AppText variant="caption" style={{ color: c.textTertiary }} numberOfLines={1}>{tr('在哪看到：{from}', { from })}</AppText> : null}
           {item.note ? <AppText variant="caption" numberOfLines={2}>{tr('「{note}」', { note: item.note })}</AppText> : null}
@@ -155,7 +155,7 @@ function BookRow({ item, hint, onUnsave }: { item: SavedBook; hint?: boolean; on
       <MoreButton onPress={() => setMenu(true)} label={tr('{title}的更多動作', { title: item.books.title })} />
       </View>
       </SwipeRow>
-      <ActionSheet visible={menu} onClose={() => setMenu(false)} title={item.books.title} actions={actions} />
+      <ActionSheet visible={menu} onClose={() => setMenu(false)} title={bookTitle(item.books.title)} actions={actions} />
     </Card>
   );
 }

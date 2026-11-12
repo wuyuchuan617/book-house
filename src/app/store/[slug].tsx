@@ -19,7 +19,7 @@ import { currentPeriod, monthOf } from '@/lib/period';
 import { recordVisit, useMyStore, usePublicStore } from '@/lib/queries';
 import { shareStore } from '@/lib/links';
 import { useStoreTbr } from '@/lib/store-v16';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 import { StoreRxTab } from '@/components/rx-explore';
 import { StoreJournal } from '@/components/store-journal';
 import { SubChips, useVisitedPlaces, VisitedPlaces } from '@/components/store-lists';
@@ -188,7 +188,7 @@ function ReadingTab({ readings, color }: { readings: PublicReading[] | undefined
                 <Pressable key={r.id} accessibilityRole="link" onPress={() => open(r.id)} style={{ flexDirection: 'row', gap: Spacing.md }}>
                   <BookCover title={r.books.title} url={r.books.cover_url} color={color} />
                   <View style={{ flex: 1, gap: 2 }}>
-                    <AppText variant="label">{r.books.title}</AppText>
+                    <AppText variant="label">{bookTitle(r.books.title)}</AppText>
                     <AppText variant="caption" muted>{r.books.authors.join(tr('、'))}</AppText>
                     {latest ? <NoteSnippet note={latest} /> : null}
                     {older.length ? <AppText variant="caption" style={{ color: c.primary, marginTop: 2 }}>{tr('還有 {length} 則心得', { length: older.length })}</AppText> : null}
@@ -208,7 +208,7 @@ function ReadingTab({ readings, color }: { readings: PublicReading[] | undefined
             {shown.map((r) => (
               <Pressable key={r.id} accessibilityRole="link" accessibilityLabel={r.books.title} onPress={() => open(r.id)} style={{ width: 80, gap: 4 }}>
                 <BookCover title={r.books.title} url={r.books.cover_url} color={color} size="lg" />
-                <AppText variant="caption" numberOfLines={2}>{r.books.title}</AppText>
+                <AppText variant="caption" numberOfLines={2}>{bookTitle(r.books.title)}</AppText>
               </Pressable>
             ))}
             {!showAll && finished.length > 3 ? (
@@ -240,7 +240,7 @@ function StoreTbr({ slug, color }: { slug: string; color: StoreColor }) {
         {data.map((b) => (
           <Pressable key={b.book_id} accessibilityRole="link" accessibilityLabel={b.title} onPress={() => openBook(b.book_id)} style={{ width: 80, gap: 4 }}>
             <BookCover title={b.title} url={b.cover_url} color={color} size="lg" />
-            <AppText variant="caption" numberOfLines={2}>{b.title}</AppText>
+            <AppText variant="caption" numberOfLines={2}>{bookTitle(b.title)}</AppText>
           </Pressable>
         ))}
       </View>

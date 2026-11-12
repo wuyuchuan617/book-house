@@ -12,7 +12,7 @@ import { AppText, Button, EmptyState, Screen } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { NoteKind, ReadingNote } from '@/lib/browse';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 import { useMyStore } from '@/lib/queries';
 import { confirmDeleteNote, readingError, useDeleteNote, useDeleteReading, useMyReading, useUpdateReading } from '@/lib/readings';
 
@@ -46,7 +46,7 @@ export default function ReadingBookScreen() {
   const shown = filter === 'all' ? notes : notes.filter((n) => n.kind === filter);
 
   const removeReading = () =>
-    Alert.alert(tr('從店主閱讀移除「{title}」？', { title: r.books.title }), tr('{length} 則心得會一起刪除，無法復原。', { length: notes.length }), [
+    Alert.alert(tr('從店主閱讀移除《{title}》？', { title: r.books.title }), tr('{length} 則心得會一起刪除，無法復原。', { length: notes.length }), [
       { text: tr('取消'), style: 'cancel' },
       { text: tr('移除'), style: 'destructive', onPress: () => delReading.mutate(r.id, { onSuccess: () => router.back(), onError: fail }) },
     ]);
@@ -72,7 +72,7 @@ export default function ReadingBookScreen() {
         <View style={[styles.book, { backgroundColor: c.surface }]}>
           <BookCover title={r.books.title} url={r.books.cover_url} color={store.store.color} size="lg" />
           <View style={{ flex: 1, gap: 4 }}>
-            <AppText variant="heading">{r.books.title}</AppText>
+            <AppText variant="heading">{bookTitle(r.books.title)}</AppText>
             <AppText variant="caption" muted>{r.books.authors.join(tr('、'))}</AppText>
             <AppText variant="caption" style={{ color: c.success, fontWeight: '700', marginTop: 4 }}>
               {r.status === 'reading' ? tr('在讀 · 從 {p0} 開始', { p0: md(r.started_at) }) : tr('讀完{p0}', { p0: r.finished_at ? ` · ${md(r.finished_at)}` : '' })}

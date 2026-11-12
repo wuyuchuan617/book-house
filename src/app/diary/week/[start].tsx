@@ -13,7 +13,7 @@ import { MinTouch, Radius, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { track } from '@/lib/analytics';
 import { useSavedBooks } from '@/lib/browse';
-import { tr } from '@/lib/i18n';
+import { bookTitle, tr } from '@/lib/i18n';
 import { useMyStore } from '@/lib/queries';
 import {
   isEmptyWeek,
@@ -152,7 +152,7 @@ function Books({ week, color }: { week: WeekReview; color: StoreColor }) {
         {week.books.map((b) => (
           <Pressable key={b.id} accessibilityRole="link" accessibilityLabel={b.title} onPress={() => router.push({ pathname: '/book/[id]', params: { id: b.id } })} style={{ width: 80, gap: 4 }}>
             <BookCover title={b.title} url={b.cover_url} color={color} size="md" />
-            <AppText variant="caption" numberOfLines={2}>{b.title}</AppText>
+            <AppText variant="caption" numberOfLines={2}>{bookTitle(b.title)}</AppText>
             <AppText variant="caption" style={{ color: b.finished ? t.success : t.textTertiary, fontSize: 11, fontWeight: b.finished ? '700' : '500' }}>
               {b.finished ? tr('讀完') : b.started ? tr('開始讀') : tr('{n} 筆', { n: b.count })}
             </AppText>
@@ -256,7 +256,7 @@ function LastWeekNext({ items, color }: { items: WeekReview['last_week_next']; c
         {items.map((b) => (
           <View key={b.id} style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
             <BookCover title={b.title} url={b.cover_url} color={color} size="sm" />
-            <AppText style={{ flex: 1 }} numberOfLines={2}>{b.title}</AppText>
+            <AppText style={{ flex: 1 }} numberOfLines={2}>{bookTitle(b.title)}</AppText>
             <View style={[styles.badge, { backgroundColor: b.read ? t.successSurface : t.surfaceMuted }]}>
               <AppText variant="caption" style={{ color: b.read ? t.success : t.textSecondary, fontWeight: '700', fontSize: 11 }}>{b.read ? tr('讀了') : tr('還沒')}</AppText>
             </View>
@@ -275,7 +275,7 @@ function EmptyWeek({ week, color }: { week: WeekReview; color: StoreColor }) {
       {week.suggestion ? (
         <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/book/[id]', params: { id: week.suggestion!.id } })} style={{ alignItems: 'center', gap: 6 }}>
           <BookCover title={week.suggestion.title} url={week.suggestion.cover_url} color={color} size="lg" />
-          <AppText variant="label" numberOfLines={2} style={{ textAlign: 'center', maxWidth: 200 }}>{week.suggestion.title}</AppText>
+          <AppText variant="label" numberOfLines={2} style={{ textAlign: 'center', maxWidth: 200 }}>{bookTitle(week.suggestion.title)}</AppText>
         </Pressable>
       ) : null}
       <Button label={tr('寫日記')} style={{ alignSelf: 'stretch' }} onPress={() => router.push({ pathname: '/diary/compose', params: { kind: 'note' } })} />
@@ -306,7 +306,7 @@ function Reflection({ week, color }: { week: WeekReview; color: StoreColor }) {
         <Card style={{ gap: Spacing.sm }}>
           {week.reflection.body ? <AppText style={{ lineHeight: 23 }}>{week.reflection.body}</AppText> : null}
           {week.reflection.next_books.length ? (
-            <AppText variant="caption" muted>{tr('下週想讀：{titles}', { titles: week.reflection.next_books.map((b) => b.title).join(tr('、')) })}</AppText>
+            <AppText variant="caption" muted>{tr('下週想讀：{titles}', { titles: week.reflection.next_books.map((b) => bookTitle(b.title)).join(tr('、')) })}</AppText>
           ) : null}
         </Card>
       </Section>
