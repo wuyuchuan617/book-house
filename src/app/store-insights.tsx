@@ -38,7 +38,7 @@ export default function StoreInsightsScreen() {
       <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.md, paddingBottom: 48 }}>
         <Card style={{ gap: 4 }}>
           <AppText variant="caption" muted>{tr('本月拜訪')}</AppText>
-          <AppText style={{ fontSize: 34, fontWeight: '700' }}>{String(d.visits_this_month)}</AppText>
+          <AppText style={{ fontSize: 34, lineHeight: 42, fontWeight: '700' }}>{String(d.visits_this_month)}</AppText>
           <AppText variant="caption" style={{ color: diff >= 0 ? c.success : c.textSecondary }}>
             {d.visits_last_month ? (diff >= 0 ? tr('比上個月多 {n}', { n: diff }) : tr('比上個月少 {n}', { n: -diff })) : tr('上個月還沒有拜訪')}
             {d.visitors_this_month ? ` · ${tr('{n} 位讀者', { n: d.visitors_this_month })}` : ''}
@@ -76,7 +76,7 @@ function Stat({ label, value, onPress }: { label: string; value: number; onPress
   return (
     <Pressable accessibilityRole={onPress ? 'link' : undefined} disabled={!onPress} onPress={onPress} style={styles.cell}>
       <Card style={{ gap: 2 }}>
-        <AppText style={{ fontSize: 22, fontWeight: '700' }}>{String(value)}</AppText>
+        <AppText style={{ fontSize: 22, lineHeight: 30, fontWeight: '700' }}>{String(value)}</AppText>
         <AppText variant="caption" muted>{onPress ? `${label} ›` : label}</AppText>
       </Card>
     </Pressable>

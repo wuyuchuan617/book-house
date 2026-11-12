@@ -1,8 +1,9 @@
 import DateTimePicker, { DateTimePickerAndroid, type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, TextInput, UIManager, View } from 'react-native';
 
 import { BottomSheet } from '@/components/bottom-sheet';
+import { Chip } from '@/components/form';
 import { AppText } from '@/components/ui';
 import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -20,6 +21,32 @@ const mins = (hhmm: string) => {
   const [h, m] = hhmm.split(':').map(Number);
   return h * 60 + m;
 };
+
+/** 開發版 App 還沒重新打包、沒有原生時間選擇器時，改用小膠囊選，不會打不開 */
+const hasNative = (() => {
+  if (Platform.OS === 'web') return false;
+  try {
+    return UIManager.hasViewManagerConfig?.('RNDateTimePicker') ?? true;
+  } catch {
+    return true;
+  }
+})();
+
+/** 沒有原生選擇器時：一排小時、一排分鐘（每 5 分鐘） */
+function ChipTime({ value, onPick }: { value: string; onPick: (hhmm: string) => void }) {
+  const [h, m] = (value || '13:00').split(':').map(Number);
+  const hourLabel = (x: number) => (currentLang() === 'en' ? `${((x + 11) % 12) + 1} ${x < 12 ? 'AM' : 'PM'}` : `${x < 12 ? tr('上午') : tr('下午')} ${((x + 11) % 12) + 1}`);
+  return (
+    <View style={{ gap: Spacing.sm }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.sm }}>
+        {Array.from({ length: 18 }, (_, i) => i + 6).map((x) => <Chip key={x} label={hourLabel(x)} selected={h === x} onPress={() => onPick(`${pad(x)}:${pad(m)}`)} />)}
+      </ScrollView>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.sm }}>
+        {Array.from({ length: 12 }, (_, i) => i * 5).map((x) => <Chip key={x} label={`:${pad(x)}`} selected={m === x} onPress={() => onPick(`${pad(h)}:${pad(x)}`)} />)}
+      </ScrollView>
+    </View>
+  );
+}
 
 /** 「下午 1:00」 */
 export function timeLabel(hhmm: string) {
@@ -53,9 +80,12 @@ export function TimeSheet({ visible, start, end, onChange, onClose }: { visible:
     if (e.type === 'set' && d) set(fromDate(d));
   };
 
+  const [androidFailed, setAndroidFailed] = useState(false);
+  const nativeAndroid = Platform.OS === 'android' && hasNative && !androidFailed;
   const openAndroid = (w: 'start' | 'end') => {
     setWhich(w);
-    DateTimePickerAndroid.open({
+    try {
+      DateTimePickerAndroid.open({
       value: toDate(w === 'start' ? start : end || fromDate(new Date(toDate(start).getTime() + 2 * 3600e3))),
       mode: 'time',
       is24Hour: false,
@@ -68,6 +98,9 @@ export function TimeSheet({ visible, start, end, onChange, onClose }: { visible:
         }
       },
     });
+    } catch {
+      setAndroidFailed(true);
+    }
   };
 
   const tab = (w: 'start' | 'end', label: string, v: string) => (
@@ -75,8 +108,8 @@ export function TimeSheet({ visible, start, end, onChange, onClose }: { visible:
       key={w}
       accessibilityRole="tab"
       accessibilityState={{ selected: which === w }}
-      onPress={() => (Platform.OS === 'android' ? openAndroid(w) : setWhich(w))}
-      style={[styles.tab, which === w && Platform.OS !== 'android' && { backgroundColor: c.surface }]}>
+      onPress={() => (nativeAndroid ? openAndroid(w) : setWhich(w))}
+      style={[styles.tab, which === w && !nativeAndroid && { backgroundColor: c.surface }]}>
       <AppText variant="caption" muted style={{ fontSize: 11 }}>{label}</AppText>
       <AppText style={{ fontWeight: '700', color: v ? c.text : c.textTertiary }}>{v ? timeLabel(v) : tr('不填')}</AppText>
     </Pressable>
@@ -94,7 +127,9 @@ export function TimeSheet({ visible, start, end, onChange, onClose }: { visible:
         {tab('start', tr('開始'), start)}
         {tab('end', tr('結束'), end)}
       </View>
-      {Platform.OS === 'ios' ? (
+      {(!hasNative && Platform.OS !== 'web') || (Platform.OS === 'android' && androidFailed) ? (
+        <ChipTime value={value} onPick={set} />
+      ) : Platform.OS === 'ios' ? (
         <View style={[styles.wheel, { backgroundColor: c.surface }]}>
           <DateTimePicker
             key={which}
