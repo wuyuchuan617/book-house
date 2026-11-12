@@ -124,6 +124,8 @@ function RootStack() {
         <Stack.Screen name="rx/reply" options={{ title: tr('開一張處方') }} />
         <Stack.Screen name="report/[id]" options={{ title: tr('檢舉書店'), presentation: 'modal' }} />
         <Stack.Screen name="blocked" options={{ title: tr('已封鎖的帳號') }} />
+        <Stack.Screen name="event/[id]" options={{ title: '' }} />
+        <Stack.Screen name="event/share" options={{ title: '' }} />
         <Stack.Screen name="about/[feature]" options={{ title: '' }} />
         <Stack.Screen name="help" options={{ title: tr('說明與意見回饋') }} />
         <Stack.Screen name="admin" options={{ title: tr('審核後台') }} />

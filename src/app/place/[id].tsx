@@ -17,6 +17,8 @@ import { bookTitle, tr } from '@/lib/i18n';
 import { openMap, openMapByPref, setMapsPref } from '@/lib/maps';
 import { usePlacePurchaseCount } from '@/lib/store-v16';
 import { REPORT_REASONS } from '@/lib/safety';
+import { EventInfo, sharersLine } from '@/components/event-card';
+import { usePlaceEvents } from '@/lib/events';
 
 /**
  * L1 地點頁（v1.7.1 Z3 重新設計）：上面是類型、名稱、地址（點了開地圖）；三格數字（打卡／想去／買過）；
@@ -36,6 +38,7 @@ export default function PlaceScreen() {
   const [mapAsk, setMapAsk] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const { data: purchaseCount } = usePlacePurchaseCount(id);
+  const events = usePlaceEvents(id);
 
   useEffect(() => {
     if (id) track('place_opened', {});
@@ -154,6 +157,15 @@ export default function PlaceScreen() {
                 <AppText style={{ flex: 1 }}>{tr('你來過 {n} 次', { n: data.my_checkins })}</AppText>
               </View>
             ) : null}
+          </View>
+        ) : null}
+
+        {events.data?.length ? (
+          <View style={{ gap: Spacing.sm }}>
+            <AppText variant="heading">{tr('近期活動')}</AppText>
+            {events.data.map((ev) => (
+              <EventInfo key={ev.id} e={ev} sub={[sharersLine(ev), ev.going_count ? tr('{n} 人會去', { n: ev.going_count }) : null].filter(Boolean).join(' · ')} onPress={() => router.push({ pathname: '/event/[id]', params: { id: ev.id } })} />
+            ))}
           </View>
         ) : null}
 

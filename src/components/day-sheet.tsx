@@ -30,10 +30,10 @@ export function lastWeekend(today: string) {
 }
 
 /**
- * v1.7.1 Z1b 選日期（過去的日子）：上面快速選「今天／昨天／上週末」，下面月曆可以往前翻；今天以後不能選。
+ * v1.7.1 Z1b 選日期（過去的日子；future 時是今天以後，給活動用）：上面快速選「今天／昨天／上週末」，下面月曆可以往前翻；今天以後不能選。
  * 選了就套用，按「完成」或點背景收起。
  */
-export function DaySheet({ visible, title, value, onChange, onClose }: { visible: boolean; title: string; value: string; onChange: (date: string) => void; onClose: () => void }) {
+export function DaySheet({ visible, title, value, onChange, onClose, future }: { visible: boolean; title: string; value: string; onChange: (date: string) => void; onClose: () => void; /** 選未來的日子（活動）：今天以前不能選 */ future?: boolean }) {
   const c = useTheme();
   const today = taipeiToday();
   const [month, setMonth] = useState(value.slice(0, 7));
@@ -47,16 +47,15 @@ export function DaySheet({ visible, title, value, onChange, onClose }: { visible
     const d = new Date(Date.UTC(y, m - 1 + n, 1));
     setMonth(`${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}`);
   };
-  const canNext = month < today.slice(0, 7);
+  const canNext = future ? true : month < today.slice(0, 7);
+  const canPrev = future ? month > today.slice(0, 7) : true;
   const pick = (d: string) => {
     onChange(d);
     setMonth(d.slice(0, 7));
   };
-  const quick: [string, string][] = [
-    [tr('今天'), today],
-    [tr('昨天'), dayBefore(today)],
-    [tr('上週末'), lastWeekend(today)],
-  ];
+  const quick: [string, string][] = future
+    ? [[tr('今天'), today], [tr('明天'), addDays(today, 1)], [tr('這週六'), addDays(today, (6 - new Date(`${today}T00:00:00Z`).getUTCDay() + 7) % 7 || 7)]]
+    : [[tr('今天'), today], [tr('昨天'), dayBefore(today)], [tr('上週末'), lastWeekend(today)]];
 
   return (
     <BottomSheet visible={visible} onClose={onClose} style={styles.sheet}>
@@ -71,8 +70,8 @@ export function DaySheet({ visible, title, value, onChange, onClose }: { visible
       </ScrollView>
       <View style={[styles.card, { backgroundColor: c.surface }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" accessibilityLabel={tr('上個月')} onPress={() => shift(-1)} style={styles.nav}>
-            <Feather name="chevron-left" size={18} color={c.textSecondary} />
+          <Pressable accessibilityRole="button" accessibilityLabel={tr('上個月')} disabled={!canPrev} onPress={() => shift(-1)} style={styles.nav}>
+            <Feather name="chevron-left" size={18} color={canPrev ? c.textSecondary : c.border} />
           </Pressable>
           <AppText variant="label" style={{ flex: 1, textAlign: 'center' }}>{currentLang() === 'en' ? `${y}-${pad(m)}` : tr('{y} 年 {m} 月', { y, m })}</AppText>
           <Pressable accessibilityRole="button" accessibilityLabel={tr('下個月')} disabled={!canNext} onPress={() => shift(1)} style={styles.nav}>
@@ -88,7 +87,7 @@ export function DaySheet({ visible, title, value, onChange, onClose }: { visible
           {cells.map((d, i) => {
             if (!d) return <View key={`e${i}`} style={styles.cell} />;
             const date = `${month}-${pad(d)}`;
-            const disabled = date > today;
+            const disabled = future ? date < today : date > today;
             const selected = date === value;
             return (
               <Pressable

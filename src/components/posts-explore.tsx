@@ -18,6 +18,7 @@ import { tr } from '@/lib/i18n';
 import { approximateLocation, type Coords } from '@/lib/location';
 import { timeAgo } from '@/lib/period';
 import { REPORT_REASONS } from '@/lib/safety';
+import { EventsExplore } from '@/components/event-card';
 
 /** 探索 › 貼文的「看誰的」：全部／追蹤中／附近（附近要先拿到大概位置） */
 export function usePostFilter() {
@@ -58,6 +59,8 @@ export function PostsExplore({ filter, near, onReset, view, kind }: { filter: Po
     <View style={{ flex: 1 }}>
       {view === 'places' ? (
         <PlacesExplore />
+      ) : kind === 'event' ? (
+        <EventsExplore />
       ) : list.isPending ? (
         <ActivityIndicator style={{ marginTop: 48 }} />
       ) : list.error ? (
@@ -134,7 +137,7 @@ function PostKind({ post }: { post: PublicPost }) {
   );
 }
 
-export type PostKindFilter = 'all' | 'diary' | 'checkin' | 'note';
+export type PostKindFilter = 'all' | 'diary' | 'checkin' | 'note' | 'event';
 
 export function PostCard({ post, onMore }: { post: PublicPost; onMore?: () => void }) {
   const c = useTheme();

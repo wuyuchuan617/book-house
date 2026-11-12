@@ -157,7 +157,7 @@ export type DiaryInput = {
   readingNoteId?: string | null;
 };
 
-async function uploadDiaryPhotos(userId: string, entryId: string, photos: DiaryPhoto[]) {
+export async function uploadDiaryPhotos(userId: string, entryId: string, photos: DiaryPhoto[]) {
   const paths: string[] = [];
   for (const [i, p] of photos.entries()) {
     if ('path' in p) {

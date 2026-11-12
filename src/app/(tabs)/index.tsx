@@ -34,7 +34,7 @@ import { tagLabel, tr } from '@/lib/i18n';
 type Tab = 'curations' | 'posts' | 'rx';
 type FeedCard = ExploreItem & { visited?: boolean; is_following?: boolean };
 
-const KIND_LABEL = (): Record<PostKindFilter, string> => ({ all: tr('全部'), diary: tr('日記'), checkin: tr('打卡'), note: tr('心得') });
+const KIND_LABEL = (): Record<PostKindFilter, string> => ({ all: tr('全部'), diary: tr('日記'), checkin: tr('打卡'), note: tr('心得'), event: tr('活動') });
 
 const SORTS = (): [ExploreSort, string][] => [['recommend', tr('推薦')], ['latest', tr('最新')], ['popular', tr('熱門')]];
 
