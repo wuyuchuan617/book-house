@@ -48,4 +48,4 @@ begin
 end $$;
 
 reset role;
-select 'PASSED smoke_m29';
+select 'PASSED smoke_m31';
