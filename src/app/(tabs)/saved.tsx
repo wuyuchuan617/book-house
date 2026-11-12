@@ -73,6 +73,7 @@ export default function SavedScreen() {
             <NotificationBell />
           </View>
         </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingRight: Spacing.xl, gap: Spacing.sm }}>
         <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
           {(['books', 'tbr', 'places'] as Tab[]).map((t) => {
             const selected = tab === t;
@@ -91,8 +92,7 @@ export default function SavedScreen() {
             );
           })}
         </View>
-        <View style={{ alignItems: 'flex-end', paddingHorizontal: Spacing.xl, paddingTop: Spacing.sm }}>
-          <AboutLink feature={tab === 'places' ? 'place' : 'want'} />
+          <AboutLink feature={tab === 'places' ? 'place' : 'want'} style={{ marginTop: Spacing.md }} />
         </View>
         <AboutIntro feature={tab === 'places' ? 'place' : 'want'} />
 
@@ -167,7 +167,7 @@ function BookRow({ item, hint, onUnsave }: { item: SavedBook; hint?: boolean; on
 
 const styles = StyleSheet.create({
   title: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg },
-  segment: { flexDirection: 'row', marginHorizontal: Spacing.xl, marginTop: Spacing.md, borderRadius: Radius.md, padding: 3 },
+  segment: { flex: 1, flexDirection: 'row', marginLeft: Spacing.xl, marginTop: Spacing.md, borderRadius: Radius.md, padding: 3 },
   segmentItem: { flex: 1, minHeight: MinTouch - 4, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },
   list: { padding: Spacing.xl, gap: Spacing.md, flexGrow: 1, paddingBottom: 96 },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },

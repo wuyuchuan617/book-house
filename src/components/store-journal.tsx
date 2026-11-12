@@ -1,11 +1,12 @@
 import Feather from '@expo/vector-icons/Feather';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { BookCover } from '@/components/book-cover';
-import { BookLine, VisibilityBadge } from '@/components/diary';
+import { Chip, chipRow } from '@/components/form';
+import { BookLine, PlaceRow, VisibilityBadge } from '@/components/diary';
 import { ActionSheet } from '@/components/sheet';
 import { MoreButton, SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
 import { AppText, Card } from '@/components/ui';
@@ -13,7 +14,7 @@ import { Radius, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { track } from '@/lib/analytics';
 import { useToggleSave } from '@/lib/browse';
-import { categoryLabel, diaryError, useDeleteEntry, useDiaryImageUrls, useSavePlace, useSetJournalPublic, useStoreJournal, type JournalItem } from '@/lib/diary';
+import { categoryLabel, diaryError, useDeleteEntry, useDiaryImageUrls, useSavePlace, useSetJournalPublic, useStoreJournal, type JournalItem, type SharedEvent } from '@/lib/diary';
 import { rxError, useRxAction, useRxWithdraw } from '@/lib/rx';
 import { taipeiDate, taipeiToday } from '@/lib/period';
 import { bookTitle, tr } from '@/lib/i18n';
@@ -26,7 +27,7 @@ type Filter = 'all' | 'want' | 'place' | 'post';
  * 店主手記：想讀、想去、日記貼文依時間混在一起（v1.6：處方箋獨立成書店的「處方箋」分頁）。
  * mine（G2）：自己看全部，每一則標出書店頁看不看得到；每一則右邊「⋯」＋往左滑；讀者（G4）：只看公開的。
  */
-export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bookstoreId: string; color: StoreColor; mine?: boolean; scope?: 'posts' | 'want' | 'place' }) {
+export function StoreJournal({ bookstoreId, color, mine, scope = 'posts', right }: { bookstoreId: string; color: StoreColor; mine?: boolean; scope?: 'posts' | 'want' | 'place'; right?: ReactNode }) {
   const c = useTheme();
   const { data, isLoading, error, refetch } = useStoreJournal(bookstoreId);
   // v1.7.2：想讀、想去各自一個分頁
@@ -38,6 +39,8 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bo
   const rxAction = useRxAction();
   const withdraw = useRxWithdraw();
   const delShare = useDeleteShare();
+  // v1.8.1 AJ7：手記的類型小膠囊
+  const [postKind, setPostKind] = useState<PostKind>('all');
   const [undo, setUndo] = useState<Extract<JournalItem, { type: 'want' | 'place' }> | null>(null);
   const [menuFor, setMenuFor] = useState<JournalItem | null>(null);
   // 移除後 6 秒內可以復原（列表在捲動區裡，所以用列表上方的提示，不用浮動的 toast）
@@ -58,7 +61,11 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bo
     );
   if (isLoading || !data) return <ActivityIndicator style={{ marginTop: 32 }} />;
   // v1.7：手記只放日記貼文；v1.7.2：想讀、想去各一個分頁
-  const items = data.filter((i) => i.type === filter || (filter === 'post' && i.type === 'event_share'));
+  const posts = data.filter((i) => i.type === filter || (filter === 'post' && i.type === 'event_share'));
+  const kindCount = (k: PostKind) => posts.filter((i) => postKindOf(i) === k).length;
+  const kinds = (['diary', 'checkin', 'event'] as const).filter((k) => kindCount(k) > 0);
+  const activeKind = postKind !== 'all' && kinds.includes(postKind) ? postKind : 'all';
+  const items = filter === 'post' && activeKind !== 'all' ? posts.filter((i) => postKindOf(i) === activeKind) : posts;
 
   const toggle = (item: JournalItem) => {
     // v1.6：想讀、想去不再一則一則選，只看公開設定；分享的活動一定公開，看「手記」設定
@@ -182,12 +189,20 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bo
     setUndo(null);
   };
 
-  // 想讀、想去的數字在上面的小膠囊（SubChips）裡
-  const heading = tr('日記貼文 · {n}', { n: items.length });
+  const KIND_LABEL: Record<PostKind, string> = { all: tr('全部 · {n}', { n: posts.length }), diary: tr('日記'), checkin: tr('打卡'), event: tr('活動') };
 
   return (
     <View style={{ gap: Spacing.md }}>
-      {items.length && filter === 'post' ? <AppText variant="label" style={{ fontSize: 15 }}>{heading}</AppText> : null}
+      {filter === 'post' && (posts.length || right) ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+          <View style={[chipRow, { flex: 1 }]} accessibilityRole="tablist">
+            {posts.length ? (['all', ...kinds] as PostKind[]).map((k) => <Chip key={k} label={KIND_LABEL[k]} selected={activeKind === k} onPress={() => setPostKind(k)} />) : null}
+          </View>
+          {right}
+        </View>
+      ) : right ? (
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>{right}</View>
+      ) : null}
       {undo ? (
         <View style={[styles.undo, { backgroundColor: c.text }]} accessibilityLiveRegion="polite">
           <AppText variant="caption" style={{ color: c.background, flex: 1 }} numberOfLines={1}>
@@ -209,7 +224,24 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bo
         </View>
       ) : (
         items.map((item, index) => {
-          const card = <JournalCard item={item} color={color} mine={mine} onToggle={() => toggle(item)} onMore={mine ? () => setMenuFor(item) : undefined} />;
+          // v1.8.1 AJ5：想去用書櫃那張地點卡（縮圖、名稱、類型、原因）；我的書店多公開標籤與「⋯」
+          const card =
+            item.type === 'place' ? (
+              <PlaceRow
+                place={{ id: item.place.id, name: item.place.name, address: null, category: item.place.category, photo_paths: [] }}
+                meta={item.note ? tr('「{note}」', { note: item.note }) : ''}
+                badge={
+                  mine ? (
+                    <Pressable accessibilityRole="button" accessibilityLabel={item.shown ? tr('讀者看得到') : tr('只有你看得到')} hitSlop={8} onPress={() => toggle(item)}>
+                      {item.shown ? <VisibilityBadge v={{ public: true, where: 'store' }} /> : <VisibilityBadge v={{ public: false }} />}
+                    </Pressable>
+                  ) : undefined
+                }
+                right={mine ? <MoreButton onPress={() => setMenuFor(item)} label={tr('{name}的更多動作', { name: item.place.name })} /> : undefined}
+              />
+            ) : (
+              <JournalCard item={item} color={color} mine={mine} onToggle={() => toggle(item)} onMore={mine ? () => setMenuFor(item) : undefined} />
+            );
           if (!mine) return <View key={`${item.type}-${item.id}`}>{card}</View>;
           const actions = actionsFor(item);
           return (
@@ -237,6 +269,9 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts' }: { bo
     </View>
   );
 }
+
+type PostKind = 'all' | 'diary' | 'checkin' | 'event';
+const postKindOf = (i: JournalItem): PostKind | null => (i.type === 'event_share' ? 'event' : i.type === 'post' ? (i.kind === 'checkin' ? 'checkin' : 'diary') : null);
 
 const item_error = (m: string) => (/prescription|處方/.test(m) ? rxError(m) : diaryError(m));
 
@@ -317,7 +352,8 @@ function JournalCard({ item, color, mine, onToggle, onMore }: { item: JournalIte
   );
 }
 
-function EventShareBody({ item }: { item: Extract<JournalItem, { type: 'event_share' }> }) {
+/** 分享活動：自己的話、照片、活動小卡（手記、日記共用） */
+export function EventShareBody({ item }: { item: { body: string | null; photo_paths: string[]; event: SharedEvent } }) {
   const c = useTheme();
   const photos = useDiaryImageUrls(item.photo_paths);
   const e = item.event;

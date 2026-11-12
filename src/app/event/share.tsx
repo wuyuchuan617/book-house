@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AboutLink } from '@/components/about';
 import { DaySheet } from '@/components/day-sheet';
+import { VisibilityBadge } from '@/components/diary';
 import { TimeSheet, timeLabel } from '@/components/time-sheet';
 import { EventInfo, sharersLine } from '@/components/event-card';
 import { Chip, chipRow, TextField, Toggle } from '@/components/form';
@@ -208,6 +209,10 @@ export default function ShareEventScreen() {
             </>
           ) : event ? (
             <>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <AppText variant="caption" muted>{tr('今天 · {date} · 也會記進你的日記', { date: dayLabel(taipeiToday()) })}</AppText>
+                <VisibilityBadge v={{ public: true, where: 'post' }} />
+              </View>
               <EventInfo e={event} />
               <AppText variant="caption" muted>{tr('活動資料是大家共用的；資料有錯可以在活動頁按「⋯ › 回報資料有誤」。')}</AppText>
               <TextField label={tr('你想說的話')} optional multiline max={500} value={body} onChangeText={setBody} placeholder={tr('為什麼想去、聽說有什麼、要不要一起逛…')} />

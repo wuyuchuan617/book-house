@@ -34,6 +34,8 @@ export type Trip = {
   save_count: number;
   saved: boolean;
   stops?: TripStop[] | null;
+  /** v1.8.1 卡片上的路線預覽（前 5 站） */
+  preview?: { name: string; category: string | null }[];
 };
 
 const invalidate = (qc: ReturnType<typeof useQueryClient>) => void qc.invalidateQueries({ queryKey: ['trips'] });

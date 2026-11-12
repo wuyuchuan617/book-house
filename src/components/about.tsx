@@ -15,13 +15,16 @@ export const openAbout = (key: AboutKey, from: 'intro' | 'link' | 'settings') =>
   router.push({ pathname: '/about/[feature]', params: { feature: key } });
 };
 
-/** AH3 ②：分頁內容最上面右邊的「什麼是 xxx？」 */
+/** AH3 ② ／ v1.8.1 AJ2：小膠囊那一行最右邊的「？」圓鈕（點擊範圍 44pt，讀螢幕念「什麼是 xxx？」） */
 export function AboutLink({ feature, style }: { feature: AboutKey; style?: object }) {
   const c = useTheme();
   return (
-    <Pressable accessibilityRole="link" hitSlop={8} onPress={() => openAbout(feature, 'link')} style={[{ flexDirection: 'row', alignItems: 'center', gap: 4 }, style]}>
-      <Feather name="help-circle" size={14} color={c.primary} />
-      <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('什麼是{name}？', { name: about(feature).name })}</AppText>
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={tr('什麼是{name}？', { name: about(feature).name })}
+      onPress={() => openAbout(feature, 'link')}
+      style={({ pressed }) => [styles.help, { opacity: pressed ? 0.6 : 1 }, style]}>
+      <Feather name="help-circle" size={20} color={c.primary} />
     </Pressable>
   );
 }
@@ -56,5 +59,6 @@ export function AboutIntro({ feature }: { feature: AboutKey | null }) {
 }
 
 const styles = StyleSheet.create({
+  help: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginVertical: -6, marginRight: -10 },
   icon: { width: 44, height: 44, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },
 });

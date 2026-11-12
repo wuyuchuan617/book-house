@@ -18,32 +18,34 @@ import type { ExploreItem } from '@/lib/queries';
 
 export type ActiveFilter = { key: string; label: string; clear: () => void };
 
-/** W6 篩選按鈕＋外面顯示生效中的條件（點 ✕ 清掉） */
+/** W6 ／ v1.8.1 AJ6：左邊是分頁自己的小膠囊（類型、月份、狀態）＋生效中的條件（點 ✕ 清掉），「篩選」固定在最右邊 */
 export function FilterBar({ active, onOpen, lead }: { active: ActiveFilter[]; onOpen: () => void; lead?: React.ReactNode }) {
   const c = useTheme();
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bar} keyboardShouldPersistTaps="handled">
-      {lead}
+    <View style={styles.wrap}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={styles.bar} keyboardShouldPersistTaps="handled">
+        {lead}
+        {active.map((a) => (
+          <Pressable
+            key={a.key}
+            accessibilityRole="button"
+            accessibilityLabel={tr('清掉「{label}」', { label: a.label })}
+            onPress={a.clear}
+            style={[styles.active, { backgroundColor: c.text }]}>
+            <AppText variant="caption" style={{ color: c.background, fontWeight: '600' }}>{a.label}</AppText>
+            <Feather name="x" size={12} color={c.background} />
+          </Pressable>
+        ))}
+      </ScrollView>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={active.length ? tr('篩選，{n} 個條件', { n: active.length }) : tr('篩選')}
         onPress={onOpen}
-        style={[styles.filterBtn, { backgroundColor: c.surface, borderColor: c.border }]}>
+        style={[styles.filterBtn, { backgroundColor: c.surface, borderColor: active.length ? c.text : c.border }]}>
         <Feather name="sliders" size={14} color={c.text} />
         <AppText variant="caption" style={{ fontWeight: '700' }}>{active.length ? tr('篩選 · {n}', { n: active.length }) : tr('篩選')}</AppText>
       </Pressable>
-      {active.map((a) => (
-        <Pressable
-          key={a.key}
-          accessibilityRole="button"
-          accessibilityLabel={tr('清掉「{label}」', { label: a.label })}
-          onPress={a.clear}
-          style={[styles.active, { backgroundColor: c.text }]}>
-          <AppText variant="caption" style={{ color: c.background, fontWeight: '600' }}>{a.label}</AppText>
-          <Feather name="x" size={12} color={c.background} />
-        </Pressable>
-      ))}
-    </ScrollView>
+    </View>
   );
 }
 
@@ -156,7 +158,8 @@ function Section({ title, more }: { title: string; more?: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  bar: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.xs, gap: Spacing.sm, alignItems: 'center' },
+  wrap: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingRight: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.xs },
+  bar: { paddingLeft: Spacing.xl, paddingRight: Spacing.xs, gap: Spacing.sm, alignItems: 'center' },
   filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 34, paddingHorizontal: 12, borderRadius: Radius.pill, borderWidth: 1 },
   active: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32, paddingHorizontal: 10, borderRadius: Radius.pill },
   none: { borderWidth: 1.5, borderStyle: 'dashed', backgroundColor: 'transparent', gap: Spacing.sm, alignItems: 'center', marginTop: Spacing.sm, minHeight: MinTouch },

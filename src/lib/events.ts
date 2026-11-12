@@ -48,6 +48,8 @@ const invalidate = (qc: ReturnType<typeof useQueryClient>) => {
   void qc.invalidateQueries({ queryKey: ['events'] });
   void qc.invalidateQueries({ queryKey: ['event'] });
   void qc.invalidateQueries({ queryKey: ['place-events'] });
+  // 分享也記進日記、手記
+  for (const k of ['diary-day', 'diary-active', 'diary-streak', 'store-journal', 'explore-posts']) void qc.invalidateQueries({ queryKey: [k] });
 };
 
 /** 探索 › 貼文：filter＝全部／追蹤中／附近（附近要座標） */

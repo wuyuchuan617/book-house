@@ -102,6 +102,8 @@ export default function MyStoreScreen() {
   const tbrCount = (purchases.data?.items ?? []).filter((p) => p.status === 'unread').length;
   const off = hidden[tab] && store[hidden[tab]![0]] === false ? hidden[tab]![1] : null;
 
+  const help = <AboutLink feature={ABOUT_OF[tab]} />;
+
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ paddingBottom: 110 }} stickyHeaderIndices={[1]}>
@@ -133,19 +135,20 @@ export default function MyStoreScreen() {
 
         <View style={{ paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, gap: Spacing.md }}>
           {off ? <HiddenBar what={off} /> : null}
-          <AboutLink feature={ABOUT_OF[tab]} style={{ alignSelf: 'flex-end', marginBottom: -Spacing.xs }} />
+          {tab === 'curation' || tab === 'reading' || tab === 'rx' ? <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: -Spacing.sm }}>{help}</View> : null}
           {tab === 'curation' ? (
             <CurationSection />
           ) : tab === 'reading' ? (
             <ReadingSection readings={readings.data} loading={readings.isLoading} color={store.color} removal={removal} />
           ) : tab === 'journal' ? (
-            <StoreJournal bookstoreId={store.id} color={store.color} mine scope="posts" />
+            <StoreJournal bookstoreId={store.id} color={store.color} mine scope="posts" right={help} />
           ) : tab === 'want' ? (
             <>
               <SubChips
                 options={[['want', tr('想讀 · {n}', { n: count('want') })], ['tbr', tr('積讀 · {n}', { n: tbrCount })]]}
                 value={wantSub}
                 onChange={setWantSub}
+                right={help}
               />
               {wantSub === 'want' ? <StoreJournal bookstoreId={store.id} color={store.color} mine scope="want" /> : <OwnerTbr color={store.color} hiddenFromReaders={store.show_owned === false} />}
             </>
@@ -155,6 +158,7 @@ export default function MyStoreScreen() {
                 options={[['want', tr('想去 · {n}', { n: count('place') })], ['visited', tr('去過 · {n}', { n: visited.places.length })], ['trips', tr('書旅 · {n}', { n: trips.data?.mine.length ?? 0 })]]}
                 value={placeSub}
                 onChange={setPlaceSub}
+                right={help}
               />
               {placeSub === 'want' ? (
                 <StoreJournal bookstoreId={store.id} color={store.color} mine scope="place" />

@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookCover } from '@/components/book-cover';
 import { MonthSheet, monthPillLabel } from '@/components/month-sheet';
+import { Chip } from '@/components/form';
 import { FilterBar, FilterSheet, type ActiveFilter, type FilterGroup } from '@/components/explore-filter';
 import { NotificationBell, SearchButton } from '@/components/icon-button';
 import { PostsExplore, usePostFilter, type PostKindFilter } from '@/components/posts-explore';
@@ -116,7 +117,6 @@ export default function ExploreScreen() {
 
   // W6 篩選：每個分頁各自的條件；外面顯示生效中的（點 ✕ 清掉）
   const sortLabel = (x: ExploreSort) => SORTS().find(([k]) => k === x)?.[1] ?? '';
-  const rxLabel = (x: RxFilter) => RX_FILTERS().find(([k]) => k === x)?.[1] ?? '';
   const active: ActiveFilter[] =
     tab === 'curations'
       ? [
@@ -128,11 +128,9 @@ export default function ExploreScreen() {
       : tab === 'posts'
         ? [
             ...(postF.filter !== 'all' ? [{ key: 'pf', label: postF.filter === 'following' ? tr('追蹤中') : tr('附近'), clear: () => postF.pick('all') }] : []),
-            ...(postKind !== 'all' ? [{ key: 'pk', label: KIND_LABEL()[postKind], clear: () => setPostKind('all') }] : []),
             ...(postView === 'places' ? [{ key: 'pv', label: tr('看地點'), clear: () => setPostView('posts') }] : []),
           ]
         : [
-            ...(rxFilter !== 'latest' ? [{ key: 'rxf', label: rxLabel(rxFilter), clear: () => setRxFilter('latest') }] : []),
             ...(rxTag ? [{ key: 'rxt', label: rxTagLabel(rxTag), clear: () => setRxTag(undefined) }] : []),
           ];
   const groups: FilterGroup[] =
@@ -153,14 +151,12 @@ export default function ExploreScreen() {
               { key: 'following', label: tr('追蹤中'), selected: postF.filter === 'following', onPress: () => postF.pick('following') },
               ...(locationAvailable() ? [{ key: 'near', label: tr('附近'), selected: postF.filter === 'near', onPress: () => postF.pick('near') }] : []),
             ] },
-            { title: tr('類型'), options: (Object.keys(KIND_LABEL()) as PostKindFilter[]).map((k) => ({ key: k, label: KIND_LABEL()[k], selected: postKind === k, onPress: () => setPostKind(k) })) },
             { title: tr('顯示'), options: [
               { key: 'posts', label: tr('貼文'), selected: postView === 'posts', onPress: () => setPostView('posts') },
               { key: 'places', label: tr('地點'), selected: postView === 'places', onPress: () => setPostView('places') },
             ] },
           ]
         : [
-            { title: tr('排序'), options: RX_FILTERS().map(([k, label]) => ({ key: k, label, selected: rxFilter === k, onPress: () => setRxFilter(k) })) },
             { title: tr('標籤'), note: tr('常用的'), options: RX_TAGS.map((t) => ({ key: t, label: rxTagLabel(t), selected: rxTag === t, onPress: () => setRxTag(rxTag === t ? undefined : t) })) },
           ];
   const clearAll = () => {
@@ -171,11 +167,9 @@ export default function ExploreScreen() {
       setUnvisitedOnly(false);
     } else if (tab === 'posts') {
       postF.pick('all');
-      setPostKind('all');
       setPostView('posts');
     }
     else {
-      setRxFilter('latest');
       setRxTag(undefined);
     }
   };
@@ -210,6 +204,11 @@ export default function ExploreScreen() {
                       <AppText variant="caption" style={{ fontWeight: '700' }}>{monthPillLabel(period)}</AppText>
                       <Feather name="chevron-down" size={16} color={c.text} />
                     </Pressable>
+                  ) : tab === 'posts' ? (
+                    // v1.8.1 AJ6：類型搬出篩選，直接一排小膠囊
+                    (Object.keys(KIND_LABEL()) as PostKindFilter[]).map((k) => <Chip key={k} label={KIND_LABEL()[k]} selected={postKind === k} onPress={() => setPostKind(k)} />)
+                  ) : tab === 'rx' ? (
+                    RX_FILTERS().map(([k, label]) => <Chip key={k} label={label} selected={rxFilter === k} onPress={() => setRxFilter(k)} />)
                   ) : undefined
                 }
               />

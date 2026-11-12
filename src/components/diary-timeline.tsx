@@ -3,13 +3,15 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
-import { AutoItemRow, OwnEntryCard, visibilityOf } from '@/components/diary';
+import { AutoItemRow, OwnEntryCard, taipeiTime, VisibilityBadge, visibilityOf } from '@/components/diary';
+import { EventShareBody } from '@/components/store-journal';
 import { ActionSheet } from '@/components/sheet';
-import { SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
+import { MoreButton, SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
 import { AppText } from '@/components/ui';
 import { Radius, Spacing, type StoreColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { diaryError, useDeleteEntry, useUnpublishEntry, type DiaryEntry, type DiaryItem } from '@/lib/diary';
+import { diaryError, useDeleteEntry, useUnpublishEntry, type DiaryEntry, type DiaryEventShare, type DiaryItem } from '@/lib/diary';
+import { eventError, useDeleteShare } from '@/lib/events';
 import { tr } from '@/lib/i18n';
 
 type Filter = 'all' | 'private' | 'public';
@@ -25,15 +27,34 @@ export function DiaryTimeline({ items, isToday, color }: { items: DiaryItem[]; i
   const unpublish = useUnpublishEntry();
   const [filter, setFilter] = useState<Filter>('all');
   const [autoOpen, setAutoOpen] = useState(true);
-  const [menuFor, setMenuFor] = useState<DiaryEntry | null>(null);
+  const delShare = useDeleteShare();
+  const [menuFor, setMenuFor] = useState<DiaryEntry | DiaryEventShare | null>(null);
   const fail = (e: Error) => Alert.alert(tr('沒有成功'), diaryError(e.message));
 
   const pubCount = items.filter((i) => visibilityOf(i).public).length;
   const shown = items.filter((i) => filter === 'all' || (filter === 'public') === visibilityOf(i).public);
-  const own = shown.filter((i): i is DiaryEntry => i.type === 'note' || i.type === 'checkin');
-  const auto = shown.filter((i): i is Exclude<DiaryItem, DiaryEntry> => i.type !== 'note' && i.type !== 'checkin');
+  const isOwn = (i: DiaryItem): i is DiaryEntry | DiaryEventShare => i.type === 'note' || i.type === 'checkin' || i.type === 'event_share';
+  const own = shown.filter(isOwn);
+  const auto = shown.filter((i): i is Exclude<DiaryItem, DiaryEntry | DiaryEventShare> => !isOwn(i));
 
-  const actionsFor = (e: DiaryEntry): SwipeAction[] => [
+  // v1.8.1：分享的活動也記進日記（修改分享／看活動／刪除分享）
+  const shareActions = (e: DiaryEventShare): SwipeAction[] => [
+    ...(e.event.over ? [] : [{ label: tr('修改分享'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/event/share', params: { eventId: e.event.id } }) }]),
+    { label: tr('看活動'), icon: 'calendar' as const, onPress: () => router.push({ pathname: '/event/[id]', params: { id: e.event.id } }) },
+    {
+      label: tr('刪除分享'),
+      icon: 'trash-2' as const,
+      destructive: true,
+      onPress: () =>
+        Alert.alert(tr('刪除你的分享？'), tr('活動還會在，只是拿掉你的這則分享。'), [
+          { text: tr('取消'), style: 'cancel' },
+          { text: tr('刪除'), style: 'destructive', onPress: () => delShare.mutate(e.id, { onError: (err) => Alert.alert(tr('沒有成功'), eventError(err.message)) }) },
+        ]),
+    },
+  ];
+
+  const actionsFor = (e: DiaryEntry | DiaryEventShare): SwipeAction[] => (e.type === 'event_share' ? shareActions(e) : entryActions(e));
+  const entryActions = (e: DiaryEntry): SwipeAction[] => [
     ...(isToday ? [{ label: tr('編輯'), icon: 'edit-2' as const, onPress: () => router.push({ pathname: '/diary/compose', params: { entryId: e.id } }) }] : []),
     ...(e.is_public ? [{ label: tr('改成只有自己'), icon: 'lock' as const, onPress: () => unpublish.mutate(e.id, { onError: fail }) }] : []),
     {
@@ -87,7 +108,7 @@ export function DiaryTimeline({ items, isToday, color }: { items: DiaryItem[]; i
             return (
               <View key={e.id} {...swipeA11y(actions)}>
                 <SwipeRow actions={actions} background={c.background} hint={index === 0}>
-                  <OwnEntryCard item={e} color={color} onMore={() => setMenuFor(e)} />
+                  {e.type === 'event_share' ? <EventShareCard item={e} onMore={() => setMenuFor(e)} /> : <OwnEntryCard item={e} color={color} onMore={() => setMenuFor(e)} />}
                 </SwipeRow>
               </View>
             );
@@ -112,12 +133,31 @@ export function DiaryTimeline({ items, isToday, color }: { items: DiaryItem[]; i
 
       {!own.length && !auto.length ? <AppText variant="caption" muted style={{ textAlign: 'center', paddingVertical: Spacing.lg }}>{tr('這個篩選沒有項目。')}</AppText> : null}
       {own.length ? <AppText variant="caption" style={{ color: c.textTertiary }}>{isToday ? tr('點「⋯」或往左滑：可以編輯、改成只有自己、刪除') : tr('點「⋯」或往左滑：可以改成只有自己、刪除')}</AppText> : null}
-      <ActionSheet visible={!!menuFor} onClose={() => setMenuFor(null)} title={menuFor?.body ?? undefined} actions={menuFor ? actionsFor(menuFor) : []} />
+      <ActionSheet visible={!!menuFor} onClose={() => setMenuFor(null)} title={(menuFor?.type === 'event_share' ? menuFor.event.title : menuFor?.body) ?? undefined} actions={menuFor ? actionsFor(menuFor) : []} />
+    </View>
+  );
+}
+
+function EventShareCard({ item, onMore }: { item: DiaryEventShare; onMore: () => void }) {
+  const c = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+      <AppText variant="caption" style={{ width: 38, fontSize: 11, paddingTop: 14, color: c.textTertiary }}>{taipeiTime(item.at)}</AppText>
+      <View style={[styles.card, { backgroundColor: c.surface }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Feather name="calendar" size={13} color="#9A4A12" />
+          <AppText variant="caption" style={{ fontWeight: '700', color: '#9A4A12', flex: 1 }}>{tr('分享活動')}</AppText>
+          <VisibilityBadge v={{ public: true, where: 'post' }} />
+          <MoreButton onPress={onMore} label={tr('分享活動的更多動作')} />
+        </View>
+        <EventShareBody item={item} />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  card: { flex: 1, borderRadius: Radius.xl, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: Spacing.sm },
   filter: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 34, paddingHorizontal: 12, borderRadius: Radius.pill, borderWidth: 1 },
   section: { fontWeight: '700', paddingHorizontal: 2 },
   autoHead: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32 },

@@ -57,6 +57,7 @@ begin
   assert (d->>'bookstore_count')::int = 1;
   assert (public.trip_cities()->0->>'city') = '台南市';
   assert jsonb_array_length(public.explore_trips('台南市')) = 1;
+  assert public.explore_trips('台南市')->0->'preview'->0->>'name' = '鹿早茶室', 'route preview';
   assert public.place_trip_count((select id from public.places where google_place_id = 'gp-t1')) = 1;
 end $$;
 select public.trip_save((select id from t_trip), true);

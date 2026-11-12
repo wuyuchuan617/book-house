@@ -17,6 +17,7 @@ import {
   formatDistance,
   useDiaryImageUrls,
   type DiaryEntry,
+  type DiaryEventShare,
   type DiaryItem,
   type PublicCheckin,
   type Streak,
@@ -67,6 +68,8 @@ export type Visibility = { public: boolean; where?: 'place' | 'store' | 'post' }
 /** 每一項是誰看得到：日記貼文（含打卡）看有沒有公開；想讀只有自己；心得、開始讀、讀完跟著那本書 */
 export function visibilityOf(item: DiaryItem): Visibility {
   switch (item.type) {
+    case 'event_share':
+      return { public: true, where: 'post' };
     case 'note':
     case 'checkin':
       return item.is_public ? { public: true, where: 'post' } : { public: false };
@@ -164,7 +167,7 @@ export function OwnEntryCard({ item, color = 'moss', onMore }: { item: DiaryEntr
 const AUTO_ICON = { reading_note: 'feather', saved: 'bookmark', want_place: 'star', started: 'book-open', finished: 'check-circle' } as const;
 
 /** 自動帶入的一項（心得、想讀、想去、開始讀、讀完）：一行，點了到對應頁面 */
-export function AutoItemRow({ item, first }: { item: Exclude<DiaryItem, DiaryEntry>; first?: boolean }) {
+export function AutoItemRow({ item, first }: { item: Exclude<DiaryItem, DiaryEntry | DiaryEventShare>; first?: boolean }) {
   const c = useTheme();
   const v = visibilityOf(item);
   const time = item.at ? taipeiTime(item.at) : null;
@@ -257,6 +260,7 @@ export function PlaceRow({
   onPress,
   isIndie,
   right,
+  badge,
 }: {
   place: { id: string; name: string; address: string | null; category: string | null; photo_paths: string[]; distance_m?: number | null; saved?: boolean; is_indie?: boolean };
   meta: string;
@@ -264,6 +268,8 @@ export function PlaceRow({
   isIndie?: boolean;
   /** v1.7 Y4：書櫃的地點卡片右邊只放「⋯」（不放書籤和箭頭） */
   right?: React.ReactNode;
+  /** v1.8.1 AJ5：我的書店多一個公開標籤 */
+  badge?: React.ReactNode;
 }) {
   const c = useTheme();
   const { data: urls } = useDiaryImageUrls(place.photo_paths.slice(0, 1));
@@ -283,7 +289,8 @@ export function PlaceRow({
             {place.saved && !right ? <Feather name="bookmark" size={14} color={c.primary} /> : null}
           </View>
           <AppText variant="caption" muted numberOfLines={1}>{[categoryLabel(place.category, isIndie ?? place.is_indie), distance, right ? null : place.address].filter(Boolean).join(' · ')}</AppText>
-          <AppText variant="caption" style={{ color: right ? c.text : c.textTertiary }} numberOfLines={2}>{meta}</AppText>
+          {meta ? <AppText variant="caption" style={{ color: right || badge ? c.text : c.textTertiary }} numberOfLines={2}>{meta}</AppText> : null}
+          {badge ? <View style={{ flexDirection: 'row', marginTop: 4 }}>{badge}</View> : null}
         </View>
         {right ?? <Feather name="chevron-right" size={18} color={c.textTertiary} />}
       </Card>

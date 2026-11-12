@@ -77,7 +77,13 @@ export type DiaryItem =
   | { type: 'reading_note'; id: string; at: string; reading_id: string; kind: NoteKind; is_public: boolean; title: string | null; body: string; book: DiaryBook }
   | { type: 'saved'; id: string; at: string; source: string | null; book: DiaryBook }
   | { type: 'want_place'; id: string; at: string; note: string | null; place_name: string; place_category: PlaceCategory | null }
-  | { type: 'started' | 'finished'; id: string; at: null; reading_id: string; is_public: boolean; book: DiaryBook };
+  | { type: 'started' | 'finished'; id: string; at: null; reading_id: string; is_public: boolean; book: DiaryBook }
+  // v1.8.1：分享的活動也記進日記
+  | { type: 'event_share'; id: string; at: string; is_public: true; body: string | null; photo_paths: string[]; event: SharedEvent };
+
+/** 日記、手記裡分享的活動小卡 */
+export type SharedEvent = { id: string; title: string; event_type: string; starts_at: string; ends_at: string | null; online: boolean; place: { id: string; name: string } | null; going_count: number; over: boolean };
+export type DiaryEventShare = Extract<DiaryItem, { type: 'event_share' }>;
 
 export type DiaryEntry = Extract<DiaryItem, { type: 'note' | 'checkin' }>;
 export type DiaryDay = { date: string; is_today: boolean; items: DiaryItem[] };
@@ -489,7 +495,7 @@ export type JournalItem =
       type: 'event_share';
       body: string | null;
       photo_paths: string[];
-      event: { id: string; title: string; event_type: string; starts_at: string; ends_at: string | null; online: boolean; place: { id: string; name: string } | null; going_count: number; over: boolean };
+      event: SharedEvent;
     });
 
 export function useStoreJournal(bookstoreId: string | undefined) {

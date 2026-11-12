@@ -57,17 +57,52 @@ export function QuickAddSheet({ visible, onClose }: { visible: boolean; onClose:
     );
   };
 
-  const items: Item[] = [
-    { key: 'want_book', icon: 'bookmark', title: tr('想讀的書'), sub: tr('書名、為什麼想讀、在哪看到、連結'), tint: c.primary, bg: c.surfaceMuted, onPress: () => router.push('/want-book') },
-    { key: 'want_place', icon: 'map-pin', title: tr('想去的地點'), sub: tr('地點、為什麼想去、連結'), tint: '#2F5D6B', bg: '#E1ECEF', onPress: () => router.push({ pathname: '/diary/compose', params: { kind: 'want' } }) },
-    { key: 'reading', icon: 'play', title: tr('正在讀'), sub: tr('選正在讀的書或加一本，記今天讀了什麼'), tint: c.success, bg: c.successSurface, onPress: () => router.push('/reading/compose') },
-    { key: 'purchase', icon: 'shopping-bag', title: tr('買了一本書'), sub: tr('記在哪買、多少錢，先放進積讀'), tint: '#8B6A1F', bg: '#F9EEDA', onPress: () => router.push('/purchase') },
-    { key: 'post', icon: 'edit-3', title: tr('日記'), sub: tr('寫字、放照片；加地點就是打卡'), tint: '#5A4B8A', bg: '#ECE8F4', onPress: () => router.push({ pathname: '/diary/compose', params: { kind: 'post' } }) },
-    { key: 'event', icon: 'calendar', title: tr('分享活動'), sub: tr('書市集、簽書會、講座，大家一起去'), tint: '#9A4A12', bg: '#FBEBDD', onPress: () => router.push('/event/share') },
-    { key: 'trip', icon: 'compass', title: tr('整理書旅'), sub: tr('一個城市的書店和順路的咖啡、景點'), tint: '#2E5A87', bg: '#E4ECF5', onPress: () => router.push('/trip/edit') },
-    { key: 'rx', icon: 'message-circle', title: tr('閱讀處方箋'), sub: tr('說說你的狀況，請大家各開一本書'), tint: '#5A4B8A', bg: '#ECE8F4', onPress: () => router.push('/rx/new') },
-    { key: 'curation', icon: 'grid', title: tr('新增策展'), sub: tr('放上書架，接在最後一檔之後'), tint: c.text, bg: c.surfaceMuted, onPress: newCuration },
-  ];
+  const items: Record<string, Item> = Object.fromEntries(
+    ([
+      { key: 'post', icon: 'edit-3', title: tr('寫日記'), sub: tr('寫字、放照片；加地點就是打卡'), tint: '#5A4B8A', bg: '#ECE8F4', onPress: () => router.push({ pathname: '/diary/compose', params: { kind: 'post' } }) },
+      { key: 'reading', icon: 'play', title: tr('正在讀'), sub: tr('記今天讀到哪、讀了什麼'), tint: c.success, bg: c.successSurface, onPress: () => router.push('/reading/compose') },
+      { key: 'want_book', icon: 'bookmark', title: tr('想讀'), sub: tr('想讀的書'), tint: c.primary, bg: c.surfaceMuted, onPress: () => router.push('/want-book') },
+      { key: 'want_place', icon: 'map-pin', title: tr('想去'), sub: tr('想去的地點'), tint: '#2F5D6B', bg: '#E1ECEF', onPress: () => router.push({ pathname: '/diary/compose', params: { kind: 'want' } }) },
+      { key: 'purchase', icon: 'shopping-bag', title: tr('買了書'), sub: tr('買了一本書'), tint: '#8B6A1F', bg: '#F9EEDA', onPress: () => router.push('/purchase') },
+      { key: 'event', icon: 'calendar', title: tr('活動'), sub: tr('分享活動'), tint: '#9A4A12', bg: '#FBEBDD', onPress: () => router.push('/event/share') },
+      { key: 'trip', icon: 'compass', title: tr('書旅'), sub: tr('整理書旅'), tint: '#2E5A87', bg: '#E4ECF5', onPress: () => router.push('/trip/edit') },
+      { key: 'rx', icon: 'message-circle', title: tr('處方箋'), sub: tr('閱讀處方箋'), tint: '#5A4B8A', bg: '#ECE8F4', onPress: () => router.push('/rx/new') },
+      { key: 'curation', icon: 'grid', title: tr('策展'), sub: tr('新增策展'), tint: c.text, bg: c.surfaceMuted, onPress: newCuration },
+    ] as Item[]).map((it) => [it.key, it]),
+  );
+
+  // v1.8.1 AJ1：最常用的兩個做成長條；其他分兩組、圓角圖示＋兩三個字
+  const bar = (it: Item) => (
+    <Pressable
+      key={it.key}
+      accessibilityRole="button"
+      accessibilityLabel={`${it.title}，${it.sub}`}
+      onPress={() => go(it.key, it.onPress)}
+      style={({ pressed }) => [styles.bar, { backgroundColor: c.surface, borderColor: c.divider, opacity: pressed ? 0.85 : 1 }]}>
+      <View style={[styles.barIcon, { backgroundColor: it.bg }]}>
+        <Feather name={it.icon} size={18} color={it.tint} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <AppText variant="label">{it.title}</AppText>
+        <AppText variant="caption" muted numberOfLines={1}>{it.sub}</AppText>
+      </View>
+      <Feather name="chevron-right" size={16} color={c.textTertiary} />
+    </Pressable>
+  );
+  const icon = (it: Item) => (
+    <Pressable key={it.key} accessibilityRole="button" accessibilityLabel={it.sub} onPress={() => go(it.key, it.onPress)} style={({ pressed }) => [styles.iconTile, { opacity: pressed ? 0.7 : 1 }]}>
+      <View style={[styles.iconBox, { backgroundColor: it.bg }]}>
+        <Feather name={it.icon} size={22} color={it.tint} />
+      </View>
+      <AppText variant="caption" style={{ fontWeight: '700', color: c.text }} numberOfLines={1}>{it.title}</AppText>
+    </Pressable>
+  );
+  const group = (label: string, keys: string[]) => (
+    <View style={{ gap: Spacing.sm }}>
+      <AppText variant="caption" muted style={{ fontWeight: '700' }}>{label}</AppText>
+      <View style={styles.icons}>{keys.map((k) => icon(items[k]))}</View>
+    </View>
+  );
 
   return (
     <BottomSheet visible={visible} onClose={onClose} style={styles.sheet}>
@@ -77,22 +112,9 @@ export function QuickAddSheet({ visible, onClose }: { visible: boolean; onClose:
             <Feather name="x" size={18} color={c.textSecondary} />
           </Pressable>
         </View>
-        <View style={styles.grid}>
-          {items.map((it) => (
-            <Pressable
-              key={it.key}
-              accessibilityRole="button"
-              accessibilityLabel={`${it.title}，${it.sub}`}
-              onPress={() => go(it.key, it.onPress)}
-              style={({ pressed }) => [styles.tile, { backgroundColor: c.surface, borderColor: c.divider, opacity: pressed ? 0.85 : 1 }]}>
-              <View style={[styles.tileIcon, { backgroundColor: it.bg }]}>
-                <Feather name={it.icon} size={18} color={it.tint} />
-              </View>
-              <AppText variant="label">{it.title}</AppText>
-              <AppText variant="caption" muted style={{ lineHeight: 17 }} numberOfLines={2}>{it.sub}</AppText>
-            </Pressable>
-          ))}
-        </View>
+        <View style={{ gap: Spacing.sm }}>{['post', 'reading'].map((k) => bar(items[k]))}</View>
+        {group(tr('收藏'), ['want_book', 'want_place', 'purchase'])}
+        {group(tr('分享給大家'), ['event', 'trip', 'rx', 'curation'])}
     </BottomSheet>
   );
 }
@@ -115,7 +137,9 @@ const styles = StyleSheet.create({
   sheet: { paddingHorizontal: Spacing.xl, gap: Spacing.md },
   head: { flexDirection: 'row', alignItems: 'center' },
   close: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  tile: { width: '48.4%', borderRadius: Radius.xl, borderWidth: 1, padding: 14, gap: 6 },
-  tileIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  bar: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.xl, borderWidth: 1, paddingHorizontal: 14, minHeight: 62 },
+  barIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  icons: { flexDirection: 'row' },
+  iconTile: { width: '25%', alignItems: 'center', gap: 6, minHeight: 76 },
+  iconBox: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
 });
