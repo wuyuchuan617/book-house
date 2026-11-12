@@ -213,7 +213,9 @@ export function useSaveEntry() {
       };
       let res = entryId ? await supabase.from('diary_entries').update(fields).eq('id', id) : await supabase.from('diary_entries').insert({ id, ...fields });
       // 資料庫還沒套用 v1.8.4（沒有 link）：不帶連結再存一次
+      let linkDropped = false;
       if (res.error && /link/i.test(res.error.message) && 'link' in fields) {
+        linkDropped = !!(fields as { link?: string | null }).link;
         const { link: _l, link_title: _t, ...noLink } = fields as typeof fields & { link?: string | null; link_title?: string | null };
         void _l;
         void _t;
@@ -232,7 +234,7 @@ export function useSaveEntry() {
       }
       const removed = previousPaths.filter((p) => !paths.includes(p));
       if (removed.length) await supabase.storage.from(DIARY_BUCKET).remove(removed).then(() => {}, () => {});
-      return { id, isNew: !entryId };
+      return { id, isNew: !entryId, linkDropped };
     },
     onSuccess: (r, v) => {
       if (r.isNew) {

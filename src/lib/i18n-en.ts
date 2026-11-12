@@ -1694,4 +1694,6 @@ export const EN: Record<string, Entry> = {
   '文章': 'Article',
   '讀取標題…': 'Loading title…',
   '這看起來不是網址；要用 http:// 或 https:// 開頭。': 'That doesn\'t look like a URL. It should start with http:// or https://.',
+  '連結沒有存到': 'Link not saved',
+  '伺服器還沒更新，日記已經存好，但連結沒有存進去。更新後再編輯這則日記補上。': 'The server hasn\'t been updated yet. Your entry is saved, but the link isn\'t. Edit the entry after the update to add it.',
 };

@@ -232,7 +232,7 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
       }
       const text = body.trim() || (kind === 'reading' && !photos.length ? (pageRef.trim() ? tr('讀到 {page}', { page: pageRef.trim() }) : tr('讀完了')) : '');
       const isCheckin = kind === 'post' && !!place;
-      await save.mutateAsync({
+      const saved = await save.mutateAsync({
         entryId: existing?.id,
         previousPaths: existing?.photo_paths,
         input: {
@@ -249,6 +249,8 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
           linkTitle,
         },
       });
+      // 伺服器還沒套用 v1.8.4：日記存了，但連結沒存到
+      if (saved.linkDropped) Alert.alert(tr('連結沒有存到'), tr('伺服器還沒更新，日記已經存好，但連結沒有存進去。更新後再編輯這則日記補上。'));
       if (isCheckin && googlePlace && placeType && !existing) await setPlaceType.mutateAsync({ placeId: googlePlace.id, type: placeType }).catch(() => {});
       finish();
     } catch (e) {
