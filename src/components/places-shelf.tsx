@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { PlaceRow } from '@/components/diary';
+import { LinkLine } from '@/components/link-line';
 import { ActionSheet } from '@/components/sheet';
 import { MoreButton, SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
 import { AppText, EmptyState } from '@/components/ui';
@@ -92,7 +93,13 @@ export function PlacesShelf({ right }: { right?: React.ReactNode } = {}) {
             return (
               <View style={{ borderRadius: Radius.xl, overflow: 'hidden' }} {...swipeA11y(actions)}>
                 <SwipeRow actions={actions} hint={index === 0}>
-                  <PlaceRow place={item} isIndie={item.is_indie} meta={meta(item)} right={<MoreButton onPress={() => setMenuFor(item)} label={tr('{name}的更多動作', { name: item.name })} />} />
+                  <PlaceRow
+                    place={item}
+                    isIndie={item.is_indie}
+                    meta={meta(item)}
+                    footer={item.link ? <LinkLine url={item.link} /> : undefined}
+                    right={<MoreButton onPress={() => setMenuFor(item)} label={tr('{name}的更多動作', { name: item.name })} />}
+                  />
                 </SwipeRow>
               </View>
             );

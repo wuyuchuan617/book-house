@@ -263,6 +263,7 @@ export function PlaceRow({
   isIndie,
   right,
   badge,
+  footer,
 }: {
   place: { id: string; name: string; address: string | null; category: string | null; photo_paths: string[]; distance_m?: number | null; saved?: boolean; is_indie?: boolean };
   meta: string;
@@ -272,6 +273,8 @@ export function PlaceRow({
   right?: React.ReactNode;
   /** v1.8.1 AJ5：我的書店多一個公開標籤 */
   badge?: React.ReactNode;
+  /** L3 想去：卡片內文最下面（存想去時貼的連結） */
+  footer?: React.ReactNode;
 }) {
   const c = useTheme();
   const { data: urls } = useDiaryImageUrls(place.photo_paths.slice(0, 1));
@@ -293,6 +296,7 @@ export function PlaceRow({
           <AppText variant="caption" muted numberOfLines={1}>{[categoryLabel(place.category, isIndie ?? place.is_indie), distance, right ? null : place.address].filter(Boolean).join(' · ')}</AppText>
           {meta ? <AppText variant="caption" style={{ color: right || badge ? c.text : c.textTertiary }} numberOfLines={2}>{meta}</AppText> : null}
           {badge ? <View style={{ flexDirection: 'row', marginTop: 4 }}>{badge}</View> : null}
+          {footer ? <View style={{ marginTop: 2 }}>{footer}</View> : null}
         </View>
         {right ?? <Feather name="chevron-right" size={18} color={c.textTertiary} />}
       </Card>
