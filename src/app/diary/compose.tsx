@@ -147,7 +147,7 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
 
   // 公開：日記貼文 → 沒有地點或公開場所才可以；正在讀 → 預設跟著那本書；想去 → 公開場所才可以
   const canPublic = kind === 'want' ? !!googlePlace?.public_ok : kind === 'post' ? !place || !!googlePlace?.public_ok : true;
-  const defaultPublic = kind === 'reading' ? (linkedReading ? linkedReading.is_public : newReadingPublic) && !!store?.store.show_post : kind === 'want' ? !!store?.store.show_place : false;
+  const defaultPublic = kind === 'reading' ? (linkedReading ? linkedReading.is_public : newReadingPublic) && !!store?.store.show_post : kind === 'want' ? !!store?.store.show_place : true; // v1.8.3：日記預設公開（私人地點仍然不能公開）
   // v1.6：想去不再一則一則選公開（公開場所一律可以顯示，要不要出現在書店頁只看公開設定）
   const publicOn = kind === 'want' ? canPublic : canPublic && (isPublic ?? defaultPublic);
 
@@ -325,7 +325,7 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
       ? !googlePlace
         ? tr('選了公開場所（書店、圖書館、咖啡店…）才能顯示在書店頁。')
         : !googlePlace.public_ok
-          ? tr('這裡看起來是私人地點，只會留在自己的書櫃裡。')
+          ? tr('這裡看起來是私人地點，只會留在自己的收藏裡。')
           : store?.store.show_place
             ? tr('公開設定裡「想去的地點」開著：讀者會在你的書店頁看到這個地方與原因；連結不公開。')
             : tr('公開設定裡「想去的地點」沒開，只有你看得到。')

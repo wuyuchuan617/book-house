@@ -37,7 +37,7 @@ export default function TripScreen() {
   const addAll = () =>
     requireAuth(() =>
       savePlaces.mutate(t.id, {
-        onSuccess: (n) => Alert.alert(n ? tr('加了 {n} 個地點到想去', { n }) : tr('這些地點都已經在想去了'), tr('在書櫃 › 地點可以看到。')),
+        onSuccess: (n) => Alert.alert(n ? tr('加了 {n} 個地點到想去', { n }) : tr('這些地點都已經在想去了'), tr('在收藏 › 地點可以看到。')),
         onError: fail,
       }),
     );

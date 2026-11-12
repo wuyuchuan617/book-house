@@ -1,4 +1,3 @@
-import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
@@ -7,7 +6,7 @@ import { PlaceRow } from '@/components/diary';
 import { ActionSheet } from '@/components/sheet';
 import { MoreButton, SwipeRow, swipeA11y, type SwipeAction } from '@/components/swipe-row';
 import { AppText, EmptyState } from '@/components/ui';
-import { MinTouch, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useMyPlaces, useSavePlace, type MyPlace, type MyPlaceKind } from '@/lib/diary';
 import { useMyTrips } from '@/lib/trips';
@@ -16,8 +15,8 @@ import { tr } from '@/lib/i18n';
 
 const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
 
-/** L3 書櫃 › 地方：想去（存了還沒去）／去過（打過卡）／書旅（v1.8.2 AK15：收藏的書旅）；「＋ 加地方」直接搜尋存成想去 */
-export function PlacesShelf() {
+/** L3 收藏 › 地點：想去（存了還沒去）／去過（打過卡）／書旅（收藏的書旅） */
+export function PlacesShelf({ right }: { right?: React.ReactNode } = {}) {
   const c = useTheme();
   const [tab, setKind] = useState<MyPlaceKind | 'trips'>('want');
   const kind: MyPlaceKind = tab === 'trips' ? 'want' : tab;
@@ -54,12 +53,8 @@ export function PlacesShelf() {
             </Pressable>
           ))}
         </View>
-        {tab !== 'trips' ? (
-          <Pressable accessibilityRole="button" onPress={() => add()} hitSlop={8} style={styles.add}>
-            <Feather name="plus" size={16} color={c.primary} />
-            <AppText variant="label" style={{ color: c.primary }}>{tr('加地方')}</AppText>
-          </Pressable>
-        ) : null}
+        {/* v1.8.3 AK20：「？」放這一行最右邊；不再有「＋ 加地方」（用右下角＋） */}
+        {right}
       </View>
 
       {tab === 'trips' ? (
@@ -112,7 +107,6 @@ export function PlacesShelf() {
 const styles = StyleSheet.create({
   bar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.xl, paddingTop: Spacing.md },
   pill: { minHeight: 34, paddingHorizontal: 16, borderRadius: Radius.pill, borderWidth: 1, justifyContent: 'center' },
-  add: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: MinTouch },
   list: { padding: Spacing.xl, paddingTop: Spacing.md, gap: Spacing.md, flexGrow: 1, paddingBottom: 96 },
   more: { position: 'absolute', top: 6, right: 6 },
 });

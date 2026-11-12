@@ -105,6 +105,9 @@ export function useToggleFollow() {
       qc.invalidateQueries({ queryKey: ['follow-ids'] });
       qc.invalidateQueries({ queryKey: ['follows'] });
       qc.invalidateQueries({ queryKey: ['explore'] });
+      qc.invalidateQueries({ queryKey: ['feed'] });
+      qc.invalidateQueries({ queryKey: ['feed-unread'] });
+      qc.invalidateQueries({ queryKey: ['suggest-stores'] });
       qc.invalidateQueries({ queryKey: ['store'] });
     },
   });

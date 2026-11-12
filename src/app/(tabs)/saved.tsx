@@ -1,3 +1,4 @@
+import Feather from '@expo/vector-icons/Feather';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
@@ -16,6 +17,7 @@ import { useSavedBooks, useStartReading, useToggleSave, wantSource, type SavedBo
 import { userMessage } from '@/lib/errors';
 import { useMyPurchases } from '@/lib/purchases';
 import { useMyPlaces } from '@/lib/diary';
+import { useMyStore } from '@/lib/queries';
 import { ActionSheet } from '@/components/sheet';
 import { MoreButton, SwipeRow, swipeA11y } from '@/components/swipe-row';
 import { LinkLine } from '@/components/link-line';
@@ -32,6 +34,12 @@ export default function SavedScreen() {
   const fromParam = (t?: string): Tab => (t === 'places' ? 'places' : t === 'tbr' ? 'tbr' : 'books');
   const purchases = useMyPurchases();
   const [tab, setTab] = useState<Tab>(fromParam(params.tab));
+  const { data: mine } = useMyStore();
+  // v1.8.3 AK16：收藏不放公開開關；只有那一類關掉時，最上面一條小提示
+  const shown = mine?.store;
+  const hiddenWhat = !shown ? null : tab === 'books' && shown.show_want === false ? tr('想讀') : tab === 'tbr' && shown.show_owned === false ? tr('積讀') : tab === 'places' && shown.show_place === false ? tr('想去') : null;
+  // AK20：「？」放在第一行（小膠囊那一行）最右邊
+  const help = <AboutLink feature={tab === 'places' ? 'place' : 'want'} />;
   const [lastParam, setLastParam] = useState(params.tab);
   if (params.tab !== lastParam) {
     setLastParam(params.tab);
@@ -47,8 +55,8 @@ export default function SavedScreen() {
     return (
       <Screen>
         <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-          <AppText variant="title" style={styles.title}>{tr('書櫃')}</AppText>
-          <EmptyState title={tr('登入後就能使用書櫃')} body={tr('把想讀的書收進書櫃，追蹤喜歡的店主。')} actionLabel={tr('登入')} onAction={() => requireAuth(() => {})} />
+          <AppText variant="title" style={styles.title}>{tr('收藏')}</AppText>
+          <EmptyState title={tr('登入後就能使用收藏')} body={tr('把想讀的書、想去的地方收起來，追蹤喜歡的店主。')} actionLabel={tr('登入')} onAction={() => requireAuth(() => {})} />
         </SafeAreaView>
       </Screen>
     );
@@ -67,13 +75,12 @@ export default function SavedScreen() {
     <Screen>
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         <View style={[styles.title, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
-          <AppText variant="title">{tr('書櫃')}</AppText>
+          <AppText variant="title">{tr('收藏')}</AppText>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <SearchButton />
             <NotificationBell />
           </View>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingRight: Spacing.xl, gap: Spacing.sm }}>
         <View style={[styles.segment, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
           {(['books', 'tbr', 'places'] as Tab[]).map((t) => {
             const selected = tab === t;
@@ -92,14 +99,13 @@ export default function SavedScreen() {
             );
           })}
         </View>
-          <AboutLink feature={tab === 'places' ? 'place' : 'want'} style={{ marginTop: Spacing.md }} />
-        </View>
+        {hiddenWhat ? <HiddenNote what={hiddenWhat} /> : null}
         <AboutIntro feature={tab === 'places' ? 'place' : 'want'} />
 
         {tab === 'tbr' ? (
-          <TbrShelf />
+          <TbrShelf right={help} />
         ) : tab === 'places' ? (
-          <PlacesShelf />
+          <PlacesShelf right={help} />
         ) : books.isLoading ? (
           <ActivityIndicator style={{ marginTop: 48 }} />
         ) : books.error ? (
@@ -110,7 +116,12 @@ export default function SavedScreen() {
             keyExtractor={(b) => b.book_id}
             contentContainerStyle={styles.list}
             refreshControl={<RefreshControl refreshing={books.isRefetching} onRefresh={() => void books.refetch()} />}
-            ListHeaderComponent={books.data?.length ? <AppText variant="caption" muted>{tr('{length} 本', { length: books.data.length })}</AppText> : undefined}
+            ListHeaderComponent={
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: -Spacing.xs }}>
+                <AppText variant="caption" muted style={{ flex: 1 }}>{books.data?.length ? tr('{length} 本', { length: books.data.length }) : ''}</AppText>
+                {help}
+              </View>
+            }
             ListEmptyComponent={
               <EmptyState title={tr('還沒有想讀的書')} body={tr('在書店頁按書旁邊的書籤，\n或在店主閱讀按「＋」加入想讀。')} actionLabel={tr('去探索書店')} onAction={() => router.navigate('/')} />
             }
@@ -120,6 +131,18 @@ export default function SavedScreen() {
         <UndoToast message={undo ? tr('已從想讀移除《{title}》', { title: undo.books.title }) : null} onUndo={restore} onHide={hideToast} />
       </SafeAreaView>
     </Screen>
+  );
+}
+
+/** 讀者看不到這一類（公開設定沒開）：點了到設定 */
+function HiddenNote({ what }: { what: string }) {
+  const c = useTheme();
+  return (
+    <Pressable accessibilityRole="link" onPress={() => router.push('/settings')} style={[styles.hidden, { backgroundColor: c.surfaceMuted }]}>
+      <Feather name="eye-off" size={15} color={c.textSecondary} />
+      <AppText variant="caption" style={{ flex: 1 }}>{tr('讀者看不到你的{what}', { what })}</AppText>
+      <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('設定 ›')}</AppText>
+    </Pressable>
   );
 }
 
@@ -167,7 +190,8 @@ function BookRow({ item, hint, onUnsave }: { item: SavedBook; hint?: boolean; on
 
 const styles = StyleSheet.create({
   title: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg },
-  segment: { flex: 1, flexDirection: 'row', marginLeft: Spacing.xl, marginTop: Spacing.md, borderRadius: Radius.md, padding: 3 },
+  segment: { flexDirection: 'row', marginHorizontal: Spacing.xl, marginTop: Spacing.md, borderRadius: Radius.md, padding: 3 },
+  hidden: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: Radius.md, paddingHorizontal: Spacing.md, minHeight: 40, marginHorizontal: Spacing.xl, marginTop: Spacing.md },
   segmentItem: { flex: 1, minHeight: MinTouch - 4, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },
   list: { padding: Spacing.xl, gap: Spacing.md, flexGrow: 1, paddingBottom: 96 },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },

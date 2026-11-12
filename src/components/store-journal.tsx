@@ -77,7 +77,7 @@ export function StoreJournal({ bookstoreId, color, mine, scope = 'posts', right 
       ]);
     }
     if (item.type !== 'post') {
-      if (item.type === 'place' && !item.public_ok) return Alert.alert(tr('私人地點不會公開'), tr('住家等私人地點只會留在自己的書櫃裡。'));
+      if (item.type === 'place' && !item.public_ok) return Alert.alert(tr('私人地點不會公開'), tr('住家等私人地點只會留在自己的收藏裡。'));
       return Alert.alert(
         item.shown ? tr('讀者看得到') : tr('只有你看得到'),
         tr('想讀、想去要不要出現在書店頁，看「公開設定」。'),

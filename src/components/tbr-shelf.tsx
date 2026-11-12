@@ -17,7 +17,7 @@ import { useAddReading } from '@/lib/readings';
 const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
 
 /** Y12 書櫃 › 積讀：買了還沒讀的書（舊的排前面），上面是今年買了幾本與「購書紀錄」 */
-export function TbrShelf() {
+export function TbrShelf({ right }: { right?: React.ReactNode } = {}) {
   const c = useTheme();
   const { data, isPending, refetch, isRefetching } = useMyPurchases();
   const { data: mine } = useMyStore();
@@ -60,6 +60,13 @@ export function TbrShelf() {
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
         ListHeaderComponent={
+          <View style={{ gap: Spacing.md }}>
+          {right ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: -Spacing.xs }}>
+              <AppText variant="caption" muted style={{ flex: 1 }}>{tr('買了還沒讀，最久的在最上面')}</AppText>
+              {right}
+            </View>
+          ) : null}
           <Card style={styles.stats}>
             <View>
               <AppText style={styles.n}>{String(data?.unread ?? 0)}</AppText>
@@ -73,6 +80,7 @@ export function TbrShelf() {
               <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('購書紀錄 ›')}</AppText>
             </Pressable>
           </Card>
+          </View>
         }
         ListEmptyComponent={
           <EmptyState title={tr('積讀是空的')} body={tr('買了一本書，按右下角的＋ › 買了一本書，或在想讀的「⋯」選「買了」。')} actionLabel={tr('記一本買的書')} onAction={() => router.push('/purchase')} />

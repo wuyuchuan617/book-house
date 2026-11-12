@@ -6,7 +6,7 @@ import { AppText, EmptyState, Screen } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { tr } from '@/lib/i18n';
-import { thisWeekStart, useWeekList, weekLabel } from '@/lib/weekly';
+import { isoWeek, thisWeekStart, useWeekList, weekRange } from '@/lib/weekly';
 
 /** W5 過去的回顧（v1.8.2 AK14：也放在日記月曆的「每週回顧」分頁） */
 export default function WeekListScreen() {
@@ -41,12 +41,18 @@ export function WeekList({ header }: { header?: React.ReactElement }) {
                 accessibilityRole="link"
                 onPress={() => router.push({ pathname: '/diary/week/[start]', params: { start: item.week_start, from: 'history' } })}
                 style={({ pressed }) => [styles.row, { backgroundColor: c.surface, opacity: pressed ? 0.85 : 1 }]}>
+                <View style={[styles.wk, { backgroundColor: item.week_start === current ? c.surfaceMuted : c.background }]} accessibilityLabel={tr('第 {n} 週', { n: isoWeek(item.week_start) })}>
+                  <AppText style={{ fontSize: 10, lineHeight: 12, color: c.textSecondary }}>{tr('週')}</AppText>
+                  <AppText style={{ fontSize: 17, lineHeight: 21, fontWeight: '700', color: item.week_start === current ? c.primary : c.text }}>{String(isoWeek(item.week_start))}</AppText>
+                </View>
                 <View style={{ flex: 1, gap: 2 }}>
-                  <AppText variant="label">{item.week_start === current ? tr('本週到目前') : weekLabel(item.week_start)}</AppText>
+                  <AppText variant="label">{item.week_start === current ? tr('本週到目前') : weekRange(item.week_start)}</AppText>
                   <AppText variant="caption" muted>
-                    {empty
-                      ? tr('休息了一下')
-                      : [tr('讀了 {n} 天', { n: item.active_days }), item.reading_notes ? tr('{n} 則心得', { n: item.reading_notes }) : null].filter(Boolean).join(' · ')}
+                    {[
+                      tr('第 {n} 週', { n: isoWeek(item.week_start) }),
+                      item.week_start === current ? weekRange(item.week_start) : null,
+                      ...(empty ? [tr('休息了一下')] : [tr('讀了 {n} 天', { n: item.active_days }), item.reading_notes ? tr('{n} 則心得', { n: item.reading_notes }) : null]),
+                    ].filter(Boolean).join(' · ')}
                   </AppText>
                 </View>
                 {item.has_reflection ? <Feather name="message-square" size={16} color={c.primary} accessibilityLabel={tr('寫了一句話')} /> : null}
@@ -72,6 +78,7 @@ export function WeekList({ header }: { header?: React.ReactElement }) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, minHeight: 60 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, minHeight: 64, paddingVertical: Spacing.sm },
   bar: { width: 6, height: 18, borderRadius: 3 },
+  wk: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 });

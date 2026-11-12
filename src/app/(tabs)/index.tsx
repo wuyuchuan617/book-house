@@ -12,9 +12,9 @@ import { FilterBar, FilterSheet, type ActiveFilter, type FilterGroup } from '@/c
 import { NotificationBell, SearchButton } from '@/components/icon-button';
 import { PostsExplore, usePostFilter, type PostKindFilter } from '@/components/posts-explore';
 import { RX_FILTERS, RxExplore } from '@/components/rx-explore';
-import { FollowButton, StoreAvatar } from '@/components/social';
+import { StoreAvatar } from '@/components/social';
 import { AppText, Card, EmptyState, Screen } from '@/components/ui';
-import { MinTouch, Radius, Spacing, StoreColors } from '@/constants/theme';
+import { Fonts, MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import {
@@ -32,8 +32,10 @@ import { RX_TAGS, rxTagLabel, type RxFilter } from '@/lib/rx';
 import { useMyStore, type ExploreItem } from '@/lib/queries';
 import { tagLabel, tr } from '@/lib/i18n';
 import { TripsExplore } from '@/components/trips';
+import { FollowingFeed } from '@/components/following-feed';
+import { useFeedUnread } from '@/lib/feed';
 
-type Tab = 'curations' | 'posts' | 'trips' | 'rx';
+type Tab = 'following' | 'curations' | 'posts' | 'trips' | 'rx';
 type FeedCard = ExploreItem & { visited?: boolean; is_following?: boolean };
 
 const KIND_LABEL = (): Record<PostKindFilter, string> => ({ all: tr('全部'), diary: tr('日記'), checkin: tr('打卡'), note: tr('心得'), event: tr('活動') });
@@ -61,6 +63,8 @@ export default function ExploreScreen() {
   const [rxFilter, setRxFilter] = useState<RxFilter>('latest');
   const [rxTag, setRxTag] = useState<string | undefined>();
   const postF = usePostFilter();
+  // v1.8.3 AK21：追蹤分頁的小紅點
+  const unread = useFeedUnread();
   const [postView, setPostView] = useState<'posts' | 'places'>('posts');
   const [postKind, setPostKind] = useState<PostKindFilter>('all');
   const [sort, setSort] = useState<ExploreSort>('recommend');
@@ -107,9 +111,16 @@ export default function ExploreScreen() {
 
   const segment = (
     <View style={[styles.tabs, { borderBottomColor: c.border }]} accessibilityRole="tablist">
-      {([['curations', tr('策展')], ['posts', tr('手記')], ['trips', tr('書旅')], ['rx', tr('處方箋')]] as const).map(([t, label]) => (
-        <Pressable key={t} accessibilityRole="tab" accessibilityState={{ selected: tab === t }} onPress={() => setTab(t)} style={[styles.tab, tab === t && { borderBottomColor: c.text }]}>
+      {([['following', tr('追蹤')], ['curations', tr('策展')], ['posts', tr('手記')], ['trips', tr('書旅')], ['rx', tr('處方箋')]] as const).map(([t, label]) => (
+        <Pressable
+          key={t}
+          accessibilityRole="tab"
+          accessibilityLabel={t === 'following' && unread.data ? tr('{label}，有新動態', { label }) : label}
+          accessibilityState={{ selected: tab === t }}
+          onPress={() => setTab(t)}
+          style={[styles.tab, tab === t && { borderBottomColor: c.text }]}>
           <AppText style={{ fontSize: 15, fontWeight: tab === t ? '700' : '500', color: tab === t ? c.text : c.textSecondary }}>{label}</AppText>
+          {t === 'following' && unread.data && tab !== 'following' ? <View style={[styles.unread, { backgroundColor: c.primary }]} /> : null}
         </Pressable>
       ))}
     </View>
@@ -190,7 +201,7 @@ export default function ExploreScreen() {
 
         {(
           <>
-            {tab === 'trips' ? null : <View>
+            {tab === 'trips' || tab === 'following' ? null : <View>
               <FilterBar
                 active={active}
                 onOpen={() => setFilterOpen(true)}
@@ -214,7 +225,9 @@ export default function ExploreScreen() {
               />
             </View>}
 
-            {tab === 'trips' ? (
+            {tab === 'following' ? (
+              <FollowingFeed />
+            ) : tab === 'trips' ? (
               <TripsExplore />
             ) : tab === 'posts' ? (
               <PostsExplore filter={postF.filter} near={postF.near} onReset={() => postF.pick('all')} view={postView} kind={postKind} />
@@ -276,40 +289,36 @@ function VisitedBadge() {
   );
 }
 
-function FeaturedCard({ item, ownStoreId }: { item: FeedCard; ownStoreId?: string }) {
-  const color = StoreColors[item.color]?.hex ?? StoreColors.moss.hex;
+/** v1.8.3 AK17 本月精選（精簡）：左邊標題與一句介紹、右邊三本小書封；下面書店一行（約 150pt，原本約 300pt） */
+function FeaturedCard({ item }: { item: FeedCard; ownStoreId?: string }) {
+  const c = useTheme();
   return (
-    <Card style={{ padding: 0, overflow: 'hidden' }}>
-      <Pressable accessibilityRole="link" accessibilityLabel={tr('{title}，{store_name}的策展，{book_count} 本書{p3}', { title: item.title, store_name: item.store_name, book_count: item.book_count, p3: item.visited ? tr('，已逛過') : '' })} onPress={() => openStore(item.slug)}>
-        <View style={[styles.band, { backgroundColor: color }]}>
-          <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-            {item.cover_titles.slice(0, 3).map((t, i) => (
-              <View key={`${t}-${i}`} style={styles.coverFrame}>
-                <BookCover title={t} url={item.cover_urls[i]} color={item.color} size="md" />
-              </View>
-            ))}
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={tr('{title}，{store_name}的策展，{book_count} 本書{p3}', { title: item.title, store_name: item.store_name, book_count: item.book_count, p3: item.visited ? tr('，已逛過') : '' })}
+      onPress={() => openStore(item.slug)}
+      style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
+      <Card style={{ gap: Spacing.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+              <AppText variant="caption" style={{ color: c.primary, fontWeight: '700' }}>{tr('本月精選')}</AppText>
+              {item.visited ? <VisitedBadge /> : null}
+            </View>
+            <AppText style={{ fontFamily: Fonts?.serif, fontSize: 18, lineHeight: 25, fontWeight: '700', color: c.text }} numberOfLines={2}>{item.title}</AppText>
+            {item.description ? <AppText variant="caption" muted numberOfLines={1}>{item.description}</AppText> : null}
           </View>
-          <AppText variant="caption" style={styles.bandText}>{tr('{book_count} 本書', { book_count: item.book_count })}</AppText>
+          <View style={{ flexDirection: 'row', gap: 4 }}>
+            {item.cover_titles.slice(0, 3).map((t, i) => <BookCover key={`${t}-${i}`} title={t} url={item.cover_urls[i]} color={item.color} size="sm" />)}
+          </View>
         </View>
-        <View style={{ padding: Spacing.lg, paddingBottom: 0, gap: Spacing.xs }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
-            <AppText variant="heading" style={{ flex: 1 }}>{item.title}</AppText>
-            {item.visited ? <VisitedBadge /> : null}
-          </View>
-          {item.description ? <AppText muted numberOfLines={3}>{item.description}</AppText> : null}
+        <View style={[styles.storeRow, { borderTopColor: c.divider }]}>
+          <StoreAvatar name={item.store_name} color={item.color} size={20} path={item.avatar_path} />
+          <AppText variant="caption" style={{ fontWeight: '600', flex: 1 }} numberOfLines={1}>{item.store_name}</AppText>
+          <AppText variant="caption" muted>{tr('{book_count} 本書 · {n} 人追蹤', { book_count: item.book_count, n: item.follower_count })}</AppText>
         </View>
-      </Pressable>
-      <View style={styles.storeRow}>
-        <Pressable accessibilityRole="link" onPress={() => openStore(item.slug)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, minHeight: MinTouch }}>
-          <StoreAvatar name={item.store_name} color={item.color} size={32} path={item.avatar_path} />
-          <View style={{ flex: 1 }}>
-            <AppText variant="label">{item.store_name}</AppText>
-            <AppText variant="caption" muted>{tr('{owner_name} · {follower_count} 人追蹤', { owner_name: item.owner_name, follower_count: item.follower_count })}</AppText>
-          </View>
-        </Pressable>
-        {item.bookstore_id !== ownStoreId ? <FollowButton bookstoreId={item.bookstore_id} storeName={item.store_name} /> : null}
-      </View>
-    </Card>
+      </Card>
+    </Pressable>
   );
 }
 
@@ -344,15 +353,13 @@ const styles = StyleSheet.create({
   month: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: Radius.pill, height: 36, paddingLeft: 14, paddingRight: 10 },
   tabs: { flexDirection: 'row', gap: Spacing.xxl, marginHorizontal: Spacing.xl, marginTop: Spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth },
   tab: { minHeight: MinTouch, justifyContent: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent', marginBottom: -StyleSheet.hairlineWidth },
+  unread: { position: 'absolute', top: 10, right: -8, width: 7, height: 7, borderRadius: 4 },
   search: { marginHorizontal: Spacing.xl, marginTop: Spacing.md, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderWidth: 1, borderRadius: Radius.md, paddingLeft: 14, minHeight: 48 },
   searchInput: { flex: 1, fontSize: 16, minHeight: 48, outlineWidth: 0 },
   clear: { width: MinTouch, height: MinTouch, alignItems: 'center', justifyContent: 'center' },
   tags: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, gap: Spacing.sm },
   sortRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
   sortItem: { minHeight: 32, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  band: { minHeight: 150, padding: Spacing.lg, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
-  bandText: { color: '#FFFFFF', fontWeight: '700' },
-  coverFrame: { borderRadius: 4, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.55)' },
-  storeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.lg },
+  storeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: Spacing.sm },
   badge: { borderRadius: Radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
 });

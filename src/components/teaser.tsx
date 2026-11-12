@@ -1,8 +1,11 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { BookCover } from '@/components/book-cover';
+import { BottomSheet } from '@/components/bottom-sheet';
+import { StoreAvatar } from '@/components/social';
 import { AppText } from '@/components/ui';
 import { Radius, Spacing, StoreColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -60,30 +63,61 @@ export function TeaserCard({ teaser, mine }: { teaser: Teaser; mine?: boolean })
   );
 }
 
-/** AD3 探索 › 策展最上面「即將上架」 */
+/** AD1 ／ v1.8.3 AK17 探索 › 策展最上面的「即將上架」：收成一行（書店頭像＋「12 月 2 檔：…」），點了從底部打開看全部預告 */
 export function TeaserStrip() {
   const c = useTheme();
   const { data } = useExploreTeasers();
+  const [open, setOpen] = useState(false);
   if (!data?.length) return null;
+  const months = [...new Set(data.map((t) => Number(t.period.slice(5, 7))))];
+  const names = data.map((t) => t.title ?? tr('（未命名策展）')).join(tr('、'));
   return (
-    <View style={{ gap: Spacing.sm }}>
-      <AppText variant="label" style={{ fontSize: 15 }}>{tr('即將上架')}</AppText>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.sm }}>
-        {data.map((t) => (
-          <Pressable
-            key={t.id}
-            accessibilityRole="link"
-            onPress={() => router.push({ pathname: '/store/[slug]', params: { slug: t.store.slug } })}
-            style={[styles.soon, { backgroundColor: c.surface }]}>
-            <View style={[styles.soonTop, { backgroundColor: StoreColors[t.store.color]?.hex ?? c.primary }]}>
-              <View style={styles.soonWhen}><AppText variant="caption" style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 11 }}>{teaserWhen(t)}</AppText></View>
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={tr('即將上架 {n} 檔：{names}', { n: data.length, names })}
+        onPress={() => setOpen(true)}
+        style={({ pressed }) => [styles.line, { backgroundColor: c.surface, opacity: pressed ? 0.8 : 1 }]}>
+        <View style={[styles.lineTag, { backgroundColor: c.surfaceMuted }]}>
+          <AppText variant="caption" style={{ color: c.primary, fontWeight: '700', fontSize: 11.5 }}>{tr('即將上架')}</AppText>
+        </View>
+        <View style={{ flexDirection: 'row' }}>
+          {data.slice(0, 3).map((t, i) => (
+            <View key={t.id} style={{ marginLeft: i ? -6 : 0, borderWidth: 2, borderColor: c.surface, borderRadius: 9 }}>
+              <StoreAvatar name={t.store.name} color={t.store.color} size={20} path={t.store.avatar_path} />
             </View>
-            <AppText variant="label" numberOfLines={2}>{t.title ?? tr('（未命名策展）')}</AppText>
-            <AppText variant="caption" muted numberOfLines={1}>{tr('{store} · {n} 人在等', { store: t.store.name, n: t.waiting })}</AppText>
-          </Pressable>
-        ))}
-      </ScrollView>
-    </View>
+          ))}
+        </View>
+        <AppText variant="caption" numberOfLines={1} style={{ flex: 1, color: c.text }}>
+          {months.length === 1 ? tr('{m} 月 {n} 檔：{names}', { m: months[0], n: data.length, names }) : tr('{n} 檔：{names}', { n: data.length, names })}
+        </AppText>
+        <Feather name="chevron-right" size={16} color={c.textTertiary} />
+      </Pressable>
+      <BottomSheet visible={open} onClose={() => setOpen(false)} style={{ paddingHorizontal: Spacing.xl, gap: Spacing.md }}>
+        <AppText variant="heading">{tr('即將上架')}</AppText>
+        <ScrollView style={{ maxHeight: 440 }} contentContainerStyle={{ gap: Spacing.sm }}>
+          {data.map((t) => (
+            <Pressable
+              key={t.id}
+              accessibilityRole="link"
+              onPress={() => {
+                setOpen(false);
+                setTimeout(() => router.push({ pathname: '/store/[slug]', params: { slug: t.store.slug } }), 300);
+              }}
+              style={[styles.soonRow, { backgroundColor: c.surface }]}>
+              <View style={[styles.soonDot, { backgroundColor: StoreColors[t.store.color]?.hex ?? c.primary }]}>
+                <AppText variant="caption" style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 11 }}>{teaserWhen(t)}</AppText>
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <AppText variant="label" numberOfLines={1}>{t.title ?? tr('（未命名策展）')}</AppText>
+                <AppText variant="caption" muted numberOfLines={1}>{tr('{store} · {n} 人在等', { store: t.store.name, n: t.waiting })}</AppText>
+              </View>
+              <Feather name="chevron-right" size={16} color={c.textTertiary} />
+            </Pressable>
+          ))}
+        </ScrollView>
+      </BottomSheet>
+    </>
   );
 }
 
@@ -92,7 +126,8 @@ const styles = StyleSheet.create({
   badge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
   hidden: { width: 52, height: 76, borderRadius: 3, opacity: 0.45, alignItems: 'center', justifyContent: 'center' },
   remind: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: Spacing.lg, borderRadius: Radius.md, borderWidth: 1 },
-  soon: { width: 156, borderRadius: Radius.lg, padding: Spacing.sm, gap: 4 },
-  soonTop: { height: 66, borderRadius: Radius.md, justifyContent: 'flex-end', padding: 6 },
-  soonWhen: { alignSelf: 'flex-start', backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1 },
+  line: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: Radius.lg, paddingLeft: Spacing.md, paddingRight: Spacing.sm, minHeight: 46 },
+  lineTag: { borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
+  soonRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderRadius: Radius.lg, padding: Spacing.md },
+  soonDot: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
 });

@@ -42,10 +42,23 @@ export const lastWeekStart = () => weekStartOf(addDays(taipeiToday(), -7));
 export const thisWeekStart = () => weekStartOf(taipeiToday());
 
 /** '11/2–11/8' */
-export function weekLabel(ws: string) {
+/** 「11/9–11/15」 */
+export function weekRange(ws: string) {
   const we = addDays(ws, 6);
   const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
   return `${md(ws)}–${md(we)}`;
+}
+
+/** v1.8.3 AK19：ISO 週數（週一開始；每年第一個有星期四的那週是第 1 週）。ws 是週一的日期 YYYY-MM-DD */
+export function isoWeek(ws: string) {
+  const thu = new Date(`${addDays(ws, 3)}T00:00:00Z`);
+  const jan1 = Date.UTC(thu.getUTCFullYear(), 0, 1);
+  return Math.floor((thu.getTime() - jan1) / 86400e3 / 7) + 1;
+}
+
+/** 「W46 · 11/9–11/15」 */
+export function weekLabel(ws: string) {
+  return `W${isoWeek(ws)} · ${weekRange(ws)}`;
 }
 
 export function weekTitle(ws: string) {

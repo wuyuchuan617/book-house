@@ -9,7 +9,7 @@ export default function TabLayout() {
     <Tabs screenOptions={{ headerShown: false }} tabBar={(props) => <CapsuleTabBar {...props} />}>
       <Tabs.Screen name="index" options={{ title: tr('探索') }} />
       <Tabs.Screen name="diary" options={{ title: tr('日記') }} />
-      <Tabs.Screen name="saved" options={{ title: tr('書櫃') }} />
+      <Tabs.Screen name="saved" options={{ title: tr('收藏') }} />
       <Tabs.Screen name="my-store" options={{ title: tr('我的書店') }} />
     </Tabs>
   );

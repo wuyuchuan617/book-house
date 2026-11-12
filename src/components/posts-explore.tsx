@@ -170,7 +170,7 @@ export function PostCard({ post, onMore }: { post: PublicPost; onMore?: () => vo
     requireAuth(() =>
       savePlace.mutate(
         { placeId: post.place_id!, save: true, from: 'post' },
-        { onSuccess: () => { setPlaceSaved(true); Alert.alert(tr('已存成想去'), tr('在書櫃 › 地方・想去可以寫原因。')); }, onError: (e) => Alert.alert(tr('沒有成功'), diaryError(e.message)) },
+        { onSuccess: () => { setPlaceSaved(true); Alert.alert(tr('已存成想去'), tr('在收藏 › 地點・想去可以寫原因。')); }, onError: (e) => Alert.alert(tr('沒有成功'), diaryError(e.message)) },
       ),
     );
   const wantBook = () => requireAuth(() => toggleSave.mutate({ bookId: post.book_id!, save: !bookSaved, sourceText: bookSaved ? null : tr('貼文：{name}', { name: post.author_name }).slice(0, 60) }));
