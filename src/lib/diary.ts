@@ -72,6 +72,9 @@ export type DiaryItem =
       reading_id: string | null;
       note_public: boolean | null;
       page_ref?: string | null;
+      /** v1.8.4 AK22：分享的連結（YouTube、Podcast、文章…） */
+      link?: string | null;
+      link_title?: string | null;
       book: DiaryBook | null;
     }
   | { type: 'reading_note'; id: string; at: string; reading_id: string; kind: NoteKind; is_public: boolean; title: string | null; body: string; book: DiaryBook }
@@ -161,6 +164,9 @@ export type DiaryInput = {
   pageRef?: string | null;
   /** 同時存成的心得（日記筆記選了店主閱讀裡的書） */
   readingNoteId?: string | null;
+  /** v1.8.4 AK22：連結與抓到的標題 */
+  link?: string | null;
+  linkTitle?: string | null;
 };
 
 export async function uploadDiaryPhotos(userId: string, entryId: string, photos: DiaryPhoto[]) {
@@ -203,8 +209,16 @@ export function useSaveEntry() {
         page_ref: input.pageRef?.trim().slice(0, 20) || null,
         photo_paths: paths,
         ...(input.readingNoteId ? { reading_note_id: input.readingNoteId } : {}),
+        ...(input.link !== undefined ? { link: input.link || null, link_title: input.link ? input.linkTitle?.slice(0, 200) || null : null } : {}),
       };
       let res = entryId ? await supabase.from('diary_entries').update(fields).eq('id', id) : await supabase.from('diary_entries').insert({ id, ...fields });
+      // 資料庫還沒套用 v1.8.4（沒有 link）：不帶連結再存一次
+      if (res.error && /link/i.test(res.error.message) && 'link' in fields) {
+        const { link: _l, link_title: _t, ...noLink } = fields as typeof fields & { link?: string | null; link_title?: string | null };
+        void _l;
+        void _t;
+        res = entryId ? await supabase.from('diary_entries').update(noLink).eq('id', id) : await supabase.from('diary_entries').insert({ id, ...noLink });
+      }
       // 資料庫還沒套用 v1.5 ②（沒有 page_ref）：不帶頁數再存一次
       if (res.error && /page_ref/i.test(res.error.message)) {
         const { page_ref: _omit, ...old } = fields;
@@ -484,6 +498,8 @@ export type JournalItem =
       body: string | null;
       photo_paths: string[];
       page_ref: string | null;
+      link?: string | null;
+      link_title?: string | null;
       place: { id: string; name: string } | null;
       place_label?: string | null;
       book: DiaryBook | null;
@@ -640,6 +656,8 @@ export type PublicPost = {
   body: string | null;
   photo_paths: string[];
   page_ref: string | null;
+  link?: string | null;
+  link_title?: string | null;
   book_id: string | null;
   book_title: string | null;
   book_cover_url: string | null;

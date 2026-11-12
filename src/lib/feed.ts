@@ -26,6 +26,8 @@ export type FeedItem = {
     book?: { id: string; title: string } | null;
     city?: string;
     starts_at?: string;
+    link?: string | null;
+    link_title?: string | null;
   };
 };
 

@@ -1688,4 +1688,10 @@ export const EN: Record<string, Entry> = {
   '開了《{book}》給「{title}」': 'Prescribed "{book}" for "{title}"',
   '開始讀《{title}》': 'Started "{title}"',
   '預告 {m} 月策展《{title}》': 'Previewed the month {m} curation "{title}"',
+  'YouTube、Podcast、文章的網址': 'A YouTube, podcast or article URL',
+  '打開連結：{title}': 'Open link: {title}',
+  '拿掉連結': 'Remove link',
+  '文章': 'Article',
+  '讀取標題…': 'Loading title…',
+  '這看起來不是網址；要用 http:// 或 https:// 開頭。': 'That doesn\'t look like a URL. It should start with http:// or https://.',
 };

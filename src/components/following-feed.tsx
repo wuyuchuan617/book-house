@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { BookCover } from '@/components/book-cover';
+import { LinkCard } from '@/components/link-card';
 import { FollowButton, StoreAvatar } from '@/components/social';
 import { AppText, Card, EmptyState } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
@@ -65,6 +66,7 @@ function GroupCard({ g, isNew }: { g: FeedGroup; isNew: boolean }) {
             <Feather name={l.icon} size={15} color={l.color} style={{ marginTop: 2 }} />
             <View style={{ flex: 1, gap: 6 }}>
               <AppText style={{ fontSize: 14, lineHeight: 21 }} numberOfLines={2}>{l.text}</AppText>
+              {it.kind === 'post' && it.data.link ? <LinkCard url={it.data.link} title={it.data.link_title} /> : null}
               {it.kind === 'curation' && it.data.covers?.length ? (
                 <View style={{ flexDirection: 'row', gap: 4 }}>
                   {it.data.covers.map((b, j) => <BookCover key={`${b.title}-${j}`} title={b.title} url={b.cover_url} color={g.store.color} size="sm" />)}

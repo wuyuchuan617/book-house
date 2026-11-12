@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { BookCover } from '@/components/book-cover';
+import { LinkCard } from '@/components/link-card';
 import { Chip, chipRow } from '@/components/form';
 import { BookLine, PlaceRow, VisibilityBadge } from '@/components/diary';
 import { ActionSheet } from '@/components/sheet';
@@ -434,6 +435,7 @@ function PostBody({ item, color }: { item: Extract<JournalItem, { type: 'post' }
         </Pressable>
       ) : null}
       {item.body ? <AppText style={{ fontSize: 15, lineHeight: 23 }}>{item.body}</AppText> : null}
+      {item.link ? <LinkCard url={item.link} title={item.link_title} /> : null}
       {item.photo_paths.length ? (
         <View style={{ flexDirection: 'row', gap: 6 }}>
           {item.photo_paths.map((p, i) => (

@@ -1,4 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
+import { LinkCard } from '@/components/link-card';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -131,6 +132,7 @@ export function OwnEntryCard({ item, color = 'moss', onMore, hideBadge }: { item
           </Pressable>
         ) : null}
         {item.body ? <AppText style={{ fontSize: 15, lineHeight: 23 }}>{item.body}</AppText> : null}
+        {item.link ? <LinkCard url={item.link} title={item.link_title} /> : null}
         {item.photo_paths.length ? (
           <View style={{ flexDirection: 'row', gap: 6 }}>
             {item.photo_paths.map((p, i) => (

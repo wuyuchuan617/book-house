@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleShe
 
 import { DiaryPhotos } from '@/components/diary';
 import { KindChip, NotePhotos } from '@/components/note-card';
+import { LinkCard } from '@/components/link-card';
 import { PlacesExplore } from '@/components/places-explore';
 import { ActionSheet } from '@/components/sheet';
 import { StoreAvatar } from '@/components/social';
@@ -191,6 +192,7 @@ export function PostCard({ post, onMore }: { post: PublicPost; onMore?: () => vo
       </View>
       {post.source === 'note' && post.title ? <AppText variant="label">{post.title}</AppText> : null}
       {post.body ? <AppText style={{ lineHeight: 23, fontSize: 15 }}>{post.source === 'note' && post.note_kind === 'quote' ? tr('「{body}」', { body: post.body }) : post.body}</AppText> : null}
+      {post.link ? <LinkCard url={post.link} title={post.link_title} /> : null}
       {post.source === 'note' ? <NotePhotos paths={post.photo_paths} /> : <DiaryPhotos paths={post.photo_paths} />}
       {/* Y10／Z4：《書名》完整顯示、頁數、地點；最下面一排：左邊想讀／想去，右邊 ⋯（只有圖示加字，不加框） */}
       <View style={styles.meta}>

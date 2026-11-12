@@ -9,6 +9,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BookCover } from '@/components/book-cover';
 import { BookPicker } from '@/components/book-picker';
 import { Chip, TextField, Toggle } from '@/components/form';
+import { LinkCard } from '@/components/link-card';
+import { normalizeLink, useLinkTitle } from '@/lib/diary-link';
 import { VisibilityBadge } from '@/components/diary';
 import { PlacePicker, type PlaceChoice } from '@/components/place-picker';
 import { AppText, Button, EmptyState, Screen } from '@/components/ui';
@@ -112,6 +114,17 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
   const [place, setPlace] = useState<PlaceChoice | null>(() => initialPlace(params, existing));
   const [body, setBody] = useState(existing?.body ?? '');
   const [pageRef, setPageRef] = useState(existing?.page_ref ?? '');
+  // v1.8.4 AK22：連結（選填）；停止輸入 0.6 秒後才去抓標題
+  const [linkText, setLinkText] = useState(existing?.link ?? '');
+  const link = normalizeLink(linkText);
+  const [linkQuery, setLinkQuery] = useState<string | null>(link);
+  useEffect(() => {
+    const t = setTimeout(() => setLinkQuery(link), 600);
+    return () => clearTimeout(t);
+  }, [link]);
+  const fetched = useLinkTitle(link && link !== existing?.link ? linkQuery : null);
+  const linkTitle = link && link === existing?.link ? existing?.link_title ?? null : fetched.data ?? null;
+  const linkBad = !!linkText.trim() && !link;
   const [photos, setPhotos] = useState<DiaryPhoto[]>(() => (existing?.photo_paths ?? []).map((path) => ({ path })));
   const [isPublic, setIsPublic] = useState<boolean | null>(existing ? existing.is_public : wantRow ? wantRow.is_public : null);
   const [placeOpen, setPlaceOpen] = useState(false);
@@ -152,10 +165,10 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
   const publicOn = kind === 'want' ? canPublic : canPublic && (isPublic ?? defaultPublic);
 
   const dirty = existing
-    ? body !== (existing.body ?? '') || book?.id !== existing.book?.id || photos.length !== existing.photo_paths.length || photos.some((p) => 'uri' in p) || publicOn !== existing.is_public || placeKey(place) !== (existing.place_id ?? existing.place_label ?? '') || pageRef !== (existing.page_ref ?? '')
+    ? body !== (existing.body ?? '') || book?.id !== existing.book?.id || photos.length !== existing.photo_paths.length || photos.some((p) => 'uri' in p) || publicOn !== existing.is_public || placeKey(place) !== (existing.place_id ?? existing.place_label ?? '') || pageRef !== (existing.page_ref ?? '') || (link ?? '') !== (existing.link ?? '')
     : kind === 'want'
       ? !editingWant && !!(place || wantNote.trim())
-      : !!(body.trim() || photos.length || (kind === 'post' && place) || pageRef.trim());
+      : !!(body.trim() || photos.length || (kind === 'post' && place) || pageRef.trim() || linkText.trim());
 
   usePreventRemove(dirty && !done, ({ repeat }) => {
     Alert.alert(tr('捨棄這筆日記？'), tr('還沒儲存的內容會不見。'), [
@@ -183,7 +196,7 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
     ]);
 
   const ready =
-    kind === 'want' ? !!googlePlace : kind === 'reading' ? !!book && !!(body.trim() || photos.length || pageRef.trim() || finished) : !!(body.trim() || photos.length || place);
+    kind === 'want' ? !!googlePlace : linkBad ? false : kind === 'reading' ? !!book && !!(body.trim() || photos.length || pageRef.trim() || finished || link) : !!(body.trim() || photos.length || place || link);
   const finish = () => {
     setDone(true);
     setTimeout(() => router.back(), 0);
@@ -232,6 +245,8 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
           isPublic: !!publicOn,
           pageRef: kind === 'reading' ? pageRef : null,
           readingNoteId,
+          link,
+          linkTitle,
         },
       });
       if (isCheckin && googlePlace && placeType && !existing) await setPlaceType.mutateAsync({ placeId: googlePlace.id, type: placeType }).catch(() => {});
@@ -339,6 +354,24 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
               : tr('會出現在探索的手記和你的書店頁。')
             : tr('只有自己看得到。');
 
+  const linkField = (
+    <View style={{ gap: Spacing.sm }}>
+      <TextField
+        label={tr('連結')}
+        optional
+        max={500}
+        value={linkText}
+        onChangeText={setLinkText}
+        placeholder={tr('YouTube、Podcast、文章的網址')}
+        keyboardType="url"
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+      {link ? <LinkCard url={link} title={linkTitle} loading={fetched.isFetching} onRemove={() => setLinkText('')} /> : null}
+      {linkBad ? <AppText variant="caption" style={{ color: c.danger }}>{tr('這看起來不是網址；要用 http:// 或 https:// 開頭。')}</AppText> : null}
+    </View>
+  );
+
   const visibility = (
     <View style={[styles.switchRow, { backgroundColor: c.surface, opacity: canPublic ? 1 : 0.6 }]}>
       <View style={{ flex: 1, gap: 2 }}>
@@ -439,6 +472,7 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
 
               <TextField label={tr('今天讀了什麼')} optional multiline max={DIARY_BODY_MAX} value={body} onChangeText={setBody} placeholder={tr('讀到哪、想到什麼都可以')} />
               {photoField}
+              {linkField}
               {!existing && body.trim() ? (
                 <Check
                   checked={alsoNote}
@@ -457,6 +491,7 @@ function ComposeForm({ params, existing, wantRow }: { params: Params; existing?:
             <>
               <TextField label={tr('今天')} optional={photos.length > 0 || !!place} multiline max={DIARY_BODY_MAX} value={body} onChangeText={setBody} placeholder={tr('今天在哪裡、讀了什麼、想到什麼')} />
               {photoField}
+              {linkField}
               {placeField}
               {googlePlace && !existing ? typeChips : null}
               {visibility}
