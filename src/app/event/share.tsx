@@ -28,6 +28,7 @@ const at = (date: string, time: string) => new Date(`${date}T${time.padStart(5, 
 /**
  * AE1 分享活動：先找有沒有人分享過（名稱、地點或貼連結）→ 選一個直接寫分享；都不是才新增。
  * 新增時同一個連結、同地點同一天會再問一次「是不是這個？」。AE1b 寫自己的分享（活動資料是共用的，鎖住）。
+ * v1.9.1 多天的活動（書展、展覽）日期可以選開始～結束；時間是第一天開始、最後一天結束。
  */
 export default function ShareEventScreen() {
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();
@@ -42,6 +43,8 @@ export default function ShareEventScreen() {
   const [title, setTitle] = useState('');
   const [type, setType] = useState<EventType>('market');
   const [date, setDate] = useState(taipeiToday());
+  const [endDate, setEndDate] = useState(date);
+  const multiDay = endDate > date;
   const [start, setStart] = useState('13:00');
   const [end, setEnd] = useState('18:00');
   const [place, setPlace] = useState<{ id: string; name: string } | null>(null);
@@ -83,9 +86,11 @@ export default function ShareEventScreen() {
 
   const timesOk = TIME.test(start) && (!end || TIME.test(end));
   const canCreate = !!title.trim() && (online || !!place) && timesOk && (!url.trim() || /^https?:\/\/\S+$/i.test(url.trim()));
+  // 多天的活動沒填結束時間：算到最後一天結束
+  const endsAt = () => (end ? at(endDate, end) : multiDay ? at(endDate, '23:59') : null);
   const submitNew = (force = false) =>
     create.mutate(
-      { e: { title, type, startsAt: at(date, start), endsAt: end ? at(date, end) : null, placeId: online ? null : place?.id ?? null, online, url }, force },
+      { e: { title, type, startsAt: at(date, start), endsAt: endsAt(), placeId: online ? null : place?.id ?? null, online, url }, force },
       {
         onSuccess: (r) => {
           if (r.duplicate) {
@@ -99,7 +104,7 @@ export default function ShareEventScreen() {
           }
           if (r.id) {
             setPicked({
-              id: r.id, title: title.trim(), event_type: type, starts_at: at(date, start).toISOString(), ends_at: end ? at(date, end).toISOString() : null,
+              id: r.id, title: title.trim(), event_type: type, starts_at: at(date, start).toISOString(), ends_at: endsAt()?.toISOString() ?? null,
               online, url: url.trim() || null, place: place && !online ? { id: place.id, name: place.name, address: null } : null,
               share_count: 0, sharers: [], latest: null, going_count: 0, i_going: false, i_shared: false, mine: true,
             });
@@ -183,7 +188,7 @@ export default function ShareEventScreen() {
                 <Pressable accessibilityRole="button" onPress={() => setDateOpen(true)} style={[styles.row, { borderBottomColor: c.divider }]}>
                   <Feather name="calendar" size={16} color={c.text} />
                   <AppText style={{ flex: 1 }}>{tr('日期')}</AppText>
-                  <AppText>{dayLabel(date)}</AppText>
+                  <AppText numberOfLines={1} style={{ flexShrink: 1 }}>{multiDay ? `${dayLabel(date)}–${dayLabel(endDate)}` : dayLabel(date)}</AppText>
                   <Feather name="chevron-right" size={16} color={c.textTertiary} />
                 </Pressable>
                 <Pressable accessibilityRole="button" onPress={() => setTimeOpen(true)} style={[styles.row, { borderBottomColor: c.divider }]}>
@@ -251,8 +256,22 @@ export default function ShareEventScreen() {
         </SafeAreaView>
       ) : null}
 
-      <TimeSheet visible={timeOpen} start={start} end={end} onChange={(s1, e1) => { setStart(s1); setEnd(e1); }} onClose={() => setTimeOpen(false)} />
-      <DaySheet key={String(dateOpen)} visible={dateOpen} future title={tr('哪一天？')} value={date} onChange={setDate} onClose={() => setDateOpen(false)} />
+      <TimeSheet visible={timeOpen} multiDay={multiDay} start={start} end={end} onChange={(s1, e1) => { setStart(s1); setEnd(e1); }} onClose={() => setTimeOpen(false)} />
+      <DaySheet
+        key={String(dateOpen)}
+        visible={dateOpen}
+        future
+        title={tr('哪幾天？')}
+        value={date}
+        end={endDate}
+        onRangeChange={(s1, e1) => {
+          setDate(s1);
+          setEndDate(e1);
+          // 回到單日：結束時間要晚於開始，不然清掉
+          if (s1 === e1 && end && end <= start) setEnd('');
+        }}
+        onClose={() => setDateOpen(false)}
+      />
       <PlacePicker
         visible={placeOpen}
         googleOnly

@@ -173,6 +173,8 @@ export function eventError(m: string) {
   if (m.includes('event_already_over')) return tr('這個活動已經結束了。');
   if (m.includes('event_gone')) return tr('這個活動已經不在了。');
   if (m.includes('events_where')) return tr('選一個地點，或選「線上」。');
+  if (m.includes('events_span_max')) return tr('活動最長 3 個月；更長的請分成幾段新增。');
+  if (m.includes('events_end_after_start')) return tr('結束要在開始之後。');
   if (/function|does not exist|schema cache/i.test(m)) return tr('伺服器還沒更新，稍後再試。');
   return tr('沒有成功，請稍後再試。');
 }
@@ -181,20 +183,34 @@ const tp = (iso: string) => new Date(new Date(iso).getTime() + 8 * 3600e3);
 const pad = (n: number) => String(n).padStart(2, '0');
 const WEEK = () => (currentLang() === 'en' ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] : ['週日', '週一', '週二', '週三', '週四', '週五', '週六']);
 
-/** 日曆塊：{ day: '14', week: '週六' } */
-export function eventDay(iso: string) {
+const sameDay = (a: Date, b: Date) => a.getUTCFullYear() === b.getUTCFullYear() && a.getUTCMonth() === b.getUTCMonth() && a.getUTCDate() === b.getUTCDate();
+const SHORT_WEEK = () => (currentLang() === 'en' ? ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'] : ['日', '一', '二', '三', '四', '五', '六']);
+
+/** 跨好幾天的活動（台北日期不同天） */
+export const isMultiDay = (e: Pick<BookEvent, 'starts_at' | 'ends_at'>) => !!e.ends_at && !sameDay(tp(e.starts_at), tp(e.ends_at));
+
+/** 日曆塊：{ day: '14', week: '週六' }；多天的 { day: '14–16', week: '六–一' } */
+export function eventDay(iso: string, endIso?: string | null) {
   const d = tp(iso);
-  return { day: String(d.getUTCDate()), week: WEEK()[d.getUTCDay()] };
+  if (endIso && !sameDay(d, tp(endIso))) {
+    const en = tp(endIso);
+    return { day: `${d.getUTCDate()}–${en.getUTCDate()}`, week: `${SHORT_WEEK()[d.getUTCDay()]}–${SHORT_WEEK()[en.getUTCDay()]}`, multi: true };
+  }
+  return { day: String(d.getUTCDate()), week: WEEK()[d.getUTCDay()], multi: false };
 }
 
-/** 「12/14 13:00–18:00」 */
+/** 「12/14 13:00–18:00」；多天的「12/14（六）–12/16（一）· 13:00–18:00」 */
 export function eventTime(e: Pick<BookEvent, 'starts_at' | 'ends_at'>) {
   const s = tp(e.starts_at);
-  const head = `${s.getUTCMonth() + 1}/${s.getUTCDate()} ${pad(s.getUTCHours())}:${pad(s.getUTCMinutes())}`;
+  const hm = (d: Date) => `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+  const head = `${s.getUTCMonth() + 1}/${s.getUTCDate()} ${hm(s)}`;
   if (!e.ends_at) return head;
   const en = tp(e.ends_at);
-  const sameDay = en.getUTCFullYear() === s.getUTCFullYear() && en.getUTCMonth() === s.getUTCMonth() && en.getUTCDate() === s.getUTCDate();
-  return `${head}–${sameDay ? '' : `${en.getUTCMonth() + 1}/${en.getUTCDate()} `}${pad(en.getUTCHours())}:${pad(en.getUTCMinutes())}`;
+  if (sameDay(s, en)) return `${head}–${hm(en)}`;
+  const md = (d: Date) => (currentLang() === 'en' ? `${WEEK()[d.getUTCDay()]} ${d.getUTCMonth() + 1}/${d.getUTCDate()}` : `${d.getUTCMonth() + 1}/${d.getUTCDate()}（${SHORT_WEEK()[d.getUTCDay()]}）`);
+  // 多天的活動沒填結束時間時，結束記成最後一天 23:59，不顯示
+  const endHm = hm(en) === '23:59' ? '' : hm(en);
+  return `${md(s)}–${md(en)} · ${endHm ? `${hm(s)}–${endHm}` : tr('{time} 起', { time: hm(s) })}`;
 }
 
 export const eventWhere = (e: Pick<BookEvent, 'place' | 'online'>) => e.place?.name ?? (e.online ? tr('線上') : '');

@@ -1726,4 +1726,16 @@ export const EN: Record<string, Entry> = {
   '連續 {n} 天': '{n}-day streak',
   '連續 {n} 天，看月曆': '{n}-day streak, open calendar',
   '開始的三步': 'Three steps to start',
+  // v1.9.1 多天的活動
+  '這個週末（六、日）': 'This weekend (Sat–Sun)',
+  '多天的活動再點結束那天；只有一天就按完成': 'For a multi-day event, tap the last day; for one day, tap Done',
+  '{n} 天的活動，點別天可以重選': '{n}-day event · tap another day to start over',
+  '點開始那天；多天的活動再點結束那天': 'Tap the first day; for a multi-day event, then tap the last day',
+  '第一天開始': 'Starts (first day)',
+  '最後一天結束': 'Ends (last day)',
+  '哪幾天？': 'Which days?',
+  '{time} 起': 'From {time}',
+  '進行中': 'Happening now',
+  '活動最長 3 個月；更長的請分成幾段新增。': 'Events can be up to 3 months long. Add longer ones in parts.',
+  '結束要在開始之後。': 'The end must be after the start.',
 };

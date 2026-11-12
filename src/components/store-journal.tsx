@@ -410,7 +410,7 @@ export function EventShareBody({ item }: { item: { body: string | null; photo_pa
         </View>
       ) : null}
       <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/event/[id]', params: { id: e.id } })} style={[styles.mini, { backgroundColor: c.background, opacity: e.over ? 0.6 : 1 }]}>
-        <DateBlock iso={e.starts_at} />
+        <DateBlock iso={e.starts_at} end={e.ends_at} />
         <View style={{ flex: 1 }}>
           <AppText variant="label" numberOfLines={1}>{e.title}</AppText>
           <AppText variant="caption" muted numberOfLines={1}>
