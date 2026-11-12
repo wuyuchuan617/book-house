@@ -448,6 +448,8 @@ export type MyPlace = {
   last_visit: string | null;
   checkin_count: number;
   photo_paths: string[];
+  /** 存想去時貼的連結（只有自己看得到）；伺服器還沒套用 v1.9.1 時沒有這個欄位 */
+  link?: string | null;
 };
 
 export function useMyPlaces(kind: MyPlaceKind) {
@@ -463,6 +465,7 @@ function invalidatePlace(qc: QueryClient, placeId: string) {
   qc.invalidateQueries({ queryKey: ['place', placeId] });
   qc.invalidateQueries({ queryKey: ['explore-places'] });
   qc.invalidateQueries({ queryKey: ['saved-places'] });
+  qc.invalidateQueries({ queryKey: ['place-save'] });
 }
 
 /** 存成想去（可以寫一句為什麼想去）／移除；type = 順便選這個地點的類型 */
