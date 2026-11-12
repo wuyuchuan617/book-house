@@ -233,13 +233,12 @@ export default function ExploreScreen() {
                 contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingTop: Spacing.sm, paddingBottom: 96, gap: Spacing.md, flexGrow: 1 }}
                 refreshControl={<RefreshControl refreshing={list.isRefetching} onRefresh={refetch} />}
                 ListHeaderComponent={
-                  first ? (
-                    <View style={{ gap: Spacing.md }}>
-                      {!following ? <TeaserStrip /> : null}
-                      <FeaturedCard item={first} ownStoreId={mine?.store.id} />
-                      {rest.length && prevStart !== 0 ? <AppText variant="label" style={{ marginTop: Spacing.md }}>{tr('更多 {p0} 月策展', { p0: monthOf(period) })}</AppText> : null}
-                    </View>
-                  ) : undefined
+                  // 「即將上架」不管這個月有沒有策展都要顯示（之前沒有精選策展時整段不見）
+                  <View style={{ gap: Spacing.md }}>
+                    {!following && isCurrent ? <TeaserStrip /> : null}
+                    {first ? <FeaturedCard item={first} ownStoreId={mine?.store.id} /> : null}
+                    {first && rest.length && prevStart !== 0 ? <AppText variant="label" style={{ marginTop: Spacing.md }}>{tr('更多 {p0} 月策展', { p0: monthOf(period) })}</AppText> : null}
+                  </View>
                 }
                 renderItem={({ item, index }) => (
                   <>
