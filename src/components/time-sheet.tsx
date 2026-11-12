@@ -59,21 +59,23 @@ export function timeLabel(hhmm: string) {
 /**
  * v1.8 AI1 活動時間：用手機內建的時間選擇——iPhone 是滾輪（每 5 分鐘一格），Android 是系統時鐘對話框。
  * 上面切「開始／結束」；結束選填、可以清除、要晚於開始。網頁版用輸入框。
+ * v1.9.1 multiDay：多天的活動，開始是第一天的、結束是最後一天的，結束可以早於開始的時間。
  */
-export function TimeSheet({ visible, start, end, onChange, onClose }: { visible: boolean; start: string; end: string; onChange: (start: string, end: string) => void; onClose: () => void }) {
+export function TimeSheet({ visible, start, end, onChange, onClose, multiDay }: { visible: boolean; start: string; end: string; onChange: (start: string, end: string) => void; onClose: () => void; multiDay?: boolean }) {
   const c = useTheme();
   const [which, setWhich] = useState<'start' | 'end'>('start');
   const value = which === 'start' ? start : end || fromDate(new Date(toDate(start).getTime() + 2 * 3600e3));
+  const endOk = (hhmm: string) => multiDay || mins(hhmm) > mins(start);
 
   const set = (hhmm: string) => {
     if (which === 'start') {
       // 開始改到結束之後：結束往後推，保持原本的長度
-      if (end && mins(hhmm) >= mins(end)) {
+      if (!multiDay && end && mins(hhmm) >= mins(end)) {
         const len = Math.max(30, mins(end) - mins(start));
         const e = Math.min(23 * 60 + 55, mins(hhmm) + len);
         onChange(hhmm, `${pad(Math.floor(e / 60))}:${pad(e % 60)}`);
       } else onChange(hhmm, end);
-    } else onChange(start, mins(hhmm) > mins(start) ? hhmm : end);
+    } else onChange(start, endOk(hhmm) ? hhmm : end);
   };
 
   const onPicked = (e: DateTimePickerEvent, d?: Date) => {
@@ -93,8 +95,8 @@ export function TimeSheet({ visible, start, end, onChange, onClose }: { visible:
       onChange: (e, d) => {
         if (e.type === 'set' && d) {
           const hhmm = fromDate(d);
-          if (w === 'start') onChange(hhmm, end && mins(end) <= mins(hhmm) ? '' : end);
-          else onChange(start, mins(hhmm) > mins(start) ? hhmm : end);
+          if (w === 'start') onChange(hhmm, !multiDay && end && mins(end) <= mins(hhmm) ? '' : end);
+          else onChange(start, multiDay || mins(hhmm) > mins(start) ? hhmm : end);
         }
       },
     });
@@ -124,8 +126,8 @@ export function TimeSheet({ visible, start, end, onChange, onClose }: { visible:
         </Pressable>
       </View>
       <View style={[styles.seg, { backgroundColor: c.surfaceMuted }]} accessibilityRole="tablist">
-        {tab('start', tr('開始'), start)}
-        {tab('end', tr('結束'), end)}
+        {tab('start', multiDay ? tr('第一天開始') : tr('開始'), start)}
+        {tab('end', multiDay ? tr('最後一天結束') : tr('結束'), end)}
       </View>
       {(!hasNative && Platform.OS !== 'web') || (Platform.OS === 'android' && androidFailed) ? (
         <ChipTime value={value} onPick={set} />

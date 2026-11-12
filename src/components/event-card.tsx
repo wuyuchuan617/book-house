@@ -18,14 +18,14 @@ import { timeAgo } from '@/lib/period';
 
 const openEvent = (id: string) => router.push({ pathname: '/event/[id]', params: { id } });
 
-/** 左邊的日曆塊：星期＋日 */
-export function DateBlock({ iso }: { iso: string }) {
+/** 左邊的日曆塊：星期＋日；多天的活動是「六–一／14–16」 */
+export function DateBlock({ iso, end }: { iso: string; end?: string | null }) {
   const c = useTheme();
-  const d = eventDay(iso);
+  const d = eventDay(iso, end);
   return (
     <View style={[styles.date, { borderColor: c.border, backgroundColor: c.surface }]}>
-      <View style={{ backgroundColor: c.event, paddingVertical: 2 }}><AppText variant="caption" style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 11, textAlign: 'center' }}>{d.week}</AppText></View>
-      <AppText style={{ fontSize: 20, fontWeight: '700', textAlign: 'center', paddingVertical: 3 }}>{d.day}</AppText>
+      <View style={{ backgroundColor: c.event, paddingVertical: 2 }}><AppText variant="caption" numberOfLines={1} style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 11, textAlign: 'center' }}>{d.week}</AppText></View>
+      <AppText numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: d.multi ? 15 : 20, fontWeight: '700', textAlign: 'center', paddingVertical: d.multi ? 5 : 3, paddingHorizontal: 2 }}>{d.day}</AppText>
     </View>
   );
 }
@@ -44,7 +44,7 @@ export function EventInfo({ e, sub, onPress }: { e: BookEvent; sub?: string | nu
   const c = useTheme();
   return (
     <Pressable accessibilityRole={onPress ? 'button' : undefined} disabled={!onPress} onPress={onPress} style={[styles.info, { backgroundColor: c.surface }]}>
-      <DateBlock iso={e.starts_at} />
+      <DateBlock iso={e.starts_at} end={e.ends_at} />
       <View style={{ flex: 1, gap: 2 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
           <AppText variant="label" style={{ flex: 1 }}>{e.title}</AppText>
@@ -100,7 +100,7 @@ export function EventCard({ e }: { e: BookEvent }) {
       </View>
       {e.latest?.body ? <AppText style={{ lineHeight: 23, fontSize: 15 }} numberOfLines={4}>{e.latest.body}</AppText> : null}
       <Pressable accessibilityRole="link" onPress={() => openEvent(e.id)} style={[styles.mini, { backgroundColor: c.background }]}>
-        <DateBlock iso={e.starts_at} />
+        <DateBlock iso={e.starts_at} end={e.ends_at} />
         <View style={{ flex: 1, gap: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <AppText variant="label" numberOfLines={1} style={{ flexShrink: 1 }}>{e.title}</AppText>

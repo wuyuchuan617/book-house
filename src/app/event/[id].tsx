@@ -13,7 +13,7 @@ import { MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { useDiaryImageUrls } from '@/lib/diary';
-import { addToCalendar, eventError, eventTime, useDeleteShare, useEventDetail, useEventGo, useReportEvent, type EventShare } from '@/lib/events';
+import { addToCalendar, eventError, eventTime, isMultiDay, useDeleteShare, useEventDetail, useEventGo, useReportEvent, type EventShare } from '@/lib/events';
 import { tr } from '@/lib/i18n';
 import { timeAgo } from '@/lib/period';
 
@@ -52,7 +52,7 @@ export default function EventScreen() {
       <ScrollView contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.md, gap: Spacing.md, paddingBottom: 32 }} refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
           <TypeTag type={e.event_type} />
-          <AppText variant="caption" muted>{e.over ? tr('已結束') : days <= 0 ? tr('今天') : tr('還有 {n} 天', { n: days })}</AppText>
+          <AppText variant="caption" muted>{e.over ? tr('已結束') : days <= 0 ? (isMultiDay(e) && new Date(e.starts_at).getTime() <= now ? tr('進行中') : tr('今天')) : tr('還有 {n} 天', { n: days })}</AppText>
         </View>
         <AppText variant="title" style={{ fontSize: 24, lineHeight: 32 }}>{e.title}</AppText>
         <Card style={{ paddingVertical: 0 }}>
